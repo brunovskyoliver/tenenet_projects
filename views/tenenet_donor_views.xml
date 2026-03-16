@@ -1,0 +1,54 @@
+<odoo>
+    <data>
+        <record id="view_tenenet_donor_list" model="ir.ui.view">
+            <field name="name">tenenet.donor.list</field>
+            <field name="model">tenenet.donor</field>
+            <field name="arch" type="xml">
+                <list string="Donori">
+                    <field name="name"/>
+                    <field name="donor_type"/>
+                    <field name="active"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_tenenet_donor_form" model="ir.ui.view">
+            <field name="name">tenenet.donor.form</field>
+            <field name="model">tenenet.donor</field>
+            <field name="arch" type="xml">
+                <form string="Donor">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name"/>
+                                <field name="donor_type"/>
+                                <field name="active"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="contact_info"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_tenenet_donor_search" model="ir.ui.view">
+            <field name="name">tenenet.donor.search</field>
+            <field name="model">tenenet.donor</field>
+            <field name="arch" type="xml">
+                <search string="Donori">
+                    <field name="name"/>
+                    <field name="donor_type"/>
+                    <filter string="Aktívni" name="active" domain="[('active', '=', True)]"/>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_tenenet_donor" model="ir.actions.act_window">
+            <field name="name">Donori</field>
+            <field name="res_model">tenenet.donor</field>
+            <field name="view_mode">list,form</field>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,60 @@
+<odoo>
+    <data>
+        <record id="view_tenenet_program_list" model="ir.ui.view">
+            <field name="name">tenenet.program.list</field>
+            <field name="model">tenenet.program</field>
+            <field name="arch" type="xml">
+                <list string="Programy">
+                    <field name="name"/>
+                    <field name="code"/>
+                    <field name="headcount"/>
+                    <field name="allocation_pct"/>
+                    <field name="active"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_tenenet_program_form" model="ir.ui.view">
+            <field name="name">tenenet.program.form</field>
+            <field name="model">tenenet.program</field>
+            <field name="arch" type="xml">
+                <form string="Program">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name"/>
+                                <field name="code"/>
+                                <field name="active"/>
+                            </group>
+                            <group>
+                                <field name="headcount"/>
+                                <field name="allocation_pct" readonly="1"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="description"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_tenenet_program_search" model="ir.ui.view">
+            <field name="name">tenenet.program.search</field>
+            <field name="model">tenenet.program</field>
+            <field name="arch" type="xml">
+                <search string="Programy">
+                    <field name="name"/>
+                    <field name="code"/>
+                    <filter string="Aktívne" name="active" domain="[('active', '=', True)]"/>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_tenenet_program" model="ir.actions.act_window">
+            <field name="name">Programy</field>
+            <field name="res_model">tenenet.program</field>
+            <field name="view_mode">list,form</field>
+        </record>
+    </data>
+</odoo>

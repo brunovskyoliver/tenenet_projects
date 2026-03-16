@@ -1,6 +1,6 @@
 # AGENTS.md — AI Agent Instructions for Tenenet Projects
 
-This file provides instructions for AI coding agents (Windsurf/Cascade, Cursor, Claude Code, etc.) working on the Tenenet Odoo v19 module suite.
+This file provides instructions for AI coding agents (Windsurf/Cascade, Cursor, Claude Code, etc.) working on the Tenenet Odoo v19 module suite. Make sure to read .agents/known-issues/odoo-19.md before making any changes.
 
 ---
 

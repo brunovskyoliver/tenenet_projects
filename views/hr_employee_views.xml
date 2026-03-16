@@ -1,0 +1,30 @@
+<odoo>
+    <data>
+        <record id="view_hr_employee_form_tenenet" model="ir.ui.view">
+            <field name="name">hr.employee.form.tenenet</field>
+            <field name="model">hr.employee</field>
+            <field name="inherit_id" ref="hr.view_employee_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//notebook" position="inside">
+                    <page string="TENENET">
+                        <group>
+                            <group>
+                                <field name="tenenet_number"/>
+                                <field name="title_academic"/>
+                                <field name="position"/>
+                            </group>
+                            <group>
+                                <field name="work_hours"/>
+                                <field name="work_ratio"/>
+                                <field name="hourly_rate"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="education_info"/>
+                        </group>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

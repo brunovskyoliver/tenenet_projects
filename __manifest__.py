@@ -1,7 +1,7 @@
 {
-    'name': "Tenenet Projects",
+    'name': "TENENET Projekty",
 
-    'summary': "Project management, employee allocation & reporting for Tenenet",
+    'summary': "Riadenie projektov, alokácií a reportingu pre TENENET",
 
     'description': """
 Odoo v19 module suite for Tenenet (Slovak NGO).
@@ -16,12 +16,16 @@ and P&L reporting by program.
     'version': '19.0.1.0.0',
     'license': 'LGPL-3',
 
-    'depends': ['base'],
+    'depends': ['base', 'hr'],
 
     'data': [
-        # 'security/ir.model.access.csv',
-        'views/views.xml',
-        'views/templates.xml',
+        'security/tenenet_security.xml',
+        'security/ir.model.access.csv',
+        'views/tenenet_program_views.xml',
+        'views/tenenet_donor_views.xml',
+        'views/tenenet_project_views.xml',
+        'views/hr_employee_views.xml',
+        'views/menu.xml',
     ],
     'demo': [
         'demo/demo.xml',
