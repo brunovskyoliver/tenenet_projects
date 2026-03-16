@@ -13,6 +13,7 @@
                     <field name="budget_total"/>
                     <field name="date_start"/>
                     <field name="date_end"/>
+                    <field name="semaphore" widget="badge"/>
                     <field name="active"/>
                 </list>
             </field>
@@ -28,6 +29,7 @@
                             <group>
                                 <field name="name"/>
                                 <field name="code"/>
+                                <field name="description"/>
                                 <field name="year"/>
                                 <field name="active"/>
                                 <field name="semaphore"/>
@@ -37,6 +39,13 @@
                                 <field name="donor_id"/>
                                 <field name="recipient"/>
                                 <field name="contract_number"/>
+                                <field name="duration"/>
+                                <field name="date_contract"/>
+                                <field name="call_info"/>
+                                <field name="partners"/>
+                                <field name="submission_info"/>
+                                <field name="portal"/>
+                                <field name="sustainability"/>
                             </group>
                         </group>
                         <notebook>
@@ -58,10 +67,29 @@
                                     <field name="currency_id"/>
                                     <field name="budget_total"/>
                                     <field name="amount_contracted"/>
+                                    <field name="amount_contracted_with_partners"/>
+                                    <field name="received_2020"/>
+                                    <field name="received_2021"/>
+                                    <field name="received_2022"/>
+                                    <field name="received_2023"/>
+                                    <field name="received_2024"/>
                                     <field name="received_2025"/>
                                     <field name="received_2026"/>
                                     <field name="received_total" readonly="1"/>
                                     <field name="budget_diff" readonly="1"/>
+                                </group>
+                            </page>
+                            <page string="Kontakty a zúčtovanie">
+                                <group>
+                                    <field name="donor_contact"/>
+                                    <field name="partner_contact"/>
+                                    <field name="settlement_info"/>
+                                    <field name="application_notes"/>
+                                </group>
+                            </page>
+                            <page string="Poznámky">
+                                <group>
+                                    <field name="comments"/>
                                 </group>
                             </page>
                         </notebook>

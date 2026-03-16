@@ -21,6 +21,8 @@ and P&L reporting by program.
     'data': [
         'security/tenenet_security.xml',
         'security/ir.model.access.csv',
+        'data/tenenet_program_data.xml',
+        'data/tenenet_donor_data.xml',
         'views/tenenet_program_views.xml',
         'views/tenenet_donor_views.xml',
         'views/tenenet_project_views.xml',

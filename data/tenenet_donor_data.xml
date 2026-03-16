@@ -1,0 +1,28 @@
+<odoo>
+    <data noupdate="1">
+        <record id="tenenet_donor_upsvr" model="tenenet.donor">
+            <field name="name">ÚPSVaR</field>
+            <field name="donor_type">sr_ministerstvo</field>
+        </record>
+
+        <record id="tenenet_donor_bsk" model="tenenet.donor">
+            <field name="name">Bratislavský samosprávny kraj</field>
+            <field name="donor_type">sr_samosprava</field>
+        </record>
+
+        <record id="tenenet_donor_ttsk" model="tenenet.donor">
+            <field name="name">Trnavský samosprávny kraj</field>
+            <field name="donor_type">sr_samosprava</field>
+        </record>
+
+        <record id="tenenet_donor_nsk" model="tenenet.donor">
+            <field name="name">Nitriansky samosprávny kraj</field>
+            <field name="donor_type">sr_samosprava</field>
+        </record>
+
+        <record id="tenenet_donor_eu" model="tenenet.donor">
+            <field name="name">Európska únia</field>
+            <field name="donor_type">eu</field>
+        </record>
+    </data>
+</odoo>
