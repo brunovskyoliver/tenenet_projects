@@ -23,6 +23,10 @@ This file provides instructions for AI coding agents (Windsurf/Cascade, Cursor, 
 
 ```
 /Users/oliver/odoo-dev/addons/
+├── shared-implementations/        # Shared reusable implementation knowledge for all addons
+│   ├── INDEX.md                   # Chronological global feature index
+│   ├── templates/                 # Templates for feature notes
+│   └── addons/                    # Per-addon feature logs
 ├── tenenet_projects/              # Main Odoo module
 │   ├── __init__.py
 │   ├── __manifest__.py
@@ -141,7 +145,31 @@ from . import tenenet_pl_line
 - Employee names, project names, comments are in Slovak
 - Use `docs/glossary-sk.md` for translations
 - Ensure UTF-8 encoding for Slovak characters: ä, č, ď, é, í, ľ, ĺ, ň, ó, ô, ŕ, š, ť, ú, ý, ž
-- Field labels in Odoo should be in English; user-facing strings can be in Slovak via translations
+- Odoo UI must be Slovak by default in this project:
+  - menu names
+  - window action names
+  - form/list/search view strings
+  - user-facing field labels
+- English can be used for technical identifiers only (`_name`, XML IDs, Python symbols).
+- If an English label is needed temporarily for compatibility, add a follow-up translation task.
+
+### Shared Implementation Knowledge Base (Mandatory)
+
+For every newly implemented feature in this addon:
+
+1. Add or update entry in:
+   - `/Users/oliver/odoo-dev/addons/shared-implementations/addons/tenenet_projects/features.md`
+2. Add a one-line index item in:
+   - `/Users/oliver/odoo-dev/addons/shared-implementations/INDEX.md`
+3. Use template:
+   - `/Users/oliver/odoo-dev/addons/shared-implementations/templates/feature-entry-template.md`
+
+Minimum content per feature entry:
+- business scope
+- Slovak UI elements touched
+- changed files
+- tests and validation performed
+- reuse guidance for other addons
 
 ### Currency
 
