@@ -39,7 +39,22 @@ class TenenetProject(models.Model):
     allocation_ids = fields.One2many(
         "tenenet.employee.allocation",
         "project_id",
-        string="Alokácie",
+        string="Alokácie (archiv)",
+    )
+    assignment_ids = fields.One2many(
+        "tenenet.project.assignment",
+        "project_id",
+        string="Priradenia zamestnancov",
+    )
+    leave_rule_ids = fields.One2many(
+        "tenenet.project.leave.rule",
+        "project_id",
+        string="Pravidlá dovolenky",
+    )
+    timesheet_ids = fields.One2many(
+        "tenenet.project.timesheet",
+        "project_id",
+        string="Timesheety",
     )
     receipt_line_ids = fields.One2many(
         "tenenet.project.receipt",

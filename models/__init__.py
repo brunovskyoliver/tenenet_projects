@@ -3,6 +3,11 @@ from . import tenenet_donor
 from . import hr_employee
 from . import tenenet_project
 from . import tenenet_project_receipt
+from . import tenenet_project_assignment
+from . import tenenet_project_leave_rule
+from . import tenenet_project_timesheet
+from . import tenenet_employee_tenenet_cost
+from . import hr_leave
 from . import tenenet_employee_allocation
 from . import tenenet_utilization
 from . import tenenet_pl_line

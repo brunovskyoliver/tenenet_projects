@@ -1,0 +1,68 @@
+<odoo>
+    <data>
+        <record id="view_tenenet_employee_tenenet_cost_list" model="ir.ui.view">
+            <field name="name">tenenet.employee.tenenet.cost.list</field>
+            <field name="model">tenenet.employee.tenenet.cost</field>
+            <field name="arch" type="xml">
+                <list string="Tenenet náklady (reziduum)" decoration-danger="tenenet_residual_ccp &gt; 0">
+                    <field name="employee_id"/>
+                    <field name="period"/>
+                    <field name="gross_salary_employee"/>
+                    <field name="project_billed_gross" readonly="1"/>
+                    <field name="tenenet_residual_hm" readonly="1"/>
+                    <field name="total_labor_cost_employee"/>
+                    <field name="project_billed_ccp" readonly="1"/>
+                    <field name="tenenet_residual_ccp" readonly="1"/>
+                    <field name="currency_id" column_invisible="1"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_tenenet_employee_tenenet_cost_form" model="ir.ui.view">
+            <field name="name">tenenet.employee.tenenet.cost.form</field>
+            <field name="model">tenenet.employee.tenenet.cost</field>
+            <field name="arch" type="xml">
+                <form string="Tenenet náklady zamestnanca">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="employee_id"/>
+                                <field name="period"/>
+                                <field name="currency_id" invisible="1"/>
+                            </group>
+                        </group>
+                        <group string="Hrubá mzda">
+                            <field name="gross_salary_employee"/>
+                            <field name="project_billed_gross" readonly="1"/>
+                            <field name="tenenet_residual_hm" readonly="1"/>
+                        </group>
+                        <group string="Celková cena práce (CCP)">
+                            <field name="total_labor_cost_employee"/>
+                            <field name="project_billed_ccp" readonly="1"/>
+                            <field name="tenenet_residual_ccp" readonly="1"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_tenenet_employee_tenenet_cost_search" model="ir.ui.view">
+            <field name="name">tenenet.employee.tenenet.cost.search</field>
+            <field name="model">tenenet.employee.tenenet.cost</field>
+            <field name="arch" type="xml">
+                <search string="Tenenet náklady">
+                    <field name="employee_id"/>
+                    <field name="period"/>
+                    <filter string="Zamestnanec" name="group_employee" context="{'group_by': 'employee_id'}"/>
+                    <filter string="Obdobie" name="group_period" context="{'group_by': 'period:month'}"/>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_tenenet_employee_tenenet_cost" model="ir.actions.act_window">
+            <field name="name">Tenenet náklady (reziduum)</field>
+            <field name="res_model">tenenet.employee.tenenet.cost</field>
+            <field name="view_mode">list,form</field>
+        </record>
+    </data>
+</odoo>

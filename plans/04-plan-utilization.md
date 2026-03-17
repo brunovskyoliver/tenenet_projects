@@ -1,4 +1,9 @@
-# Plan 04: Utilization Tracking Model
+# Plan 04: Utilization Tracking
+
+> ⚠️ **UPDATED by Plan 10** (`10-plan-utilization-computed.md`).
+> Hour fields on `tenenet.utilization` are now **computed** from `tenenet.project.timesheet` records — no longer manually entered.
+> Only `capacity_hours`, `work_ratio`, and `manager_id` remain manually settable.
+> All KPI fields (utilization_rate, utilization_status, etc.) remain unchanged. Model
 
 Monthly utilization summary per employee with KPI computations.
 

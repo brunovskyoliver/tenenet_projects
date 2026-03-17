@@ -24,7 +24,13 @@ class TenenetPLLine(models.Model):
         string="Mena",
         default=lambda self: self.env.ref("base.EUR"),
     )
-    amount = fields.Monetary(string="Suma", currency_field="currency_id", default=0.0)
+    amount = fields.Monetary(
+        string="Suma",
+        currency_field="currency_id",
+        compute="_compute_amount",
+        store=True,
+        help="Vypočítané z timesheet záznamov: súčet celkovej ceny práce zamestnanca na projektoch programu za dané obdobie.",
+    )
     annual_total = fields.Monetary(
         string="Ročný súčet",
         currency_field="currency_id",
@@ -36,6 +42,27 @@ class TenenetPLLine(models.Model):
         "UNIQUE(employee_id, program_id, period)",
         "Pre zamestnanca, program a obdobie môže existovať len jeden P&L riadok.",
     )
+
+    @api.depends(
+        "employee_id",
+        "program_id",
+        "period",
+        "employee_id.assignment_ids.project_id.program_id",
+        "employee_id.assignment_ids.timesheet_ids.period",
+        "employee_id.assignment_ids.timesheet_ids.total_labor_cost",
+    )
+    def _compute_amount(self):
+        Timesheet = self.env["tenenet.project.timesheet"]
+        for rec in self:
+            if not rec.employee_id or not rec.program_id or not rec.period:
+                rec.amount = 0.0
+                continue
+            lines = Timesheet.search([
+                ("employee_id", "=", rec.employee_id.id),
+                ("project_id.program_id", "=", rec.program_id.id),
+                ("period", "=", rec.period),
+            ])
+            rec.amount = sum(lines.mapped("total_labor_cost"))
 
     @api.depends(
         "employee_id",

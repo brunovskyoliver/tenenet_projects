@@ -24,6 +24,16 @@ class TestTenenetPlan05PLReporting(TransactionCase):
             }
         )
         self.employee = self.env["hr.employee"].create({"name": "Zamestnanec P&L"})
+        self.project_a = self.env["tenenet.project"].create({
+            "name": "Projekt PL A",
+            "program_id": self.program_a.id,
+        })
+        self.assignment = self.env["tenenet.project.assignment"].create({
+            "employee_id": self.employee.id,
+            "project_id": self.project_a.id,
+            "wage_hm": 0.0,
+            "wage_ccp": 1.0,
+        })
         self.company = self.env.company
         base_user_group = self.env.ref("base.group_user")
         tenenet_user_group = self.env.ref("tenenet_projects.group_tenenet_user")
@@ -50,49 +60,39 @@ class TestTenenetPlan05PLReporting(TransactionCase):
             }
         )
 
+    def _ts(self, period, hours_pp):
+        """Create a timesheet for self.assignment with wage_ccp=1.0 so total_labor_cost=hours_pp."""
+        return self.env["tenenet.project.timesheet"].create({
+            "assignment_id": self.assignment.id,
+            "period": period,
+            "hours_pp": hours_pp,
+        })
+
+    def _pl(self, period):
+        return self.env["tenenet.pl.line"].create({
+            "employee_id": self.employee.id,
+            "program_id": self.program_a.id,
+            "period": period,
+        })
+
     def test_pl_line_annual_total_compute(self):
-        line_jan = self.env["tenenet.pl.line"].create(
-            {
-                "employee_id": self.employee.id,
-                "program_id": self.program_a.id,
-                "period": "2025-01-01",
-                "amount": 100.0,
-            }
-        )
-        line_feb = self.env["tenenet.pl.line"].create(
-            {
-                "employee_id": self.employee.id,
-                "program_id": self.program_a.id,
-                "period": "2025-02-01",
-                "amount": 200.0,
-            }
-        )
-        line_mar = self.env["tenenet.pl.line"].create(
-            {
-                "employee_id": self.employee.id,
-                "program_id": self.program_a.id,
-                "period": "2025-03-01",
-                "amount": 50.0,
-            }
-        )
-        line_next_year = self.env["tenenet.pl.line"].create(
-            {
-                "employee_id": self.employee.id,
-                "program_id": self.program_a.id,
-                "period": "2026-01-01",
-                "amount": 75.0,
-            }
-        )
+        self._ts("2025-01-01", 100.0)
+        self._ts("2025-02-01", 200.0)
+        self._ts("2025-03-01", 50.0)
+        self._ts("2026-01-01", 75.0)
 
-        line_jan.invalidate_recordset(["annual_total"])
-        line_feb.invalidate_recordset(["annual_total"])
-        line_mar.invalidate_recordset(["annual_total"])
-        line_next_year.invalidate_recordset(["annual_total"])
+        line_jan = self._pl("2025-01-01")
+        line_feb = self._pl("2025-02-01")
+        line_mar = self._pl("2025-03-01")
+        line_next_year = self._pl("2026-01-01")
 
-        self.assertEqual(line_jan.annual_total, 350.0)
-        self.assertEqual(line_feb.annual_total, 350.0)
-        self.assertEqual(line_mar.annual_total, 350.0)
-        self.assertEqual(line_next_year.annual_total, 75.0)
+        for line in (line_jan, line_feb, line_mar, line_next_year):
+            line.invalidate_recordset()
+
+        self.assertAlmostEqual(line_jan.annual_total, 350.0, places=2)
+        self.assertAlmostEqual(line_feb.annual_total, 350.0, places=2)
+        self.assertAlmostEqual(line_mar.annual_total, 350.0, places=2)
+        self.assertAlmostEqual(line_next_year.annual_total, 75.0, places=2)
 
     def test_program_allocation_pct_sums_to_one(self):
         self.program_a.invalidate_recordset(["allocation_pct"])
@@ -103,44 +103,32 @@ class TestTenenetPlan05PLReporting(TransactionCase):
         self.assertAlmostEqual(total, 1.0, places=4)
 
     def test_pl_line_unique_constraint(self):
-        self.env["tenenet.pl.line"].create(
-            {
-                "employee_id": self.employee.id,
-                "program_id": self.program_a.id,
-                "period": "2025-04-01",
-                "amount": 120.0,
-            }
-        )
+        self.env["tenenet.pl.line"].create({
+            "employee_id": self.employee.id,
+            "program_id": self.program_a.id,
+            "period": "2025-04-01",
+        })
 
         with self.cr.savepoint():
             with self.assertRaises(IntegrityError):
-                self.env["tenenet.pl.line"].create(
-                    {
-                        "employee_id": self.employee.id,
-                        "program_id": self.program_a.id,
-                        "period": "2025-04-01",
-                        "amount": 150.0,
-                    }
-                )
+                self.env["tenenet.pl.line"].create({
+                    "employee_id": self.employee.id,
+                    "program_id": self.program_a.id,
+                    "period": "2025-04-01",
+                })
 
     def test_pl_line_acl_user_read_only_manager_full(self):
         with self.assertRaises(AccessError):
-            self.env["tenenet.pl.line"].with_user(self.user_user).create(
-                {
-                    "employee_id": self.employee.id,
-                    "program_id": self.program_a.id,
-                    "period": "2025-05-01",
-                    "amount": 180.0,
-                }
-            )
-
-        line = self.env["tenenet.pl.line"].with_user(self.manager_user).create(
-            {
+            self.env["tenenet.pl.line"].with_user(self.user_user).create({
                 "employee_id": self.employee.id,
                 "program_id": self.program_a.id,
                 "period": "2025-05-01",
-                "amount": 180.0,
-            }
-        )
+            })
+
+        line = self.env["tenenet.pl.line"].with_user(self.manager_user).create({
+            "employee_id": self.employee.id,
+            "program_id": self.program_a.id,
+            "period": "2025-05-01",
+        })
 
         self.assertTrue(line.exists())

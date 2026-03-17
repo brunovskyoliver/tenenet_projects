@@ -16,7 +16,7 @@ and P&L reporting by program.
     'version': '19.0.3.0.0',
     'license': 'LGPL-3',
 
-    'depends': ['base', 'hr'],
+    'depends': ['base', 'hr', 'hr_holidays'],
 
     'data': [
         'security/tenenet_security.xml',
@@ -29,6 +29,9 @@ and P&L reporting by program.
         'views/tenenet_allocation_views.xml',
         'views/tenenet_utilization_views.xml',
         'views/tenenet_pl_line_views.xml',
+        'views/tenenet_project_assignment_views.xml',
+        'views/tenenet_project_timesheet_views.xml',
+        'views/tenenet_employee_tenenet_cost_views.xml',
         'views/hr_employee_views.xml',
         'views/menu.xml',
     ],

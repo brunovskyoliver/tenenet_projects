@@ -26,3 +26,13 @@ class HrEmployee(models.Model):
         "employee_id",
         string="P&L riadky",
     )
+    assignment_ids = fields.One2many(
+        "tenenet.project.assignment",
+        "employee_id",
+        string="Priradenia k projektom",
+    )
+    tenenet_cost_ids = fields.One2many(
+        "tenenet.employee.tenenet.cost",
+        "employee_id",
+        string="Tenenet náklady",
+    )

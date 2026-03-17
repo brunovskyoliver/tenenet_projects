@@ -14,9 +14,16 @@ tenenet.donor (independent)
        │
        └──→ tenenet.project (depends: program, donor, employee)
                 │
-                ├──→ tenenet.employee.allocation (depends: project, employee)
-                ├──→ tenenet.utilization (depends: employee)
-                └──→ tenenet.pl.line (depends: employee, program)
+                ├──→ tenenet.project.assignment (depends: project, employee)
+                │         │
+                │         └──→ tenenet.project.leave.rule (depends: assignment, hr.leave.type)
+                │         └──→ tenenet.project.timesheet (depends: assignment)
+                │                   │
+                │                   ├──→ tenenet.utilization [COMPUTED] (depends: employee)
+                │                   ├──→ tenenet.pl.line [COMPUTED] (depends: employee, program)
+                │                   └──→ tenenet.employee.tenenet.cost (depends: employee)
+                │
+                └──→ tenenet.employee.allocation [SUPERSEDED — read-only archive]
 ```
 
 ---
@@ -33,12 +40,15 @@ tenenet.donor (independent)
 
 **Deliverables**: All core models created, security in place, basic list/form views.
 
-### Phase 2: Data Layer (Allocations + Utilization)
+### Phase 2: Data Layer (Assignments + Timesheets + Utilization)
 
 | Step | Plan File | Models | Priority |
 |------|-----------|--------|----------|
-| 2.1 | `03-plan-allocation.md` | `tenenet.employee.allocation` | HIGH |
-| 2.2 | `04-plan-utilization.md` | `tenenet.utilization` | HIGH |
+| 2.1 | `03-plan-allocation.md` | `tenenet.employee.allocation` — **SUPERSEDED** | ARCHIVE |
+| 2.2 | `04-plan-utilization.md` | `tenenet.utilization` — **UPDATED** (now computed) | ARCHIVE |
+| 2.3 | `08-plan-project-assignment.md` | `tenenet.project.assignment`, `tenenet.project.leave.rule` | HIGH ✅ |
+| 2.4 | `09-plan-project-timesheet.md` | `tenenet.project.timesheet`, `tenenet.employee.tenenet.cost`, `hr.leave` override | HIGH ✅ |
+| 2.5 | `10-plan-utilization-computed.md` | `tenenet.utilization` as computed aggregate | HIGH ✅ |
 
 **Deliverables**: Junction models for employee-project allocations, utilization tracking with computed KPIs.
 

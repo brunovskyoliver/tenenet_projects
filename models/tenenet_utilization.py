@@ -19,12 +19,43 @@ class TenenetUtilization(models.Model):
     work_ratio = fields.Float(string="Úväzok (%)", digits=(5, 2))
     capacity_hours = fields.Float(string="Kapacita hodín", digits=(10, 2))
 
-    hours_pp = fields.Float(string="Hodiny PP", digits=(10, 2))
-    hours_np = fields.Float(string="Hodiny NP", digits=(10, 2))
-    hours_travel = fields.Float(string="Hodiny cesta za klientom", digits=(10, 2))
-    hours_training = fields.Float(string="Hodiny školenie", digits=(10, 2))
-    hours_ambulance = fields.Float(string="Hodiny ambulancia", digits=(10, 2))
-    hours_international = fields.Float(string="Hodiny medzinárodné projekty", digits=(10, 2))
+    # ── Projektové hodiny – vypočítané z timesheet záznamov ─────────────────
+    hours_pp = fields.Float(
+        string="Hodiny PP",
+        digits=(10, 2),
+        compute="_compute_from_timesheets",
+        store=True,
+    )
+    hours_np = fields.Float(
+        string="Hodiny NP",
+        digits=(10, 2),
+        compute="_compute_from_timesheets",
+        store=True,
+    )
+    hours_travel = fields.Float(
+        string="Hodiny cesta za klientom",
+        digits=(10, 2),
+        compute="_compute_from_timesheets",
+        store=True,
+    )
+    hours_training = fields.Float(
+        string="Hodiny školenie",
+        digits=(10, 2),
+        compute="_compute_from_timesheets",
+        store=True,
+    )
+    hours_ambulance = fields.Float(
+        string="Hodiny ambulancia",
+        digits=(10, 2),
+        compute="_compute_from_timesheets",
+        store=True,
+    )
+    hours_international = fields.Float(
+        string="Hodiny medzinárodné projekty",
+        digits=(10, 2),
+        compute="_compute_from_timesheets",
+        store=True,
+    )
     hours_project_total = fields.Float(
         string="Projektové hodiny spolu",
         digits=(10, 2),
@@ -32,10 +63,31 @@ class TenenetUtilization(models.Model):
         store=True,
     )
 
-    hours_vacation = fields.Float(string="Hodiny dovolenka", digits=(10, 2))
-    hours_doctor = fields.Float(string="Hodiny lekár", digits=(10, 2))
-    hours_sick = fields.Float(string="Hodiny PN/OČR", digits=(10, 2))
-    hours_ballast = fields.Float(string="Hodiny balast", digits=(10, 2))
+    # ── Absencie – vypočítané z timesheet záznamov ───────────────────────────
+    hours_vacation = fields.Float(
+        string="Hodiny dovolenka",
+        digits=(10, 2),
+        compute="_compute_from_timesheets",
+        store=True,
+    )
+    hours_doctor = fields.Float(
+        string="Hodiny lekár",
+        digits=(10, 2),
+        compute="_compute_from_timesheets",
+        store=True,
+    )
+    hours_sick = fields.Float(
+        string="Hodiny PN/OČR",
+        digits=(10, 2),
+        compute="_compute_from_timesheets",
+        store=True,
+    )
+    hours_ballast = fields.Float(
+        string="Hodiny balast",
+        digits=(10, 2),
+        default=0.0,
+        help="Hodiny balast – zadáva sa manuálne",
+    )
     hours_non_project_total = fields.Float(
         string="Neprojektové hodiny spolu",
         digits=(10, 2),
@@ -78,6 +130,43 @@ class TenenetUtilization(models.Model):
         "UNIQUE(employee_id, period)",
         "Pre zamestnanca môže existovať len jeden záznam vyťaženosti za obdobie.",
     )
+
+    @api.depends(
+        "employee_id",
+        "period",
+        "employee_id.assignment_ids.timesheet_ids.period",
+        "employee_id.assignment_ids.timesheet_ids.hours_pp",
+        "employee_id.assignment_ids.timesheet_ids.hours_np",
+        "employee_id.assignment_ids.timesheet_ids.hours_travel",
+        "employee_id.assignment_ids.timesheet_ids.hours_training",
+        "employee_id.assignment_ids.timesheet_ids.hours_ambulance",
+        "employee_id.assignment_ids.timesheet_ids.hours_international",
+        "employee_id.assignment_ids.timesheet_ids.hours_vacation",
+        "employee_id.assignment_ids.timesheet_ids.hours_doctor",
+        "employee_id.assignment_ids.timesheet_ids.hours_sick",
+    )
+    def _compute_from_timesheets(self):
+        Timesheet = self.env["tenenet.project.timesheet"]
+        for rec in self:
+            if not rec.employee_id or not rec.period:
+                for f in ("hours_pp", "hours_np", "hours_travel", "hours_training",
+                          "hours_ambulance", "hours_international",
+                          "hours_vacation", "hours_doctor", "hours_sick"):
+                    setattr(rec, f, 0.0)
+                continue
+            lines = Timesheet.search([
+                ("employee_id", "=", rec.employee_id.id),
+                ("period", "=", rec.period),
+            ])
+            rec.hours_pp = sum(lines.mapped("hours_pp"))
+            rec.hours_np = sum(lines.mapped("hours_np"))
+            rec.hours_travel = sum(lines.mapped("hours_travel"))
+            rec.hours_training = sum(lines.mapped("hours_training"))
+            rec.hours_ambulance = sum(lines.mapped("hours_ambulance"))
+            rec.hours_international = sum(lines.mapped("hours_international"))
+            rec.hours_vacation = sum(lines.mapped("hours_vacation"))
+            rec.hours_doctor = sum(lines.mapped("hours_doctor"))
+            rec.hours_sick = sum(lines.mapped("hours_sick"))
 
     @api.depends(
         "hours_pp",

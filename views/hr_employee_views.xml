@@ -22,6 +22,18 @@
                         <group>
                             <field name="education_info"/>
                         </group>
+                        <group string="Priradenia k projektom">
+                            <field name="assignment_ids" nolabel="1">
+                                <list string="Priradenia k projektom">
+                                    <field name="project_id"/>
+                                    <field name="wage_hm"/>
+                                    <field name="wage_ccp"/>
+                                    <field name="date_start"/>
+                                    <field name="date_end"/>
+                                    <field name="active"/>
+                                </list>
+                            </field>
+                        </group>
                     </page>
                 </xpath>
             </field>

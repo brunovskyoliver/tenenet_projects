@@ -1,5 +1,9 @@
 # Plan 03: Employee-Project Allocation Model
 
+> ⚠️ **SUPERSEDED by Plan 09** (`09-plan-project-timesheet.md`).
+> `tenenet.employee.allocation` is now a read-only archive model.
+> All new data entry uses `tenenet.project.timesheet` via the project Timesheety tab.
+
 Monthly allocation of employee time and cost to projects.
 
 ---
