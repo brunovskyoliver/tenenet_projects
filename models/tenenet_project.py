@@ -111,8 +111,10 @@ class TenenetProject(models.Model):
                     end_date.month - start_date.month
                 ) + 1
             elif not rec.date_end:
-                current_month = fields.Date.today().month
-                rec.duration = current_month - rec.date_start.month + 1
+                current_date = fields.Date.today()
+                rec.duration = (current_date.year - rec.date_start.year) * 12 + (
+                    current_date.month - rec.date_start.month
+                ) + 1
             else:
                 rec.duration = False
 
