@@ -9,3 +9,5 @@ access_tenenet_project_receipt_user,tenenet.project.receipt.user,model_tenenet_p
 access_tenenet_project_receipt_manager,tenenet.project.receipt.manager,model_tenenet_project_receipt,tenenet_projects.group_tenenet_manager,1,1,1,1
 access_tenenet_allocation_user,tenenet.employee.allocation.user,model_tenenet_employee_allocation,tenenet_projects.group_tenenet_user,1,0,0,0
 access_tenenet_allocation_manager,tenenet.employee.allocation.manager,model_tenenet_employee_allocation,tenenet_projects.group_tenenet_manager,1,1,1,1
+access_tenenet_utilization_user,tenenet.utilization.user,model_tenenet_utilization,tenenet_projects.group_tenenet_user,1,0,0,0
+access_tenenet_utilization_manager,tenenet.utilization.manager,model_tenenet_utilization,tenenet_projects.group_tenenet_manager,1,1,1,1
