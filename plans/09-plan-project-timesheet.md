@@ -1,4 +1,4 @@
-# Plan 09: Project Timesheet Grid & Tenenet Residual
+# Plan 09: Project Timesheet Matrix & Tenenet Residual
 
 Monthly timesheet entry per employee-project assignment, replacing `tenenet.employee.allocation`. Includes automatic Tenenet residual cost generation and `hr_holidays` leave auto-sync.
 
@@ -10,6 +10,7 @@ Monthly timesheet entry per employee-project assignment, replacing `tenenet.empl
 - `tenenet.employee.tenenet.cost` — auto-generated residual (salary not covered by projects)
 - `hr.leave` override — auto-populate timesheet leave hours from approved Odoo leaves
 - Editable inline list view inside project form (Timesheety tab)
+- Editable yearly monthly matrix for project-based hour entry
 
 ## Prerequisites
 
@@ -58,10 +59,11 @@ Monthly timesheet entry per employee-project assignment, replacing `tenenet.empl
 
 | File | Content |
 |------|---------|
-| `views/tenenet_project_timesheet_views.xml` | List (editable), form, search, pivot, graph + action |
+| `views/tenenet_project_timesheet_views.xml` | List (editable), form, search, graph + action |
+| `views/tenenet_project_timesheet_matrix_views.xml` | Editable yearly monthly matrix wizard/action |
 | `views/tenenet_employee_tenenet_cost_views.xml` | List, form, search + action |
-| `views/tenenet_project_views.xml` | Timesheety tab (editable inline list), Priradenia tab, Pravidlá dovolenky tab |
-| `views/menu.xml` | Timesheety under Projekty; Tenenet náklady under Konfigurácia |
+| `views/tenenet_project_views.xml` | Timesheety tab (editable inline list) + button to open yearly monthly matrix |
+| `views/menu.xml` | Timesheety under Projekty; Mesačná matica hodín under Projekty; Tenenet náklady under Konfigurácia |
 
 ## Data Flow
 
@@ -98,6 +100,7 @@ Odoo hr_holidays leave approved (action_validate)
 
 - Hour categories are now normalized in `tenenet.project.timesheet.line` and aggregated back to the parent `tenenet.project.timesheet` record.
 - Existing parent fields such as `hours_pp`, `hours_np`, `hours_vacation`, and cost totals remain the compatibility surface for downstream logic and tests.
-- A dedicated `Mesačná mriežka hodín` action now provides month-oriented navigation over normalized hour rows using list + pivot views.
+- A dedicated `Mesačná matica hodín` action now provides editable Jan-Dec columns for one selected project and year.
+- Users edit hours by row (`zamestnanec + kategória hodín`) and the wizard writes changes back into normalized `tenenet.project.timesheet.line` records and parent monthly timesheets.
 
 ## Status: ✅ IMPLEMENTED

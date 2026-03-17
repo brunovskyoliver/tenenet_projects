@@ -189,6 +189,63 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
         cost.invalidate_recordset()
         self.assertAlmostEqual(cost.project_billed_gross, 200.0, places=2)
 
+    def test_monthly_matrix_wizard_loads_existing_hours(self):
+        self.env["tenenet.project.timesheet"].create({
+            "assignment_id": self.assignment.id,
+            "period": "2026-01-01",
+            "hours_pp": 11.0,
+            "hours_np": 4.0,
+        })
+        self.env["tenenet.project.timesheet"].create({
+            "assignment_id": self.assignment2.id,
+            "period": "2026-03-01",
+            "hours_vacation": 7.0,
+        })
+
+        wizard = self.env["tenenet.project.timesheet.matrix.wizard"].create({
+            "project_id": self.project.id,
+            "year": 2026,
+        })
+        row_pp = wizard.line_ids.filtered(
+            lambda line: line.assignment_id == self.assignment and line.hour_type == "pp"
+        )
+        row_np = wizard.line_ids.filtered(
+            lambda line: line.assignment_id == self.assignment and line.hour_type == "np"
+        )
+        self.assertTrue(row_pp)
+        self.assertAlmostEqual(row_pp.month_01, 11.0)
+        self.assertAlmostEqual(row_np.month_01, 4.0)
+
+    def test_monthly_matrix_wizard_applies_hours_to_timesheets(self):
+        wizard = self.env["tenenet.project.timesheet.matrix.wizard"].create({
+            "project_id": self.project.id,
+            "year": 2026,
+        })
+        row_pp = wizard.line_ids.filtered(
+            lambda line: line.assignment_id == self.assignment and line.hour_type == "pp"
+        )
+        row_vacation = wizard.line_ids.filtered(
+            lambda line: line.assignment_id == self.assignment and line.hour_type == "vacation"
+        )
+        row_pp.month_01 = 14.0
+        row_pp.month_02 = 9.0
+        row_vacation.month_02 = 3.0
+
+        result = wizard.action_apply()
+        self.assertEqual(result["type"], "ir.actions.act_window_close")
+
+        january = self.env["tenenet.project.timesheet"].search([
+            ("assignment_id", "=", self.assignment.id),
+            ("period", "=", "2026-01-01"),
+        ], limit=1)
+        february = self.env["tenenet.project.timesheet"].search([
+            ("assignment_id", "=", self.assignment.id),
+            ("period", "=", "2026-02-01"),
+        ], limit=1)
+        self.assertAlmostEqual(january.hours_pp, 14.0)
+        self.assertAlmostEqual(february.hours_pp, 9.0)
+        self.assertAlmostEqual(february.hours_vacation, 3.0)
+
     def test_utilization_aggregate_from_timesheets(self):
         self.env["tenenet.project.timesheet"].create(self._timesheet_vals(
             period="2026-03-01",

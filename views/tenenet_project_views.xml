@@ -100,9 +100,9 @@
                             </page>
                             <page string="Timesheety">
                                 <group>
-                                    <button name="action_open_timesheet_month_grid"
+                                    <button name="action_open_timesheet_month_matrix"
                                             type="object"
-                                            string="Otvoriť mesačnú mriežku"
+                                            string="Otvoriť mesačnú maticu"
                                             class="oe_highlight"/>
                                 </group>
                                 <field name="timesheet_ids">
