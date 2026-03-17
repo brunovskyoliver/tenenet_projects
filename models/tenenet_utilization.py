@@ -13,7 +13,7 @@ class TenenetUtilization(models.Model):
         ondelete="cascade",
     )
     manager_id = fields.Many2one("hr.employee", string="Manažér", ondelete="set null")
-    manager_name = fields.Char(string="Manažér", related="manager_id.name", store=True, readonly=True)
+    manager_name = fields.Char(string="Manažér", related="manager_id.name", store=True, readonly=True, translate=False)
     period = fields.Date(string="Obdobie", required=True)
 
     work_ratio = fields.Float(string="Úväzok (%)", digits=(5, 2))
