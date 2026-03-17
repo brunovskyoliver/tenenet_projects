@@ -106,6 +106,7 @@ Odoo hr_holidays leave approved (action_validate)
 - Existing parent fields such as `hours_pp`, `hours_np`, `hours_vacation`, and cost totals remain the compatibility surface for downstream logic and tests.
 - Monthly `tenenet.project.timesheet` parent records are precreated automatically when an assignment has a usable project/assignment date range.
 - A persistent `Mesačná matica hodín` now exists per `priradenie + rok`; rows are fixed hour categories and columns are Jan-Dec.
+- The matrix form now includes a year switcher over sibling yearly matrices for the same assignment and uses custom backend styling for full-width/full-height readability.
 - Users no longer create a wizard record. They open an existing full-screen matrix and edits write directly back into normalized `tenenet.project.timesheet.line` records and parent monthly timesheets.
 - The `Moje timesheety` dashboard app opens the current user's project assignments so the employee can choose a project and open the current-year matrix directly.
 

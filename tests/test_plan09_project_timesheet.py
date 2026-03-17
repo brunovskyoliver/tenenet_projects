@@ -287,6 +287,46 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
         self.assertEqual(matrix.assignment_id, assignment)
         self.assertEqual(len(matrix.line_ids), 10)
 
+    def test_open_ended_assignment_creates_year_matrices_until_present(self):
+        project = self.env["tenenet.project"].create({
+            "name": "Projekt bez konca",
+        })
+        assignment = self.env["tenenet.project.assignment"].create({
+            "employee_id": self.employee.id,
+            "project_id": project.id,
+            "date_start": "2025-06-01",
+            "wage_hm": 10.0,
+            "wage_ccp": 13.62,
+        })
+        self.assertEqual(
+            assignment.matrix_ids.mapped("year"),
+            [2025, 2026],
+        )
+
+    def test_matrix_write_keeps_other_month_values(self):
+        matrix = self.env["tenenet.project.timesheet.matrix"].create({
+            "assignment_id": self.assignment.id,
+            "year": 2026,
+        })
+        row_pp = matrix.line_ids.filtered(
+            lambda line: line.assignment_id == self.assignment and line.hour_type == "pp"
+        )
+        row_pp.write({
+            "month_01": 4.0,
+            "month_02": 5.0,
+        })
+        row_pp.invalidate_recordset(["month_01", "month_02"])
+        self.assertAlmostEqual(row_pp.month_01, 4.0)
+        self.assertAlmostEqual(row_pp.month_02, 5.0)
+
+        row_pp.write({
+            "month_03": 6.0,
+        })
+        row_pp.invalidate_recordset(["month_01", "month_02", "month_03"])
+        self.assertAlmostEqual(row_pp.month_01, 4.0)
+        self.assertAlmostEqual(row_pp.month_02, 5.0)
+        self.assertAlmostEqual(row_pp.month_03, 6.0)
+
     def test_utilization_aggregate_from_timesheets(self):
         self.env["tenenet.project.timesheet"].create(self._timesheet_vals(
             period="2026-03-01",

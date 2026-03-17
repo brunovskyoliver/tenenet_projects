@@ -49,6 +49,11 @@ class TenenetProjectAssignment(models.Model):
         "assignment_id",
         string="Timesheety",
     )
+    matrix_ids = fields.One2many(
+        "tenenet.project.timesheet.matrix",
+        "assignment_id",
+        string="Ročné matice",
+    )
     timesheet_count = fields.Integer(
         string="Počet timesheet záznamov",
         compute="_compute_timesheet_count",
@@ -71,13 +76,19 @@ class TenenetProjectAssignment(models.Model):
 
         if not start and not end and self.project_id.year:
             start = date(self.project_id.year, 1, 1)
-            end = date(self.project_id.year, 12, 1)
+            current_date = fields.Date.today()
+            end = date(
+                self.project_id.year,
+                min(current_date.month, 12) if self.project_id.year == current_date.year else 12,
+                1,
+            )
 
         if not start and not end:
             return []
 
         if start and not end:
-            end = date(start.year, 12, 1)
+            today = fields.Date.today()
+            end = date(today.year, today.month, 1)
         elif end and not start:
             start = date(end.year, 1, 1)
 
@@ -143,6 +154,15 @@ class TenenetProjectAssignment(models.Model):
             [year],
         )
         return matrix.filtered(lambda rec: rec.year == year)[:1].action_open_form()
+
+    def name_get(self):
+        return [
+            (
+                rec.id,
+                f"{rec.employee_id.name or '-'} / {rec.project_id.name or '-'}",
+            )
+            for rec in self
+        ]
 
     @api.constrains("date_start", "date_end")
     def _check_dates(self):

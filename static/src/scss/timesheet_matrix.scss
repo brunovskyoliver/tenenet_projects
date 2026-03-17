@@ -1,0 +1,114 @@
+.o_tenenet_timesheet_matrix_view {
+    .o_form_sheet_bg {
+        padding: 0;
+    }
+
+    .o_form_sheet {
+        width: 100%;
+        max-width: none;
+        min-height: calc(100vh - 130px);
+        margin: 0;
+        padding: 20px 24px 24px;
+        border: 0;
+        box-shadow: none;
+        background: transparent;
+    }
+
+    .o_tenenet_matrix_layout {
+        display: grid;
+        grid-template-columns: 320px minmax(0, 1fr);
+        gap: 20px;
+        align-items: start;
+        min-height: calc(100vh - 190px);
+    }
+
+    .o_tenenet_matrix_sidebar {
+        position: sticky;
+        top: 16px;
+        align-self: start;
+        padding: 16px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .o_tenenet_matrix_main {
+        min-width: 0;
+        height: 100%;
+        padding: 16px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .o_field_x2many .o_list_renderer {
+        overflow: auto;
+        max-height: calc(100vh - 250px);
+        border-radius: 12px;
+    }
+
+    .o_field_x2many .o_list_table {
+        width: max-content;
+        min-width: 100%;
+        table-layout: fixed;
+        font-size: 14px;
+    }
+
+    .o_field_x2many .o_list_table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        background: var(--o-view-background-color, #22252f);
+        white-space: nowrap;
+        font-size: 15px;
+    }
+
+    .o_field_x2many .o_list_table tbody td,
+    .o_field_x2many .o_list_table thead th {
+        padding: 12px 16px;
+        vertical-align: middle;
+    }
+
+    .o_field_x2many .o_list_table thead th:nth-child(1),
+    .o_field_x2many .o_list_table tbody td:nth-child(1) {
+        position: sticky;
+        left: 0;
+        z-index: 2;
+        min-width: 150px;
+        background: var(--o-view-background-color, #22252f);
+    }
+
+    .o_field_x2many .o_list_table thead th:nth-child(2),
+    .o_field_x2many .o_list_table tbody td:nth-child(2) {
+        position: sticky;
+        left: 150px;
+        z-index: 2;
+        min-width: 240px;
+        background: var(--o-view-background-color, #22252f);
+    }
+
+    .o_field_x2many .o_list_table tbody td:nth-child(n + 3),
+    .o_field_x2many .o_list_table thead th:nth-child(n + 3) {
+        min-width: 108px;
+        text-align: right;
+    }
+
+    .o_field_x2many .o_input,
+    .o_field_x2many .o_field_widget {
+        font-size: 14px;
+    }
+
+    .o_group .o_list_table tbody td {
+        white-space: nowrap;
+    }
+}
+
+@media (max-width: 1400px) {
+    .o_tenenet_timesheet_matrix_view .o_tenenet_matrix_layout {
+        grid-template-columns: 1fr;
+    }
+
+    .o_tenenet_timesheet_matrix_view .o_tenenet_matrix_sidebar {
+        position: static;
+    }
+}

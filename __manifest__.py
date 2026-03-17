@@ -18,6 +18,12 @@ and P&L reporting by program.
 
     'depends': ['base', 'hr', 'hr_holidays'],
 
+    'assets': {
+        'web.assets_backend': [
+            'tenenet_projects/static/src/scss/timesheet_matrix.scss',
+        ],
+    },
+
     'data': [
         'security/tenenet_security.xml',
         'security/ir.model.access.csv',

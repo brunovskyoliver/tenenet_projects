@@ -56,6 +56,12 @@ class TenenetProjectTimesheetMatrix(models.Model):
         "matrix_id",
         string="Riadky matice",
     )
+    available_matrix_ids = fields.One2many(
+        "tenenet.project.timesheet.matrix",
+        related="assignment_id.matrix_ids",
+        string="Roky",
+        readonly=True,
+    )
 
     _unique_assignment_year = models.Constraint(
         "UNIQUE(assignment_id, year)",
@@ -66,12 +72,14 @@ class TenenetProjectTimesheetMatrix(models.Model):
     def create(self, vals_list):
         records = super().create(vals_list)
         records._ensure_line_rows()
+        records._load_from_timesheets()
         return records
 
     def write(self, vals):
         result = super().write(vals)
         if "assignment_id" in vals or "year" in vals:
             self._ensure_line_rows()
+            self._load_from_timesheets()
         return result
 
     def _ensure_line_rows(self):
@@ -110,8 +118,14 @@ class TenenetProjectTimesheetMatrix(models.Model):
         created = self.create(missing_vals) if missing_vals else self.browse()
         return existing | created
 
+    def _load_from_timesheets(self):
+        for rec in self:
+            rec.line_ids._load_month_values_from_timesheets()
+
     def action_open_form(self):
         self.ensure_one()
+        self.assignment_id._sync_precreated_timesheets()
+        self._load_from_timesheets()
         return {
             "type": "ir.actions.act_window",
             "name": "Mesačná matica hodín",
@@ -123,6 +137,15 @@ class TenenetProjectTimesheetMatrix(models.Model):
             "res_id": self.id,
             "target": "current",
         }
+
+    def name_get(self):
+        return [
+            (
+                rec.id,
+                f"{rec.project_id.name or '-'} / {rec.employee_id.name or '-'} / {rec.year}",
+            )
+            for rec in self
+        ]
 
 
 class TenenetProjectTimesheetMatrixLine(models.Model):
@@ -184,18 +207,18 @@ class TenenetProjectTimesheetMatrixLine(models.Model):
         compute="_compute_metadata",
         store=True,
     )
-    month_01 = fields.Float(string=MONTH_LABELS[1], digits=(10, 2), compute="_compute_month_values", inverse="_inverse_month_values")
-    month_02 = fields.Float(string=MONTH_LABELS[2], digits=(10, 2), compute="_compute_month_values", inverse="_inverse_month_values")
-    month_03 = fields.Float(string=MONTH_LABELS[3], digits=(10, 2), compute="_compute_month_values", inverse="_inverse_month_values")
-    month_04 = fields.Float(string=MONTH_LABELS[4], digits=(10, 2), compute="_compute_month_values", inverse="_inverse_month_values")
-    month_05 = fields.Float(string=MONTH_LABELS[5], digits=(10, 2), compute="_compute_month_values", inverse="_inverse_month_values")
-    month_06 = fields.Float(string=MONTH_LABELS[6], digits=(10, 2), compute="_compute_month_values", inverse="_inverse_month_values")
-    month_07 = fields.Float(string=MONTH_LABELS[7], digits=(10, 2), compute="_compute_month_values", inverse="_inverse_month_values")
-    month_08 = fields.Float(string=MONTH_LABELS[8], digits=(10, 2), compute="_compute_month_values", inverse="_inverse_month_values")
-    month_09 = fields.Float(string=MONTH_LABELS[9], digits=(10, 2), compute="_compute_month_values", inverse="_inverse_month_values")
-    month_10 = fields.Float(string=MONTH_LABELS[10], digits=(10, 2), compute="_compute_month_values", inverse="_inverse_month_values")
-    month_11 = fields.Float(string=MONTH_LABELS[11], digits=(10, 2), compute="_compute_month_values", inverse="_inverse_month_values")
-    month_12 = fields.Float(string=MONTH_LABELS[12], digits=(10, 2), compute="_compute_month_values", inverse="_inverse_month_values")
+    month_01 = fields.Float(string=MONTH_LABELS[1], digits=(10, 2), default=0.0)
+    month_02 = fields.Float(string=MONTH_LABELS[2], digits=(10, 2), default=0.0)
+    month_03 = fields.Float(string=MONTH_LABELS[3], digits=(10, 2), default=0.0)
+    month_04 = fields.Float(string=MONTH_LABELS[4], digits=(10, 2), default=0.0)
+    month_05 = fields.Float(string=MONTH_LABELS[5], digits=(10, 2), default=0.0)
+    month_06 = fields.Float(string=MONTH_LABELS[6], digits=(10, 2), default=0.0)
+    month_07 = fields.Float(string=MONTH_LABELS[7], digits=(10, 2), default=0.0)
+    month_08 = fields.Float(string=MONTH_LABELS[8], digits=(10, 2), default=0.0)
+    month_09 = fields.Float(string=MONTH_LABELS[9], digits=(10, 2), default=0.0)
+    month_10 = fields.Float(string=MONTH_LABELS[10], digits=(10, 2), default=0.0)
+    month_11 = fields.Float(string=MONTH_LABELS[11], digits=(10, 2), default=0.0)
+    month_12 = fields.Float(string=MONTH_LABELS[12], digits=(10, 2), default=0.0)
 
     _unique_matrix_hour_type = models.Constraint(
         "UNIQUE(matrix_id, hour_type)",
@@ -211,14 +234,7 @@ class TenenetProjectTimesheetMatrixLine(models.Model):
             rec.scope = meta.get("scope") or False
             rec.sequence = meta.get("sequence") or 0
 
-    @api.depends(
-        "assignment_id.timesheet_ids.period",
-        "assignment_id.timesheet_ids.line_ids.hour_type",
-        "assignment_id.timesheet_ids.line_ids.hours",
-        "year",
-        "hour_type",
-    )
-    def _compute_month_values(self):
+    def _load_month_values_from_timesheets(self):
         for rec in self:
             values = {month: 0.0 for month in range(1, 13)}
             relevant_timesheets = rec.assignment_id.timesheet_ids.filtered(
@@ -229,19 +245,22 @@ class TenenetProjectTimesheetMatrixLine(models.Model):
                 if line and timesheet.period:
                     values[timesheet.period.month] = line.hours or 0.0
 
-            for month in range(1, 13):
-                rec[f"month_{month:02d}"] = values[month]
+            rec.with_context(skip_matrix_month_sync=True).write({
+                f"month_{month:02d}": values[month]
+                for month in range(1, 13)
+            })
 
-    def _inverse_month_values(self):
+    def _sync_month_values_to_timesheets(self, month_field_names):
         Timesheet = self.env["tenenet.project.timesheet"]
         Line = self.env["tenenet.project.timesheet.line"]
 
         for rec in self:
             rec.assignment_id._sync_precreated_timesheets()
-            for month in range(1, 13):
+            for field_name in month_field_names:
+                month = int(field_name.split("_")[1])
                 period = date(rec.year, month, 1)
                 timesheet = Timesheet._get_or_create_for_assignment_period(rec.assignment_id, period)
-                value = rec[f"month_{month:02d}"] or 0.0
+                value = rec[field_name] or 0.0
                 existing_line = timesheet.line_ids.filtered(
                     lambda line: line.hour_type == rec.hour_type
                 )[:1]
@@ -257,3 +276,21 @@ class TenenetProjectTimesheetMatrixLine(models.Model):
                         "hour_type": rec.hour_type,
                         "hours": value,
                     })
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records._load_month_values_from_timesheets()
+        return records
+
+    def write(self, vals):
+        result = super().write(vals)
+        if self.env.context.get("skip_matrix_month_sync"):
+            return result
+        month_field_names = [field_name for field_name in vals if field_name.startswith("month_")]
+        if month_field_names:
+            self._sync_month_values_to_timesheets(month_field_names)
+            self.flush_recordset(month_field_names)
+            self.invalidate_recordset(month_field_names)
+            self._load_month_values_from_timesheets()
+        return result
