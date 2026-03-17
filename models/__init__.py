@@ -6,6 +6,7 @@ from . import tenenet_project_receipt
 from . import tenenet_project_assignment
 from . import tenenet_project_leave_rule
 from . import tenenet_project_timesheet
+from . import tenenet_project_timesheet_matrix
 from . import tenenet_employee_tenenet_cost
 from . import hr_leave
 from . import tenenet_employee_allocation

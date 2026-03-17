@@ -175,6 +175,7 @@ class TenenetProject(models.Model):
         result = super().write(vals)
         if "date_start" in vals or "date_end" in vals:
             self._sync_receipt_lines()
+            self.mapped("assignment_ids")._sync_precreated_timesheets()
         return result
 
     def _sync_receipt_lines(self):
@@ -212,10 +213,12 @@ class TenenetProject(models.Model):
 
     def action_open_timesheet_month_matrix(self):
         self.ensure_one()
-        action = self.env.ref("tenenet_projects.action_tenenet_project_timesheet_matrix_wizard").read()[0]
+        self.assignment_ids._sync_precreated_timesheets()
+        action = self.env.ref("tenenet_projects.action_tenenet_project_timesheet_matrix").read()[0]
+        action["domain"] = [("project_id", "=", self.id)]
         action["context"] = {
-            "default_project_id": self.id,
-            "default_year": self.active_year_from or self.year or fields.Date.today().year,
+            "search_default_group_employee": 1,
+            "search_default_group_year": 1,
         }
         return action
 

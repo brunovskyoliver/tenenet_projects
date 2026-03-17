@@ -204,6 +204,24 @@ class TenenetProjectTimesheet(models.Model):
         return tuple(HOUR_FIELD_META.keys())
 
     @api.model
+    def _normalize_period(self, period):
+        return fields.Date.to_date(period).replace(day=1)
+
+    @api.model
+    def _get_or_create_for_assignment_period(self, assignment, period):
+        normalized_period = self._normalize_period(period)
+        timesheet = self.search([
+            ("assignment_id", "=", assignment.id),
+            ("period", "=", normalized_period),
+        ], limit=1)
+        if timesheet:
+            return timesheet
+        return self.create({
+            "assignment_id": assignment.id,
+            "period": normalized_period,
+        })
+
+    @api.model
     def _split_hour_vals(self, vals):
         hour_vals = {}
         clean_vals = dict(vals)

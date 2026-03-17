@@ -13,6 +13,10 @@
                     <field name="wage_ccp"/>
                     <field name="active"/>
                     <field name="timesheet_count" optional="hide"/>
+                    <button name="action_open_timesheet_matrix_current_year"
+                            type="object"
+                            string="Otvoriť maticu"
+                            class="btn-link"/>
                 </list>
             </field>
         </record>
@@ -22,6 +26,12 @@
             <field name="model">tenenet.project.assignment</field>
             <field name="arch" type="xml">
                 <form string="Priradenie zamestnanca k projektu">
+                    <header>
+                        <button name="action_open_timesheet_matrix_current_year"
+                                type="object"
+                                string="Otvoriť maticu"
+                                class="btn-primary"/>
+                    </header>
                     <sheet>
                         <group>
                             <group>
@@ -73,6 +83,15 @@
             <field name="name">Priradenia zamestnancov</field>
             <field name="res_model">tenenet.project.assignment</field>
             <field name="view_mode">list,form</field>
+        </record>
+
+        <record id="action_tenenet_my_project_assignment" model="ir.actions.act_window">
+            <field name="name">Moje projekty pre timesheety</field>
+            <field name="res_model">tenenet.project.assignment</field>
+            <field name="view_mode">list,form</field>
+            <field name="domain">[('employee_id.user_id', '=', uid)]</field>
+            <field name="search_view_id" ref="view_tenenet_project_assignment_search"/>
+            <field name="context">{'search_default_active': 1}</field>
         </record>
     </data>
 </odoo>

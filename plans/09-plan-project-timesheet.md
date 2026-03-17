@@ -10,7 +10,9 @@ Monthly timesheet entry per employee-project assignment, replacing `tenenet.empl
 - `tenenet.employee.tenenet.cost` — auto-generated residual (salary not covered by projects)
 - `hr.leave` override — auto-populate timesheet leave hours from approved Odoo leaves
 - Editable inline list view inside project form (Timesheety tab)
-- Editable yearly monthly matrix for project-based hour entry
+- Editable yearly monthly matrix for assignment-based hour entry
+- Precreated monthly timesheets generated from assignment/project date range
+- Employee-facing dashboard entry for selecting project assignment and filling hours
 
 ## Prerequisites
 
@@ -60,10 +62,12 @@ Monthly timesheet entry per employee-project assignment, replacing `tenenet.empl
 | File | Content |
 |------|---------|
 | `views/tenenet_project_timesheet_views.xml` | List (editable), form, search, graph + action |
-| `views/tenenet_project_timesheet_matrix_views.xml` | Editable yearly monthly matrix wizard/action |
+| `models/tenenet_project_timesheet_matrix.py` | Persistent yearly matrix models (`assignment + year`) with Jan-Dec inverse editing |
+| `views/tenenet_project_timesheet_matrix_views.xml` | Full-screen yearly matrix list/form/search |
 | `views/tenenet_employee_tenenet_cost_views.xml` | List, form, search + action |
-| `views/tenenet_project_views.xml` | Timesheety tab (editable inline list) + button to open yearly monthly matrix |
-| `views/menu.xml` | Timesheety under Projekty; Mesačná matica hodín under Projekty; Tenenet náklady under Konfigurácia |
+| `views/tenenet_project_assignment_views.xml` | Assignment button/action to open current-year matrix; employee app entry list |
+| `views/tenenet_project_views.xml` | Timesheety tab + button to open project-filtered matrix list |
+| `views/menu.xml` | `Moje timesheety` dashboard app + `Mesačná matica hodín` under Projekty |
 
 ## Data Flow
 
@@ -100,7 +104,9 @@ Odoo hr_holidays leave approved (action_validate)
 
 - Hour categories are now normalized in `tenenet.project.timesheet.line` and aggregated back to the parent `tenenet.project.timesheet` record.
 - Existing parent fields such as `hours_pp`, `hours_np`, `hours_vacation`, and cost totals remain the compatibility surface for downstream logic and tests.
-- A dedicated `Mesačná matica hodín` action now provides editable Jan-Dec columns for one selected project and year.
-- Users edit hours by row (`zamestnanec + kategória hodín`) and the wizard writes changes back into normalized `tenenet.project.timesheet.line` records and parent monthly timesheets.
+- Monthly `tenenet.project.timesheet` parent records are precreated automatically when an assignment has a usable project/assignment date range.
+- A persistent `Mesačná matica hodín` now exists per `priradenie + rok`; rows are fixed hour categories and columns are Jan-Dec.
+- Users no longer create a wizard record. They open an existing full-screen matrix and edits write directly back into normalized `tenenet.project.timesheet.line` records and parent monthly timesheets.
+- The `Moje timesheety` dashboard app opens the current user's project assignments so the employee can choose a project and open the current-year matrix directly.
 
 ## Status: ✅ IMPLEMENTED

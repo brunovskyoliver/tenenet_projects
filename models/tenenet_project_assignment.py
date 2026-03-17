@@ -1,5 +1,17 @@
+from datetime import date
+
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
+
+
+def _month_start(value):
+    return date(value.year, value.month, 1)
+
+
+def _next_month(value):
+    if value.month == 12:
+        return date(value.year + 1, 1, 1)
+    return date(value.year, value.month + 1, 1)
 
 
 class TenenetProjectAssignment(models.Model):
@@ -51,6 +63,86 @@ class TenenetProjectAssignment(models.Model):
     def _compute_timesheet_count(self):
         for rec in self:
             rec.timesheet_count = len(rec.timesheet_ids)
+
+    def _get_expected_periods(self):
+        self.ensure_one()
+        start = self.date_start or self.project_id.date_start
+        end = self.date_end or self.project_id.date_end
+
+        if not start and not end and self.project_id.year:
+            start = date(self.project_id.year, 1, 1)
+            end = date(self.project_id.year, 12, 1)
+
+        if not start and not end:
+            return []
+
+        if start and not end:
+            end = date(start.year, 12, 1)
+        elif end and not start:
+            start = date(end.year, 1, 1)
+
+        start = _month_start(start)
+        end = _month_start(end)
+        if start > end:
+            start, end = end, start
+
+        periods = []
+        current = start
+        while current <= end:
+            periods.append(current)
+            current = _next_month(current)
+        return periods
+
+    def _default_matrix_year(self):
+        self.ensure_one()
+        periods = self._get_expected_periods()
+        if not periods:
+            return fields.Date.today().year
+
+        years = {period.year for period in periods}
+        current_year = fields.Date.today().year
+        if current_year in years:
+            return current_year
+        return min(years)
+
+    def _sync_precreated_timesheets(self):
+        Timesheet = self.env["tenenet.project.timesheet"]
+        Matrix = self.env["tenenet.project.timesheet.matrix"]
+
+        for rec in self.filtered(lambda assignment: assignment.employee_id and assignment.project_id):
+            periods = rec._get_expected_periods()
+            existing_periods = set(rec.timesheet_ids.mapped("period"))
+            for period in periods:
+                if period not in existing_periods:
+                    Timesheet.create({
+                        "assignment_id": rec.id,
+                        "period": period,
+                    })
+
+            years = sorted({period.year for period in periods})
+            if years:
+                Matrix._ensure_for_assignment_years(rec, years)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records._sync_precreated_timesheets()
+        return records
+
+    def write(self, vals):
+        result = super().write(vals)
+        if {"employee_id", "project_id", "date_start", "date_end", "active"} & set(vals):
+            self._sync_precreated_timesheets()
+        return result
+
+    def action_open_timesheet_matrix_current_year(self):
+        self.ensure_one()
+        year = self._default_matrix_year()
+        matrix = self.env["tenenet.project.timesheet.matrix"]._ensure_for_assignment_years(
+            self,
+            [year],
+        )
+        return matrix.filtered(lambda rec: rec.year == year)[:1].action_open_form()
 
     @api.constrains("date_start", "date_end")
     def _check_dates(self):
