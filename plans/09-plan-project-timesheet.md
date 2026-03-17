@@ -68,6 +68,7 @@ Monthly timesheet entry per employee-project assignment, replacing `tenenet.empl
 ```
 User fills timesheet hours in project form (Timesheety tab)
     → hours_total, gross_salary, total_labor_cost computed
+    → tenenet.employee.tenenet.cost auto-created/updated for employee+period
     → tenenet.utilization recomputes (via @api.depends on assignment_ids.timesheet_ids)
     → tenenet.pl.line recomputes (via @api.depends on assignment_ids.timesheet_ids)
     → tenenet.employee.tenenet.cost residual recomputes
@@ -92,5 +93,11 @@ Odoo hr_holidays leave approved (action_validate)
   - Zero hours → zero cost
   - Residual computation
   - Utilization aggregate from timesheets
+
+## Enhancement Note (2026-03-17)
+
+- Hour categories are now normalized in `tenenet.project.timesheet.line` and aggregated back to the parent `tenenet.project.timesheet` record.
+- Existing parent fields such as `hours_pp`, `hours_np`, `hours_vacation`, and cost totals remain the compatibility surface for downstream logic and tests.
+- A dedicated `Mesačná mriežka hodín` action now provides month-oriented navigation over normalized hour rows using list + pivot views.
 
 ## Status: ✅ IMPLEMENTED

@@ -210,6 +210,17 @@ class TenenetProject(models.Model):
             if lines_to_remove:
                 lines_to_remove.unlink()
 
+    def action_open_timesheet_month_grid(self):
+        self.ensure_one()
+        action = self.env.ref("tenenet_projects.action_tenenet_project_timesheet_line").read()[0]
+        action["domain"] = [("project_id", "=", self.id)]
+        action["context"] = {
+            "search_default_group_employee": 1,
+            "search_default_group_hour_type": 1,
+            "default_project_id": self.id,
+        }
+        return action
+
     @api.model
     def _format_partner_contact(self, partner):
         if not partner:

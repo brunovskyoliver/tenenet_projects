@@ -50,6 +50,63 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
         self.assertAlmostEqual(ts.hours_project_total, 108.0)
         self.assertAlmostEqual(ts.hours_leave_total, 26.0)
         self.assertAlmostEqual(ts.hours_total, 134.0)
+        self.assertEqual(set(ts.line_ids.mapped("hour_type")), {
+            "pp", "np", "travel", "training", "vacation", "sick", "doctor", "holidays",
+        })
+
+    def test_hour_lines_aggregate_back_to_parent(self):
+        ts = self.env["tenenet.project.timesheet"].create({
+            "assignment_id": self.assignment.id,
+            "period": "2026-04-01",
+        })
+        self.env["tenenet.project.timesheet.line"].create([
+            {
+                "timesheet_id": ts.id,
+                "hour_type": "pp",
+                "hours": 16.0,
+            },
+            {
+                "timesheet_id": ts.id,
+                "hour_type": "np",
+                "hours": 8.0,
+            },
+            {
+                "timesheet_id": ts.id,
+                "hour_type": "vacation",
+                "hours": 4.0,
+            },
+        ])
+        ts.invalidate_recordset()
+        self.assertAlmostEqual(ts.hours_pp, 16.0)
+        self.assertAlmostEqual(ts.hours_np, 8.0)
+        self.assertAlmostEqual(ts.hours_vacation, 4.0)
+        self.assertAlmostEqual(ts.hours_project_total, 24.0)
+        self.assertAlmostEqual(ts.hours_leave_total, 4.0)
+        self.assertAlmostEqual(ts.hours_total, 28.0)
+
+    def test_parent_hour_write_updates_normalized_lines(self):
+        ts = self.env["tenenet.project.timesheet"].create({
+            "assignment_id": self.assignment.id,
+            "period": "2026-05-01",
+        })
+        ts.write({
+            "hours_pp": 12.0,
+            "hours_np": 6.0,
+            "hours_vacation": 2.0,
+        })
+        self.assertEqual(len(ts.line_ids), 3)
+        self.assertAlmostEqual(
+            ts.line_ids.filtered(lambda line: line.hour_type == "pp").hours,
+            12.0,
+        )
+        self.assertAlmostEqual(
+            ts.line_ids.filtered(lambda line: line.hour_type == "np").hours,
+            6.0,
+        )
+        self.assertAlmostEqual(
+            ts.line_ids.filtered(lambda line: line.hour_type == "vacation").hours,
+            2.0,
+        )
 
     def test_computed_costs(self):
         ts = self.env["tenenet.project.timesheet"].create(self._timesheet_vals(
@@ -91,7 +148,7 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
         self.assertAlmostEqual(ts.gross_salary, 0.0)
         self.assertAlmostEqual(ts.total_labor_cost, 0.0)
 
-    def test_tenenet_cost_residual_computation(self):
+    def test_tenenet_cost_residual_auto_created_and_computed(self):
         self.env["tenenet.project.timesheet"].create(self._timesheet_vals(
             hours_pp=100.0, hours_np=0.0, hours_vacation=0.0
         ))
@@ -99,16 +156,38 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
             assignment=self.assignment2, period="2026-01-01",
             hours_pp=50.0, hours_np=0.0, hours_vacation=0.0
         ))
-        cost = self.env["tenenet.employee.tenenet.cost"].create({
-            "employee_id": self.employee.id,
-            "period": "2026-01-01",
+        cost = self.env["tenenet.employee.tenenet.cost"].search([
+            ("employee_id", "=", self.employee.id),
+            ("period", "=", "2026-01-01"),
+        ], limit=1)
+        self.assertTrue(cost)
+        cost.write({
             "gross_salary_employee": 2000.0,
             "total_labor_cost_employee": 2724.0,
         })
-        cost.invalidate_recordset()
         # project billed: 100 * 10 + 50 * 12 = 1000 + 600 = 1600
         self.assertAlmostEqual(cost.project_billed_gross, 1600.0, places=2)
         self.assertAlmostEqual(cost.tenenet_residual_hm, 400.0, places=2)
+
+    def test_residual_record_updates_when_lines_change(self):
+        ts = self.env["tenenet.project.timesheet"].create({
+            "assignment_id": self.assignment.id,
+            "period": "2026-06-01",
+            "hours_pp": 10.0,
+        })
+        cost = self.env["tenenet.employee.tenenet.cost"].search([
+            ("employee_id", "=", self.employee.id),
+            ("period", "=", "2026-06-01"),
+        ], limit=1)
+        self.assertTrue(cost)
+        cost.write({
+            "gross_salary_employee": 500.0,
+            "total_labor_cost_employee": 700.0,
+        })
+        self.assertAlmostEqual(cost.project_billed_gross, 100.0, places=2)
+        ts.write({"hours_pp": 20.0})
+        cost.invalidate_recordset()
+        self.assertAlmostEqual(cost.project_billed_gross, 200.0, places=2)
 
     def test_utilization_aggregate_from_timesheets(self):
         self.env["tenenet.project.timesheet"].create(self._timesheet_vals(

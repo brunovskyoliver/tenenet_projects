@@ -99,6 +99,12 @@
                                 </field>
                             </page>
                             <page string="Timesheety">
+                                <group>
+                                    <button name="action_open_timesheet_month_grid"
+                                            type="object"
+                                            string="Otvoriť mesačnú mriežku"
+                                            class="oe_highlight"/>
+                                </group>
                                 <field name="timesheet_ids">
                                     <list string="Timesheety" editable="bottom"
                                           decoration-warning="hours_total == 0">
