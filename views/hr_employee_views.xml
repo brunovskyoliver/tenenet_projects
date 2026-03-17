@@ -11,7 +11,7 @@
                             <group>
                                 <field name="tenenet_number"/>
                                 <field name="title_academic"/>
-                                <field name="position"/>
+                                <field name="job_id" string="Pozícia"/>
                             </group>
                             <group>
                                 <field name="work_hours"/>

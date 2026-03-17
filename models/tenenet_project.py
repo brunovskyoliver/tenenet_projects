@@ -12,13 +12,14 @@ class TenenetProject(models.Model):
     year = fields.Integer(string="Rok")
     active = fields.Boolean(string="Aktívny", default=True)
     contract_number = fields.Char(string="Číslo zmluvy")
-    duration = fields.Char(string="Trvanie")
+    duration = fields.Integer(string="Trvanie (mesiace)", compute="_compute_duration", store=True)
     recipient = fields.Char(string="Príjemca")
     date_contract = fields.Date(string="Dátum zmluvy")
     date_start = fields.Date(string="Začiatok")
     date_end = fields.Date(string="Koniec")
     call_info = fields.Char(string="Výzva")
-    partners = fields.Char(string="Partneri")
+    partner_id = fields.Many2one("res.partner", string="Partner", ondelete="restrict")
+    partners = fields.Char(string="Partneri", related="partner_id.name", store=True, readonly=True)
     submission_info = fields.Char(string="Podanie")
     portal = fields.Char(string="Portál")
     sustainability = fields.Char(string="Udržateľnosť")
@@ -70,8 +71,8 @@ class TenenetProject(models.Model):
     )
     settlement_info = fields.Text(string="Zúčtovanie")
     comments = fields.Text(string="Komentáre")
-    donor_contact = fields.Text(string="Kontakt donor")
-    partner_contact = fields.Text(string="Kontakt partner")
+    donor_contact = fields.Text(string="Kontakt donor", compute="_compute_donor_contact", store=True)
+    partner_contact = fields.Text(string="Kontakt partner", compute="_compute_partner_contact", store=True)
     application_notes = fields.Text(string="Podávanie žiadosti")
     active_year_from = fields.Integer(
         string="Rok od",
@@ -99,6 +100,40 @@ class TenenetProject(models.Model):
             else:
                 rec.active_year_from = False
                 rec.active_year_to = False
+
+    @api.depends("date_start", "date_end")
+    def _compute_duration(self):
+        for rec in self:
+            if rec.date_start and rec.date_end:
+                start_date = min(rec.date_start, rec.date_end)
+                end_date = max(rec.date_start, rec.date_end)
+                rec.duration = ((end_date.year - start_date.year) * 12) + (
+                    end_date.month - start_date.month
+                ) + 1
+            else:
+                rec.duration = False
+
+    @api.depends("donor_id.contact_info")
+    def _compute_donor_contact(self):
+        for rec in self:
+            rec.donor_contact = rec.donor_id.contact_info or False
+
+    @api.depends(
+        "partner_id",
+        "partner_id.name",
+        "partner_id.email",
+        "partner_id.phone",
+        "partner_id.mobile",
+        "partner_id.street",
+        "partner_id.street2",
+        "partner_id.zip",
+        "partner_id.city",
+        "partner_id.country_id.name",
+        "partner_id.website",
+    )
+    def _compute_partner_contact(self):
+        for rec in self:
+            rec.partner_contact = rec._format_partner_contact(rec.partner_id)
 
     @api.depends("receipt_line_ids", "receipt_line_ids.amount")
     def _compute_received_total(self):
@@ -154,3 +189,32 @@ class TenenetProject(models.Model):
             lines_to_remove = rec.receipt_line_ids.filtered(lambda line: line.year not in valid_years)
             if lines_to_remove:
                 lines_to_remove.unlink()
+
+    @api.model
+    def _format_partner_contact(self, partner):
+        if not partner:
+            return False
+
+        lines = []
+        if partner.name:
+            lines.append(partner.name)
+        if partner.email:
+            lines.append(partner.email)
+
+        phones = [value for value in [partner.phone, partner.mobile] if value]
+        if phones:
+            lines.append(" / ".join(dict.fromkeys(phones)))
+
+        address_parts = [value for value in [partner.street, partner.street2] if value]
+        city_line = " ".join(value for value in [partner.zip, partner.city] if value)
+        if city_line:
+            address_parts.append(city_line)
+        if partner.country_id:
+            address_parts.append(partner.country_id.name)
+        if address_parts:
+            lines.append(", ".join(address_parts))
+
+        if partner.website:
+            lines.append(partner.website)
+
+        return "\n".join(lines) if lines else False

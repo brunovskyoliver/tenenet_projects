@@ -26,7 +26,7 @@
                         <group>
                             <group>
                                 <field name="employee_id"/>
-                                <field name="manager_name"/>
+                                <field name="manager_id"/>
                                 <field name="period"/>
                             </group>
                             <group>
@@ -80,7 +80,7 @@
             <field name="arch" type="xml">
                 <search string="Vyťaženosť">
                     <field name="employee_id"/>
-                    <field name="manager_name"/>
+                    <field name="manager_id"/>
                     <field name="period"/>
                     <filter string="Vyťaženosť OK" name="utilization_ok" domain="[('utilization_status', '=', 'ok')]"/>
                     <filter string="Vyťaženosť upozornenie" name="utilization_warning" domain="[('utilization_status', '=', 'warning')]"/>
@@ -88,7 +88,7 @@
                     <filter string="Neprojektové upozornenie" name="non_project_warning" domain="[('non_project_status', '=', 'warning')]"/>
                     <filter string="Zamestnanec" name="group_employee" context="{'group_by': 'employee_id'}"/>
                     <filter string="Obdobie" name="group_period" context="{'group_by': 'period'}"/>
-                    <filter string="Manažér" name="group_manager" context="{'group_by': 'manager_name'}"/>
+                    <filter string="Manažér" name="group_manager" context="{'group_by': 'manager_id'}"/>
                 </search>
             </field>
         </record>

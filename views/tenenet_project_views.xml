@@ -39,10 +39,10 @@
                                 <field name="donor_id"/>
                                 <field name="recipient"/>
                                 <field name="contract_number"/>
-                                <field name="duration"/>
+                                <field name="duration" readonly="1"/>
                                 <field name="date_contract"/>
                                 <field name="call_info"/>
-                                <field name="partners"/>
+                                <field name="partner_id"/>
                                 <field name="submission_info"/>
                                 <field name="portal"/>
                                 <field name="sustainability"/>
@@ -98,8 +98,8 @@
                             </page>
                             <page string="Kontakty a zúčtovanie">
                                 <group>
-                                    <field name="donor_contact"/>
-                                    <field name="partner_contact"/>
+                                    <field name="donor_contact" readonly="1"/>
+                                    <field name="partner_contact" readonly="1"/>
                                     <field name="settlement_info"/>
                                     <field name="application_notes"/>
                                 </group>

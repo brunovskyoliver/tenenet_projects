@@ -10,6 +10,7 @@ class TestTenenetPlan04Utilization(TransactionCase):
     def setUp(self):
         super().setUp()
         self.employee = self.env["hr.employee"].create({"name": "Zamestnanec Vyťaženosť"})
+        self.manager = self.env["hr.employee"].create({"name": "Manažér Vyťaženosť"})
         self.company = self.env.company
         base_user_group = self.env.ref("base.group_user")
         tenenet_user_group = self.env.ref("tenenet_projects.group_tenenet_user")
@@ -40,7 +41,7 @@ class TestTenenetPlan04Utilization(TransactionCase):
         vals = {
             "employee_id": self.employee.id,
             "period": "2026-02-01",
-            "manager_name": "Manažér Test",
+            "manager_id": self.manager.id,
             "work_ratio": 100.0,
             "capacity_hours": 100.0,
             "hours_pp": 30.0,
@@ -67,6 +68,8 @@ class TestTenenetPlan04Utilization(TransactionCase):
         self.assertAlmostEqual(utilization.non_project_rate, 0.25, places=4)
         self.assertEqual(utilization.non_project_status, "ok")
         self.assertEqual(utilization.hours_diff, -5.0)
+        self.assertEqual(utilization.manager_id, self.manager)
+        self.assertEqual(utilization.manager_name, "Manažér Vyťaženosť")
 
     def test_utilization_threshold_boundaries(self):
         utilization = self.env["tenenet.utilization"].create(

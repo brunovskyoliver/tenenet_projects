@@ -44,21 +44,32 @@ class TestTenenetPlan01(TransactionCase):
         self.assertAlmostEqual(p2.allocation_pct, 0.2, places=4)
 
     def test_donor_creation_with_selection(self):
+        partner = self.env["res.partner"].create(
+            {
+                "name": "Test Donor Partner",
+                "email": "donor@example.com",
+                "phone": "+421900000001",
+            }
+        )
         donor = self.env["tenenet.donor"].create(
             {
                 "name": "Test Donor",
                 "donor_type": "eu",
+                "partner_id": partner.id,
             }
         )
         self.assertEqual(donor.donor_type, "eu")
+        self.assertEqual(donor.partner_id, partner)
+        self.assertIn("donor@example.com", donor.contact_info)
 
     def test_hr_employee_tenenet_fields(self):
+        position = self.env["hr.job"].create({"name": "Sociálny pracovník"})
         employee = self.env["hr.employee"].create(
             {
                 "name": "Test Zamestnanec",
                 "tenenet_number": 123,
                 "title_academic": "Mgr.",
-                "position": "Sociálny pracovník",
+                "job_id": position.id,
                 "work_hours": 8.0,
                 "work_ratio": 100.0,
                 "hourly_rate": 15.5,
@@ -67,4 +78,5 @@ class TestTenenetPlan01(TransactionCase):
 
         self.assertEqual(employee.tenenet_number, 123)
         self.assertEqual(employee.title_academic, "Mgr.")
+        self.assertEqual(employee.job_id, position)
         self.assertEqual(employee.position, "Sociálny pracovník")

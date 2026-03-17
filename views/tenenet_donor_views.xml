@@ -22,11 +22,12 @@
                             <group>
                                 <field name="name"/>
                                 <field name="donor_type"/>
+                                <field name="partner_id"/>
                                 <field name="active"/>
                             </group>
                         </group>
                         <group>
-                            <field name="contact_info"/>
+                            <field name="contact_info" readonly="1"/>
                         </group>
                     </sheet>
                 </form>

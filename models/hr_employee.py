@@ -6,7 +6,7 @@ class HrEmployee(models.Model):
 
     tenenet_number = fields.Integer(string="Interné číslo")
     title_academic = fields.Char(string="Titul")
-    position = fields.Char(string="Pozícia")
+    position = fields.Char(string="Pozícia", related="job_id.name", store=True, readonly=True)
     education_info = fields.Text(string="Vzdelanie")
     work_hours = fields.Float(string="Úväzok (hod/deň)", digits=(4, 1))
     work_ratio = fields.Float(string="Úväzok (%)", digits=(5, 2))

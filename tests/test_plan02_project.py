@@ -5,6 +5,20 @@ from odoo.tests import TransactionCase, tagged
 class TestTenenetPlan02Project(TransactionCase):
     def setUp(self):
         super().setUp()
+        self.donor_partner = self.env["res.partner"].create(
+            {
+                "name": "Donor Kontakt",
+                "email": "donor@test.sk",
+                "phone": "+421900111111",
+            }
+        )
+        self.project_partner = self.env["res.partner"].create(
+            {
+                "name": "Partner Projektu",
+                "email": "partner@test.sk",
+                "phone": "+421900222222",
+            }
+        )
         self.program = self.env["tenenet.program"].create(
             {
                 "name": "Program Test",
@@ -16,6 +30,7 @@ class TestTenenetPlan02Project(TransactionCase):
             {
                 "name": "Donor Test",
                 "donor_type": "eu",
+                "partner_id": self.donor_partner.id,
             }
         )
         self.employee = self.env["hr.employee"].create({"name": "Projektový Manažér"})
@@ -28,9 +43,12 @@ class TestTenenetPlan02Project(TransactionCase):
                 "year": 2026,
                 "program_id": self.program.id,
                 "donor_id": self.donor.id,
+                "partner_id": self.project_partner.id,
                 "program_director_id": self.employee.id,
                 "project_manager_id": self.employee.id,
                 "financial_manager_id": self.employee.id,
+                "date_start": "2026-01-01",
+                "date_end": "2026-12-31",
                 "semaphore": "green",
             }
         )
@@ -38,6 +56,10 @@ class TestTenenetPlan02Project(TransactionCase):
         self.assertEqual(project.program_id, self.program)
         self.assertEqual(project.donor_id, self.donor)
         self.assertEqual(project.program_director_id, self.employee)
+        self.assertEqual(project.partner_id, self.project_partner)
+        self.assertEqual(project.duration, 12)
+        self.assertIn("donor@test.sk", project.donor_contact)
+        self.assertIn("partner@test.sk", project.partner_contact)
 
     def test_project_received_total_compute(self):
         project = self.env["tenenet.project"].create(
