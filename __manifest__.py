@@ -28,6 +28,7 @@ and P&L reporting by program.
         'views/tenenet_project_views.xml',
         'views/tenenet_allocation_views.xml',
         'views/tenenet_utilization_views.xml',
+        'views/tenenet_pl_line_views.xml',
         'views/hr_employee_views.xml',
         'views/menu.xml',
     ],

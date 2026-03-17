@@ -1,0 +1,86 @@
+<odoo>
+    <data>
+        <record id="view_tenenet_pl_line_list" model="ir.ui.view">
+            <field name="name">tenenet.pl.line.list</field>
+            <field name="model">tenenet.pl.line</field>
+            <field name="arch" type="xml">
+                <list string="P&amp;L podľa programu">
+                    <field name="program_id"/>
+                    <field name="employee_id"/>
+                    <field name="period"/>
+                    <field name="amount"/>
+                    <field name="annual_total" optional="hide"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_tenenet_pl_line_form" model="ir.ui.view">
+            <field name="name">tenenet.pl.line.form</field>
+            <field name="model">tenenet.pl.line</field>
+            <field name="arch" type="xml">
+                <form string="P&amp;L riadok">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="program_id"/>
+                                <field name="employee_id"/>
+                                <field name="period"/>
+                            </group>
+                            <group>
+                                <field name="currency_id"/>
+                                <field name="amount"/>
+                                <field name="annual_total" readonly="1"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_tenenet_pl_line_search" model="ir.ui.view">
+            <field name="name">tenenet.pl.line.search</field>
+            <field name="model">tenenet.pl.line</field>
+            <field name="arch" type="xml">
+                <search string="P&amp;L podľa programu">
+                    <field name="program_id"/>
+                    <field name="employee_id"/>
+                    <field name="period"/>
+                    <filter string="Program" name="group_program" context="{'group_by': 'program_id'}"/>
+                    <filter string="Zamestnanec" name="group_employee" context="{'group_by': 'employee_id'}"/>
+                    <filter string="Obdobie" name="group_period" context="{'group_by': 'period:month'}"/>
+                </search>
+            </field>
+        </record>
+
+        <record id="view_tenenet_pl_line_pivot" model="ir.ui.view">
+            <field name="name">tenenet.pl.line.pivot</field>
+            <field name="model">tenenet.pl.line</field>
+            <field name="arch" type="xml">
+                <pivot string="P&amp;L podľa programu">
+                    <field name="program_id" type="row"/>
+                    <field name="employee_id" type="row"/>
+                    <field name="period" type="col" interval="month"/>
+                    <field name="amount" type="measure"/>
+                </pivot>
+            </field>
+        </record>
+
+        <record id="view_tenenet_pl_line_graph" model="ir.ui.view">
+            <field name="name">tenenet.pl.line.graph</field>
+            <field name="model">tenenet.pl.line</field>
+            <field name="arch" type="xml">
+                <graph string="P&amp;L podľa programu" type="bar" stacked="1">
+                    <field name="program_id" type="row"/>
+                    <field name="period" type="col" interval="month"/>
+                    <field name="amount" type="measure"/>
+                </graph>
+            </field>
+        </record>
+
+        <record id="action_tenenet_pl_line" model="ir.actions.act_window">
+            <field name="name">P&amp;L podľa programu</field>
+            <field name="res_model">tenenet.pl.line</field>
+            <field name="view_mode">pivot,list,graph,form</field>
+        </record>
+    </data>
+</odoo>

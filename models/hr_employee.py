@@ -21,3 +21,8 @@ class HrEmployee(models.Model):
         "employee_id",
         string="Vyťaženosť",
     )
+    pl_line_ids = fields.One2many(
+        "tenenet.pl.line",
+        "employee_id",
+        string="P&L riadky",
+    )
