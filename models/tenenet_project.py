@@ -13,7 +13,8 @@ class TenenetProject(models.Model):
     active = fields.Boolean(string="Aktívny", default=True)
     contract_number = fields.Char(string="Číslo zmluvy")
     duration = fields.Integer(string="Trvanie (mesiace)", compute="_compute_duration", store=True)
-    recipient = fields.Char(string="Príjemca")
+    recipient_name = fields.Char(string="Príjemca", related="recipient_partner_id.name", store=True, readonly=True, translate=False)
+    recipient_partner_id = fields.Many2one("res.partner", string="Príjemca", ondelete="set null")
     date_contract = fields.Date(string="Dátum zmluvy")
     date_start = fields.Date(string="Začiatok")
     date_end = fields.Date(string="Koniec")
@@ -110,7 +111,7 @@ class TenenetProject(models.Model):
                 rec.duration = ((end_date.year - start_date.year) * 12) + (
                     end_date.month - start_date.month
                 ) + 1
-            elif not rec.date_end:
+            elif rec.date_start and not rec.date_end:
                 current_date = fields.Date.today()
                 rec.duration = (current_date.year - rec.date_start.year) * 12 + (
                     current_date.month - rec.date_start.month

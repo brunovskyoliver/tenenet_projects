@@ -37,7 +37,7 @@
                             <group>
                                 <field name="program_id"/>
                                 <field name="donor_id"/>
-                                <field name="recipient"/>
+                                <field name="recipient_partner_id"/>
                                 <field name="contract_number"/>
                                 <field name="duration" readonly="1"/>
                                 <field name="date_contract"/>
