@@ -1,4 +1,15 @@
 .o_tenenet_timesheet_matrix_view {
+    width: 100%;
+
+    .o_form_renderer,
+    .o_form_sheet_bg,
+    .o_form_sheet,
+    .o_field_one2many,
+    .o_field_x2many {
+        width: 100% !important;
+        max-width: none !important;
+    }
+
     .o_FormRenderer_chatterContainer,
     .o-mail-ChatterContainer,
     .o-mail-Form-chatter {
@@ -13,8 +24,8 @@
     }
 
     .o_form_sheet {
-        width: 100%;
-        max-width: none;
+        width: 100% !important;
+        max-width: none !important;
         min-height: calc(100vh - 130px);
         margin: 0;
         padding: 20px 24px 24px;
@@ -33,18 +44,31 @@
         border-radius: 16px;
         background: rgba(255, 255, 255, 0.03);
         border: 1px solid rgba(255, 255, 255, 0.06);
+
+        .o_field_widget {
+            min-width: 0;
+        }
+
+        .o_field_selection .o_input,
+        .o_select_menu_toggler {
+            border-radius: 10px;
+            min-height: 42px;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.04);
+        }
     }
 
     .o_field_x2many .o_list_renderer {
         overflow: auto;
         max-height: calc(100vh - 250px);
         border-radius: 12px;
+        width: 100%;
     }
 
     .o_field_x2many .o_list_table {
-        width: max-content;
+        width: max-content !important;
         min-width: 100%;
-        table-layout: fixed;
+        table-layout: auto !important;
         font-size: 14px;
     }
 
@@ -76,12 +100,6 @@
     .o_field_x2many .o_list_table thead th:nth-child(n + 2) {
         min-width: 108px;
         text-align: right;
-    }
-
-    .o_field_x2many .o_list_table thead th:nth-child(2),
-    .o_field_x2many .o_list_table tbody td:nth-child(2) {
-        min-width: 280px;
-        text-align: left;
     }
 
     .o_field_x2many .o_input,

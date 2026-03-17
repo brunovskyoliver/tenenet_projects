@@ -17,45 +17,47 @@
             <field name="name">tenenet.project.timesheet.matrix.form</field>
             <field name="model">tenenet.project.timesheet.matrix</field>
             <field name="arch" type="xml">
-                <form string="Mesačná matica timesheetu" class="o_tenenet_timesheet_matrix_view o_form_fullwidth">
+                <form string="Mesačná matica timesheetu" class="o_form_fullwidth">
                     <sheet>
-                        <div class="o_tenenet_matrix_toolbar">
-                            <field name="employee_id" readonly="1"/>
-                            <field name="project_id" readonly="1"/>
-                            <field name="assignment_id" readonly="1"/>
-                            <field name="year" readonly="1"/>
-                            <field name="year_picker"/>
-                            <button name="action_open_selected_year"
-                                    type="object"
-                                    string="Prepnúť rok"
-                                    class="btn btn-primary"/>
+                        <div class="o_tenenet_timesheet_matrix_view">
+                            <div class="o_tenenet_matrix_toolbar">
+                                <field name="employee_id" readonly="1"/>
+                                <field name="project_id" readonly="1"/>
+                                <field name="assignment_id" readonly="1"/>
+                                <field name="year" readonly="1"/>
+                                <field name="year_picker" widget="selection"/>
+                                <button name="action_open_selected_year"
+                                        type="object"
+                                        string="Prepnúť rok"
+                                        class="btn btn-primary"/>
+                            </div>
+                            <field name="line_ids" nolabel="1">
+                                <list string="Mesačná matica"
+                                      class="o_tenenet_matrix_table"
+                                      editable="bottom"
+                                      create="0"
+                                      delete="0">
+                                    <field name="scope" readonly="1" optional="show"/>
+                                    <field name="name" readonly="1"/>
+                                    <field name="month_01"/>
+                                    <field name="month_02"/>
+                                    <field name="month_03"/>
+                                    <field name="month_04"/>
+                                    <field name="month_05"/>
+                                    <field name="month_06"/>
+                                    <field name="month_07"/>
+                                    <field name="month_08"/>
+                                    <field name="month_09"/>
+                                    <field name="month_10"/>
+                                    <field name="month_11"/>
+                                    <field name="month_12"/>
+                                    <field name="assignment_id" column_invisible="1"/>
+                                    <field name="employee_id" column_invisible="1"/>
+                                    <field name="hour_type" column_invisible="1"/>
+                                    <field name="sequence" column_invisible="1"/>
+                                </list>
+                            </field>
                         </div>
-                        <field name="line_ids" nolabel="1">
-                            <list string="Mesačná matica"
-                                  class="o_tenenet_matrix_table"
-                                  editable="bottom"
-                                  create="0"
-                                  delete="0">
-                                <field name="scope" readonly="1" optional="show"/>
-                                <field name="name" readonly="1"/>
-                                <field name="month_01"/>
-                                <field name="month_02"/>
-                                <field name="month_03"/>
-                                <field name="month_04"/>
-                                <field name="month_05"/>
-                                <field name="month_06"/>
-                                <field name="month_07"/>
-                                <field name="month_08"/>
-                                <field name="month_09"/>
-                                <field name="month_10"/>
-                                <field name="month_11"/>
-                                <field name="month_12"/>
-                                <field name="assignment_id" column_invisible="1"/>
-                                <field name="employee_id" column_invisible="1"/>
-                                <field name="hour_type" column_invisible="1"/>
-                                <field name="sequence" column_invisible="1"/>
-                            </list>
-                        </field>
                     </sheet>
                 </form>
             </field>

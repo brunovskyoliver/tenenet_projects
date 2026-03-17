@@ -25,7 +25,7 @@ class TenenetProjectTimesheetMatrix(models.Model):
     _name = "tenenet.project.timesheet.matrix"
     _description = "Ročná matica timesheetu priradenia"
     _order = "year desc, project_id, employee_id"
-    _rec_name = "display_name"
+    _rec_name = "name"
 
     assignment_id = fields.Many2one(
         "tenenet.project.assignment",
@@ -51,6 +51,11 @@ class TenenetProjectTimesheetMatrix(models.Model):
         string="Rok",
         required=True,
         default=lambda self: fields.Date.today().year,
+    )
+    name = fields.Char(
+        string="Názov",
+        compute="_compute_name",
+        store=True,
     )
     line_ids = fields.One2many(
         "tenenet.project.timesheet.matrix.line",
@@ -122,13 +127,17 @@ class TenenetProjectTimesheetMatrix(models.Model):
         created = self.create(missing_vals) if missing_vals else self.browse()
         return existing | created
 
-    @api.model
     def _selection_year_picker(self):
+        years = self.env.context.get("matrix_year_options")
+        if years:
+            return [(str(year), str(year)) for year in years]
         current_year = fields.Date.today().year
-        return [
-            (str(year), str(year))
-            for year in range(2020, current_year + 2)
-        ]
+        return [(str(current_year), str(current_year))]
+
+    @api.depends("project_id.name", "employee_id.name", "year")
+    def _compute_name(self):
+        for rec in self:
+            rec.name = f"{rec.project_id.name or '-'} / {rec.employee_id.name or '-'} / {rec.year or ''}"
 
     def _load_from_timesheets(self):
         for rec in self:
@@ -140,6 +149,7 @@ class TenenetProjectTimesheetMatrix(models.Model):
         self._load_from_timesheets()
         if not self.year_picker:
             self.year_picker = str(self.year)
+        year_options = sorted(self.assignment_id.matrix_ids.mapped("year"))
         return {
             "type": "ir.actions.act_window",
             "name": "Mesačná matica hodín",
@@ -150,6 +160,10 @@ class TenenetProjectTimesheetMatrix(models.Model):
             ],
             "res_id": self.id,
             "target": "current",
+            "context": {
+                **self.env.context,
+                "matrix_year_options": year_options,
+            },
         }
 
     def action_open_selected_year(self):
