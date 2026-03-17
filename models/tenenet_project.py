@@ -123,7 +123,6 @@ class TenenetProject(models.Model):
         "partner_id.name",
         "partner_id.email",
         "partner_id.phone",
-        "partner_id.mobile",
         "partner_id.street",
         "partner_id.street2",
         "partner_id.zip",
@@ -201,7 +200,7 @@ class TenenetProject(models.Model):
         if partner.email:
             lines.append(partner.email)
 
-        phones = [value for value in [partner.phone, partner.mobile] if value]
+        phones = [value for value in [partner.phone] if value]
         if phones:
             lines.append(" / ".join(dict.fromkeys(phones)))
 
