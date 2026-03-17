@@ -25,6 +25,7 @@ class TenenetProjectTimesheetMatrix(models.Model):
     _name = "tenenet.project.timesheet.matrix"
     _description = "Ročná matica timesheetu priradenia"
     _order = "year desc, project_id, employee_id"
+    _rec_name = "display_name"
 
     assignment_id = fields.Many2one(
         "tenenet.project.assignment",
@@ -56,11 +57,9 @@ class TenenetProjectTimesheetMatrix(models.Model):
         "matrix_id",
         string="Riadky matice",
     )
-    available_matrix_ids = fields.One2many(
-        "tenenet.project.timesheet.matrix",
-        related="assignment_id.matrix_ids",
-        string="Roky",
-        readonly=True,
+    year_picker = fields.Selection(
+        selection="_selection_year_picker",
+        string="Prepnúť rok",
     )
 
     _unique_assignment_year = models.Constraint(
@@ -71,6 +70,8 @@ class TenenetProjectTimesheetMatrix(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
+        for record in records.filtered(lambda rec: not rec.year_picker):
+            record.year_picker = str(record.year)
         records._ensure_line_rows()
         records._load_from_timesheets()
         return records
@@ -80,6 +81,9 @@ class TenenetProjectTimesheetMatrix(models.Model):
         if "assignment_id" in vals or "year" in vals:
             self._ensure_line_rows()
             self._load_from_timesheets()
+        if "year" in vals and "year_picker" not in vals:
+            for record in self:
+                record.year_picker = str(record.year)
         return result
 
     def _ensure_line_rows(self):
@@ -118,6 +122,14 @@ class TenenetProjectTimesheetMatrix(models.Model):
         created = self.create(missing_vals) if missing_vals else self.browse()
         return existing | created
 
+    @api.model
+    def _selection_year_picker(self):
+        current_year = fields.Date.today().year
+        return [
+            (str(year), str(year))
+            for year in range(2020, current_year + 2)
+        ]
+
     def _load_from_timesheets(self):
         for rec in self:
             rec.line_ids._load_month_values_from_timesheets()
@@ -126,6 +138,8 @@ class TenenetProjectTimesheetMatrix(models.Model):
         self.ensure_one()
         self.assignment_id._sync_precreated_timesheets()
         self._load_from_timesheets()
+        if not self.year_picker:
+            self.year_picker = str(self.year)
         return {
             "type": "ir.actions.act_window",
             "name": "Mesačná matica hodín",
@@ -137,6 +151,15 @@ class TenenetProjectTimesheetMatrix(models.Model):
             "res_id": self.id,
             "target": "current",
         }
+
+    def action_open_selected_year(self):
+        self.ensure_one()
+        selected_year = int(self.year_picker or self.year)
+        matrix = self._ensure_for_assignment_years(
+            self.assignment_id,
+            [selected_year],
+        ).filtered(lambda rec: rec.year == selected_year)[:1]
+        return matrix.action_open_form()
 
     def name_get(self):
         return [
