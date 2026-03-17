@@ -17,7 +17,7 @@
             <field name="name">tenenet.project.timesheet.matrix.form</field>
             <field name="model">tenenet.project.timesheet.matrix</field>
             <field name="arch" type="xml">
-                <form string="Mesačná matica timesheetu">
+                <form string="Mesačná matica timesheetu" class="o_form_fullwidth">
                     <sheet>
                         <group>
                             <group>
