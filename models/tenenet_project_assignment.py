@@ -18,6 +18,13 @@ class TenenetProjectAssignment(models.Model):
     _name = "tenenet.project.assignment"
     _description = "Priradenie zamestnanca k projektu"
     _order = "project_id, employee_id"
+    _rec_name = "name"
+
+    name = fields.Char(
+        string="Názov",
+        compute="_compute_name",
+        store=True,
+    )
 
     employee_id = fields.Many2one(
         "hr.employee",
@@ -68,6 +75,11 @@ class TenenetProjectAssignment(models.Model):
     def _compute_timesheet_count(self):
         for rec in self:
             rec.timesheet_count = len(rec.timesheet_ids)
+
+    @api.depends("employee_id.name", "project_id.name")
+    def _compute_name(self):
+        for rec in self:
+            rec.name = f"{rec.employee_id.name or '-'} / {rec.project_id.name or '-'}"
 
     def _get_expected_periods(self):
         self.ensure_one()
@@ -154,15 +166,6 @@ class TenenetProjectAssignment(models.Model):
             [year],
         )
         return matrix.filtered(lambda rec: rec.year == year)[:1].action_open_form()
-
-    def name_get(self):
-        return [
-            (
-                rec.id,
-                f"{rec.employee_id.name or '-'} / {rec.project_id.name or '-'}",
-            )
-            for rec in self
-        ]
 
     @api.constrains("date_start", "date_end")
     def _check_dates(self):

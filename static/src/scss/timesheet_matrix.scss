@@ -61,12 +61,44 @@
             min-width: 0;
         }
 
+        .o_tenenet_matrix_meta,
+        .o_tenenet_matrix_year_switch {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 0;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .o_tenenet_matrix_label {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .o_field_many2one,
+        .o_field_integer {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
         .o_field_selection .o_input,
         .o_select_menu_toggler {
             border-radius: 10px;
             min-height: 42px;
             padding: 8px 12px;
             background: rgba(255, 255, 255, 0.04);
+        }
+
+        > .btn {
+            min-height: 46px;
+            border-radius: 12px;
+            padding: 0 18px;
         }
     }
 
@@ -91,6 +123,13 @@
         background: var(--o-view-background-color, #22252f);
         white-space: nowrap;
         font-size: 15px;
+    }
+
+    .o_field_x2many .o_list_table th.o_list_controller,
+    .o_field_x2many .o_list_table td.w-print-0.p-print-0,
+    .o_field_x2many .o_optional_columns_dropdown,
+    .o_field_x2many .o_x2m_control_panel {
+        display: none !important;
     }
 
     .o_field_x2many .o_list_table tbody td,
