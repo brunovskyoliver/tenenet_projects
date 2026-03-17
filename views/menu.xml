@@ -1,6 +1,6 @@
 <odoo>
     <data>
-        <menuitem id="menu_tenenet_root" name="TENENET" sequence="10"/>
+        <menuitem id="menu_tenenet_root" name="TENENET" sequence="10" web_icon="tenenet_projects,static/description/icon.png"/>
 
         <menuitem id="menu_tenenet_projects" name="Projekty" parent="menu_tenenet_root" sequence="10"/>
         <menuitem id="menu_tenenet_projects_list" name="Všetky projekty" parent="menu_tenenet_projects" action="action_tenenet_project" sequence="10"/>
