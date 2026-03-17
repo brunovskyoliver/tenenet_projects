@@ -45,17 +45,16 @@ class TestTenenetPlan02Project(TransactionCase):
                 "name": "Projekt B",
                 "program_id": self.program.id,
                 "donor_id": self.donor.id,
-                "received_2020": 100.0,
-                "received_2021": 200.0,
-                "received_2022": 300.0,
-                "received_2023": 400.0,
-                "received_2024": 500.0,
-                "received_2025": 600.0,
-                "received_2026": 700.0,
+                "date_start": "2024-01-01",
+                "date_end": "2026-12-31",
             }
         )
 
-        self.assertEqual(project.received_total, 2800.0)
+        receipt_by_year = {line.year: line for line in project.receipt_line_ids}
+        receipt_by_year[2024].write({"amount": 500.0})
+        receipt_by_year[2025].write({"amount": 600.0})
+        receipt_by_year[2026].write({"amount": 700.0})
+        self.assertEqual(project.received_total, 1800.0)
 
     def test_project_budget_diff_compute(self):
         project = self.env["tenenet.project"].create(
@@ -63,12 +62,15 @@ class TestTenenetPlan02Project(TransactionCase):
                 "name": "Projekt C",
                 "program_id": self.program.id,
                 "donor_id": self.donor.id,
+                "date_start": "2025-01-01",
+                "date_end": "2026-12-31",
                 "amount_contracted": 5000.0,
-                "received_2025": 1200.0,
-                "received_2026": 800.0,
             }
         )
 
+        receipt_by_year = {line.year: line for line in project.receipt_line_ids}
+        receipt_by_year[2025].write({"amount": 1200.0})
+        receipt_by_year[2026].write({"amount": 800.0})
         self.assertEqual(project.received_total, 2000.0)
         self.assertEqual(project.budget_diff, 3000.0)
 
@@ -83,3 +85,27 @@ class TestTenenetPlan02Project(TransactionCase):
         )
 
         self.assertEqual(project.semaphore, "yellow")
+
+    def test_project_receipt_lines_follow_date_range(self):
+        project = self.env["tenenet.project"].create(
+            {
+                "name": "Projekt E",
+                "program_id": self.program.id,
+                "donor_id": self.donor.id,
+                "date_start": "2024-02-01",
+                "date_end": "2026-11-30",
+            }
+        )
+
+        self.assertEqual(project.active_year_from, 2024)
+        self.assertEqual(project.active_year_to, 2026)
+        self.assertEqual(sorted(project.receipt_line_ids.mapped("year")), [2024, 2025, 2026])
+
+        project.write(
+            {
+                "date_start": "2025-01-01",
+                "date_end": "2027-12-31",
+            }
+        )
+
+        self.assertEqual(sorted(project.receipt_line_ids.mapped("year")), [2025, 2026, 2027])

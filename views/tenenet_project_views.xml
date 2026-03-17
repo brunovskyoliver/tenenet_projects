@@ -64,20 +64,37 @@
                             </page>
                             <page string="Financie">
                                 <group>
-                                    <field name="currency_id"/>
-                                    <field name="budget_total"/>
-                                    <field name="amount_contracted"/>
-                                    <field name="amount_contracted_with_partners"/>
-                                    <field name="received_2020"/>
-                                    <field name="received_2021"/>
-                                    <field name="received_2022"/>
-                                    <field name="received_2023"/>
-                                    <field name="received_2024"/>
-                                    <field name="received_2025"/>
-                                    <field name="received_2026"/>
-                                    <field name="received_total" readonly="1"/>
-                                    <field name="budget_diff" readonly="1"/>
+                                    <group>
+                                        <field name="currency_id"/>
+                                        <field name="budget_total"/>
+                                        <field name="amount_contracted"/>
+                                        <field name="amount_contracted_with_partners"/>
+                                    </group>
+                                    <group>
+                                        <field name="active_year_from" readonly="1"/>
+                                        <field name="active_year_to" readonly="1"/>
+                                        <field name="received_total" readonly="1"/>
+                                        <field name="budget_diff" readonly="1"/>
+                                    </group>
                                 </group>
+                                <group string="Prijaté podľa rokov">
+                                    <field name="receipt_line_ids">
+                                        <list string="Prijaté podľa rokov" create="0" delete="0">
+                                            <field name="year" readonly="1"/>
+                                            <field name="amount"/>
+                                        </list>
+                                    </field>
+                                </group>
+                            </page>
+                            <page string="Alokácie">
+                                <field name="allocation_ids" readonly="1">
+                                    <list string="Alokácie">
+                                        <field name="employee_id"/>
+                                        <field name="period"/>
+                                        <field name="hours_total"/>
+                                        <field name="total_labor_cost"/>
+                                    </list>
+                                </field>
                             </page>
                             <page string="Kontakty a zúčtovanie">
                                 <group>

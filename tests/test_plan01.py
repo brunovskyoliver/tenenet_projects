@@ -14,14 +14,15 @@ class TestTenenetPlan01(TransactionCase):
             }
         )
 
-        with self.assertRaises(IntegrityError):
-            self.env["tenenet.program"].create(
-                {
-                    "name": "Test Program B",
-                    "code": "TPA",
-                    "headcount": 2.0,
-                }
-            )
+        with self.cr.savepoint():
+            with self.assertRaises(IntegrityError):
+                self.env["tenenet.program"].create(
+                    {
+                        "name": "Test Program B",
+                        "code": "TPA",
+                        "headcount": 2.0,
+                    }
+                )
 
     def test_program_allocation_pct_compute(self):
         p1 = self.env["tenenet.program"].create(

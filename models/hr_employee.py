@@ -11,3 +11,8 @@ class HrEmployee(models.Model):
     work_hours = fields.Float(string="Úväzok (hod/deň)", digits=(4, 1))
     work_ratio = fields.Float(string="Úväzok (%)", digits=(5, 2))
     hourly_rate = fields.Float(string="Hodinová sadzba", digits=(10, 2))
+    allocation_ids = fields.One2many(
+        "tenenet.employee.allocation",
+        "employee_id",
+        string="Alokácie",
+    )

@@ -1,0 +1,95 @@
+<odoo>
+    <data>
+        <record id="view_tenenet_allocation_list" model="ir.ui.view">
+            <field name="name">tenenet.employee.allocation.list</field>
+            <field name="model">tenenet.employee.allocation</field>
+            <field name="arch" type="xml">
+                <list string="Alokácie">
+                    <field name="employee_id"/>
+                    <field name="project_id"/>
+                    <field name="period"/>
+                    <field name="hours_total"/>
+                    <field name="total_labor_cost"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_tenenet_allocation_form" model="ir.ui.view">
+            <field name="name">tenenet.employee.allocation.form</field>
+            <field name="model">tenenet.employee.allocation</field>
+            <field name="arch" type="xml">
+                <form string="Alokácia">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="employee_id"/>
+                                <field name="project_id"/>
+                                <field name="period"/>
+                            </group>
+                            <group>
+                                <field name="currency_id"/>
+                                <field name="gross_salary"/>
+                                <field name="deductions"/>
+                                <field name="total_labor_cost" readonly="1"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Projektové hodiny">
+                                <group>
+                                    <field name="hours_pp"/>
+                                    <field name="hours_np"/>
+                                    <field name="hours_travel"/>
+                                    <field name="hours_training"/>
+                                    <field name="hours_ambulance"/>
+                                    <field name="hours_international"/>
+                                    <field name="hours_total" readonly="1"/>
+                                </group>
+                            </page>
+                            <page string="Neprítomnosti a prekážky">
+                                <group>
+                                    <field name="hours_vacation"/>
+                                    <field name="hours_sick"/>
+                                    <field name="hours_doctor"/>
+                                    <field name="hours_holidays"/>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_tenenet_allocation_search" model="ir.ui.view">
+            <field name="name">tenenet.employee.allocation.search</field>
+            <field name="model">tenenet.employee.allocation</field>
+            <field name="arch" type="xml">
+                <search string="Alokácie">
+                    <field name="employee_id"/>
+                    <field name="project_id"/>
+                    <field name="period"/>
+                    <filter string="Zamestnanec" name="group_employee" context="{'group_by': 'employee_id'}"/>
+                    <filter string="Projekt" name="group_project" context="{'group_by': 'project_id'}"/>
+                    <filter string="Obdobie" name="group_period" context="{'group_by': 'period'}"/>
+                </search>
+            </field>
+        </record>
+
+        <record id="view_tenenet_allocation_pivot" model="ir.ui.view">
+            <field name="name">tenenet.employee.allocation.pivot</field>
+            <field name="model">tenenet.employee.allocation</field>
+            <field name="arch" type="xml">
+                <pivot string="Alokácie">
+                    <field name="employee_id" type="row"/>
+                    <field name="period" type="col" interval="month"/>
+                    <field name="hours_total" type="measure"/>
+                </pivot>
+            </field>
+        </record>
+
+        <record id="action_tenenet_allocation" model="ir.actions.act_window">
+            <field name="name">Alokácie</field>
+            <field name="res_model">tenenet.employee.allocation</field>
+            <field name="view_mode">list,form,pivot</field>
+        </record>
+    </data>
+</odoo>

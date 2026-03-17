@@ -34,6 +34,16 @@ class TenenetProject(models.Model):
     program_director_id = fields.Many2one("hr.employee", string="Programový riaditeľ")
     project_manager_id = fields.Many2one("hr.employee", string="Projektový manažér")
     financial_manager_id = fields.Many2one("hr.employee", string="Finančný manažér")
+    allocation_ids = fields.One2many(
+        "tenenet.employee.allocation",
+        "project_id",
+        string="Alokácie",
+    )
+    receipt_line_ids = fields.One2many(
+        "tenenet.project.receipt",
+        "project_id",
+        string="Prijaté podľa rokov",
+    )
 
     currency_id = fields.Many2one(
         "res.currency",
@@ -46,13 +56,6 @@ class TenenetProject(models.Model):
         string="Zmluvná suma vrátane partnerov",
         currency_field="currency_id",
     )
-    received_2020 = fields.Monetary(string="Prijaté 2020", currency_field="currency_id")
-    received_2021 = fields.Monetary(string="Prijaté 2021", currency_field="currency_id")
-    received_2022 = fields.Monetary(string="Prijaté 2022", currency_field="currency_id")
-    received_2023 = fields.Monetary(string="Prijaté 2023", currency_field="currency_id")
-    received_2024 = fields.Monetary(string="Prijaté 2024", currency_field="currency_id")
-    received_2025 = fields.Monetary(string="Prijaté 2025", currency_field="currency_id")
-    received_2026 = fields.Monetary(string="Prijaté 2026", currency_field="currency_id")
     received_total = fields.Monetary(
         string="Prijaté spolu",
         currency_field="currency_id",
@@ -70,29 +73,84 @@ class TenenetProject(models.Model):
     donor_contact = fields.Text(string="Kontakt donor")
     partner_contact = fields.Text(string="Kontakt partner")
     application_notes = fields.Text(string="Podávanie žiadosti")
-
-    @api.depends(
-        "received_2020",
-        "received_2021",
-        "received_2022",
-        "received_2023",
-        "received_2024",
-        "received_2025",
-        "received_2026",
+    active_year_from = fields.Integer(
+        string="Rok od",
+        compute="_compute_active_year_range",
+        store=True,
     )
+    active_year_to = fields.Integer(
+        string="Rok do",
+        compute="_compute_active_year_range",
+        store=True,
+    )
+
+    @api.depends("date_start", "date_end")
+    def _compute_active_year_range(self):
+        for rec in self:
+            if rec.date_start and rec.date_end:
+                rec.active_year_from = min(rec.date_start.year, rec.date_end.year)
+                rec.active_year_to = max(rec.date_start.year, rec.date_end.year)
+            elif rec.date_start:
+                rec.active_year_from = rec.date_start.year
+                rec.active_year_to = rec.date_start.year
+            elif rec.date_end:
+                rec.active_year_from = rec.date_end.year
+                rec.active_year_to = rec.date_end.year
+            else:
+                rec.active_year_from = False
+                rec.active_year_to = False
+
+    @api.depends("receipt_line_ids", "receipt_line_ids.amount")
     def _compute_received_total(self):
         for rec in self:
-            rec.received_total = (
-                (rec.received_2020 or 0.0)
-                + (rec.received_2021 or 0.0)
-                + (rec.received_2022 or 0.0)
-                + (rec.received_2023 or 0.0)
-                + (rec.received_2024 or 0.0)
-                + (rec.received_2025 or 0.0)
-                + (rec.received_2026 or 0.0)
-            )
+            rec.received_total = sum(rec.receipt_line_ids.mapped("amount"))
 
     @api.depends("amount_contracted", "received_total")
     def _compute_budget_diff(self):
         for rec in self:
             rec.budget_diff = (rec.amount_contracted or 0.0) - (rec.received_total or 0.0)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records._sync_receipt_lines()
+        return records
+
+    def write(self, vals):
+        result = super().write(vals)
+        if "date_start" in vals or "date_end" in vals:
+            self._sync_receipt_lines()
+        return result
+
+    def _sync_receipt_lines(self):
+        receipt_model = self.env["tenenet.project.receipt"]
+        for rec in self:
+            if rec.date_start and rec.date_end:
+                start_year = min(rec.date_start.year, rec.date_end.year)
+                end_year = max(rec.date_start.year, rec.date_end.year)
+            elif rec.date_start:
+                start_year = rec.date_start.year
+                end_year = rec.date_start.year
+            elif rec.date_end:
+                start_year = rec.date_end.year
+                end_year = rec.date_end.year
+            else:
+                if rec.receipt_line_ids:
+                    rec.receipt_line_ids.unlink()
+                continue
+
+            valid_years = set(range(start_year, end_year + 1))
+            existing_by_year = {line.year: line for line in rec.receipt_line_ids}
+
+            for year in sorted(valid_years):
+                if year not in existing_by_year:
+                    receipt_model.create(
+                        {
+                            "project_id": rec.id,
+                            "year": year,
+                        }
+                    )
+
+            lines_to_remove = rec.receipt_line_ids.filtered(lambda line: line.year not in valid_years)
+            if lines_to_remove:
+                lines_to_remove.unlink()

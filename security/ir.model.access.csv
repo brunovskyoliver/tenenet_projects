@@ -5,3 +5,7 @@ access_tenenet_donor_user,tenenet.donor.user,model_tenenet_donor,tenenet_project
 access_tenenet_donor_manager,tenenet.donor.manager,model_tenenet_donor,tenenet_projects.group_tenenet_manager,1,1,1,1
 access_tenenet_project_user,tenenet.project.user,model_tenenet_project,tenenet_projects.group_tenenet_user,1,1,0,0
 access_tenenet_project_manager,tenenet.project.manager,model_tenenet_project,tenenet_projects.group_tenenet_manager,1,1,1,1
+access_tenenet_project_receipt_user,tenenet.project.receipt.user,model_tenenet_project_receipt,tenenet_projects.group_tenenet_user,1,1,1,1
+access_tenenet_project_receipt_manager,tenenet.project.receipt.manager,model_tenenet_project_receipt,tenenet_projects.group_tenenet_manager,1,1,1,1
+access_tenenet_allocation_user,tenenet.employee.allocation.user,model_tenenet_employee_allocation,tenenet_projects.group_tenenet_user,1,0,0,0
+access_tenenet_allocation_manager,tenenet.employee.allocation.manager,model_tenenet_employee_allocation,tenenet_projects.group_tenenet_manager,1,1,1,1
