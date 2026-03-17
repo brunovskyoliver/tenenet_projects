@@ -128,6 +128,17 @@ class TenenetProjectAssignment(models.Model):
             return current_year
         return min(years)
 
+    def _get_expected_years(self):
+        self.ensure_one()
+        return sorted({period.year for period in self._get_expected_periods()})
+
+    def _is_period_in_scope(self, period):
+        self.ensure_one()
+        periods = self._get_expected_periods()
+        if not periods:
+            return True
+        return _month_start(period) in set(periods)
+
     def _sync_precreated_timesheets(self):
         Timesheet = self.env["tenenet.project.timesheet"]
         Matrix = self.env["tenenet.project.timesheet.matrix"]
@@ -161,9 +172,10 @@ class TenenetProjectAssignment(models.Model):
     def action_open_timesheet_matrix_current_year(self):
         self.ensure_one()
         year = self._default_matrix_year()
+        years = self._get_expected_years() or [year]
         matrix = self.env["tenenet.project.timesheet.matrix"]._ensure_for_assignment_years(
             self,
-            [year],
+            years,
         )
         return matrix.filtered(lambda rec: rec.year == year)[:1].action_open_form()
 

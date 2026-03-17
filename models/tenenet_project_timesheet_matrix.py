@@ -1,6 +1,7 @@
 from datetime import date
 
 from odoo import api, fields, models
+from odoo.exceptions import ValidationError
 
 from .tenenet_project_timesheet import HOUR_FIELD_META, HOUR_SCOPE_SELECTION, HOUR_TYPE_SELECTION
 
@@ -146,10 +147,15 @@ class TenenetProjectTimesheetMatrix(models.Model):
     def action_open_form(self):
         self.ensure_one()
         self.assignment_id._sync_precreated_timesheets()
+        expected_years = self.assignment_id._get_expected_years()
+        if expected_years:
+            self._ensure_for_assignment_years(self.assignment_id, expected_years)
         self._load_from_timesheets()
         if not self.year_picker:
             self.year_picker = str(self.year)
-        year_options = sorted(self.assignment_id.matrix_ids.mapped("year"))
+        year_options = expected_years or sorted(self.assignment_id.matrix_ids.mapped("year"))
+        if self.year not in year_options:
+            year_options = sorted(set(year_options + [self.year]))
         return {
             "type": "ir.actions.act_window",
             "name": "Mesačná matica hodín",
@@ -256,6 +262,18 @@ class TenenetProjectTimesheetMatrixLine(models.Model):
     month_10 = fields.Float(string=MONTH_LABELS[10], digits=(10, 2), default=0.0)
     month_11 = fields.Float(string=MONTH_LABELS[11], digits=(10, 2), default=0.0)
     month_12 = fields.Float(string=MONTH_LABELS[12], digits=(10, 2), default=0.0)
+    month_01_editable = fields.Boolean(compute="_compute_month_editability", store=True)
+    month_02_editable = fields.Boolean(compute="_compute_month_editability", store=True)
+    month_03_editable = fields.Boolean(compute="_compute_month_editability", store=True)
+    month_04_editable = fields.Boolean(compute="_compute_month_editability", store=True)
+    month_05_editable = fields.Boolean(compute="_compute_month_editability", store=True)
+    month_06_editable = fields.Boolean(compute="_compute_month_editability", store=True)
+    month_07_editable = fields.Boolean(compute="_compute_month_editability", store=True)
+    month_08_editable = fields.Boolean(compute="_compute_month_editability", store=True)
+    month_09_editable = fields.Boolean(compute="_compute_month_editability", store=True)
+    month_10_editable = fields.Boolean(compute="_compute_month_editability", store=True)
+    month_11_editable = fields.Boolean(compute="_compute_month_editability", store=True)
+    month_12_editable = fields.Boolean(compute="_compute_month_editability", store=True)
 
     _unique_matrix_hour_type = models.Constraint(
         "UNIQUE(matrix_id, hour_type)",
@@ -270,6 +288,21 @@ class TenenetProjectTimesheetMatrixLine(models.Model):
             rec.name = meta.get("full_label") or False
             rec.scope = meta.get("scope") or False
             rec.sequence = meta.get("sequence") or 0
+
+    @api.depends(
+        "year",
+        "assignment_id.date_start",
+        "assignment_id.date_end",
+        "assignment_id.project_id.date_start",
+        "assignment_id.project_id.date_end",
+    )
+    def _compute_month_editability(self):
+        for rec in self:
+            for month in range(1, 13):
+                editable = False
+                if rec.assignment_id and rec.year:
+                    editable = rec.assignment_id._is_period_in_scope(date(rec.year, month, 1))
+                rec[f"month_{month:02d}_editable"] = editable
 
     def _load_month_values_from_timesheets(self):
         for rec in self:
@@ -314,6 +347,23 @@ class TenenetProjectTimesheetMatrixLine(models.Model):
                         "hours": value,
                     })
 
+    def _validate_month_writes_in_scope(self, vals):
+        month_field_names = [field_name for field_name in vals if field_name.startswith("month_")]
+        if not month_field_names:
+            return
+
+        for rec in self:
+            for field_name in month_field_names:
+                editable_field = f"{field_name}_editable"
+                if not rec[editable_field]:
+                    new_value = vals.get(field_name, 0.0) or 0.0
+                    old_value = rec[field_name] or 0.0
+                    if abs(new_value - old_value) > 1e-9:
+                        month_label = MONTH_LABELS[int(field_name.split("_")[1])]
+                        raise ValidationError(
+                            f"Mesiac {month_label} {rec.year} je mimo rozsahu priradenia a nie je možné ho upravovať."
+                        )
+
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
@@ -321,6 +371,8 @@ class TenenetProjectTimesheetMatrixLine(models.Model):
         return records
 
     def write(self, vals):
+        if not self.env.context.get("skip_matrix_month_sync"):
+            self._validate_month_writes_in_scope(vals)
         result = super().write(vals)
         if self.env.context.get("skip_matrix_month_sync"):
             return result

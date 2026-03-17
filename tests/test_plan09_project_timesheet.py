@@ -1,6 +1,7 @@
 from psycopg2 import IntegrityError
 
 from odoo import fields
+from odoo.exceptions import ValidationError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -272,12 +273,14 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
     def test_assignment_open_matrix_current_year_creates_matrix(self):
         project = self.env["tenenet.project"].create({
             "name": "Projekt na maticu",
-            "date_start": "2026-01-01",
+            "date_start": "2025-12-01",
             "date_end": "2026-12-31",
         })
         assignment = self.env["tenenet.project.assignment"].create({
             "employee_id": self.employee.id,
             "project_id": project.id,
+            "date_start": "2025-12-01",
+            "date_end": "2026-12-31",
             "wage_hm": 10.0,
             "wage_ccp": 13.62,
         })
@@ -285,6 +288,15 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
         matrix = self.env["tenenet.project.timesheet.matrix"].browse(action["res_id"])
         self.assertTrue(matrix)
         self.assertEqual(matrix.assignment_id, assignment)
+        self.assertEqual(matrix.year, 2026)
+        self.assertEqual(
+            assignment.matrix_ids.mapped("year"),
+            [2025, 2026],
+        )
+        self.assertEqual(
+            sorted(action["context"]["matrix_year_options"]),
+            [2025, 2026],
+        )
         self.assertEqual(len(matrix.line_ids), 10)
 
     def test_open_ended_assignment_creates_year_matrices_until_present(self):
@@ -326,6 +338,38 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
         self.assertAlmostEqual(row_pp.month_01, 4.0)
         self.assertAlmostEqual(row_pp.month_02, 5.0)
         self.assertAlmostEqual(row_pp.month_03, 6.0)
+
+    def test_matrix_months_outside_assignment_range_are_locked(self):
+        project = self.env["tenenet.project"].create({
+            "name": "Projekt s hranicami matice",
+            "date_start": "2025-12-01",
+            "date_end": "2026-12-31",
+        })
+        assignment = self.env["tenenet.project.assignment"].create({
+            "employee_id": self.employee.id,
+            "project_id": project.id,
+            "date_start": "2025-12-01",
+            "date_end": "2026-12-31",
+            "wage_hm": 10.0,
+            "wage_ccp": 13.62,
+        })
+        assignment.action_open_timesheet_matrix_current_year()
+        matrix_2025 = assignment.matrix_ids.filtered(lambda rec: rec.year == 2025)
+        row_pp = matrix_2025.line_ids.filtered(lambda line: line.hour_type == "pp")[:1]
+
+        self.assertFalse(row_pp.month_01_editable)
+        self.assertFalse(row_pp.month_11_editable)
+        self.assertTrue(row_pp.month_12_editable)
+
+        with self.assertRaises(ValidationError):
+            row_pp.write({"month_01": 8.0})
+
+        row_pp.write({"month_12": 8.0})
+        december = self.env["tenenet.project.timesheet"].search([
+            ("assignment_id", "=", assignment.id),
+            ("period", "=", "2025-12-01"),
+        ], limit=1)
+        self.assertAlmostEqual(december.hours_pp, 8.0)
 
     def test_utilization_aggregate_from_timesheets(self):
         self.env["tenenet.project.timesheet"].create(self._timesheet_vals(
