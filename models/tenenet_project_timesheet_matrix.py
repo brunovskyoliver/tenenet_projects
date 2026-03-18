@@ -130,12 +130,25 @@ class TenenetProjectTimesheetMatrix(models.Model):
         return existing | created
 
     def _selection_year_picker(self):
+        # Priority 1: Context with explicit year options
         years = self.env.context.get("matrix_year_options")
         if years:
             return [(str(year), str(year)) for year in years]
-        # Use the record's year if available, otherwise fall back to current year
+        
+        # Priority 2: If we have a record with an assignment, get expected years
+        if self and self.assignment_id:
+            expected_years = self.assignment_id._get_expected_years()
+            if expected_years:
+                # Ensure current year is included
+                if self.year and self.year not in expected_years:
+                    expected_years = sorted(set(expected_years + [self.year]))
+                return [(str(year), str(year)) for year in expected_years]
+        
+        # Priority 3: Use the record's year if available
         if self and self.year:
             return [(str(self.year), str(self.year))]
+        
+        # Priority 4: Fall back to current year only as last resort
         current_year = fields.Date.today().year
         return [(str(current_year), str(current_year))]
 
