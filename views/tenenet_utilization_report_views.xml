@@ -3,7 +3,7 @@
         <record id="tenenet_utilization_report" model="account.report">
             <field name="name">Vyťaženosť report</field>
             <field name="load_more_limit">200</field>
-            <field name="search_bar" eval="False"/>
+            <field name="search_bar" eval="True"/>
             <field name="filter_date_range" eval="False"/>
             <field name="filter_show_draft" eval="False"/>
             <field name="filter_unreconciled" eval="False"/>

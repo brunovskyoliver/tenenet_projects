@@ -1,0 +1,14 @@
+.account_report.tenenet_utilization_report {
+    .line_cell.numeric {
+        text-align: center !important;
+
+        > .wrapper {
+            justify-content: center;
+        }
+
+        > .wrapper > .content {
+            justify-content: center;
+            width: 100%;
+        }
+    }
+}

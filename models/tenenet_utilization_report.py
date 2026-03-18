@@ -27,10 +27,19 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
         "hours_diff",
     }
 
+    def _custom_options_initializer(self, report, options, previous_options=None):
+        super()._custom_options_initializer(report, options, previous_options=previous_options)
+        options["custom_display_config"]["css_custom_class"] = (
+            options["custom_display_config"].get("css_custom_class", "") + " tenenet_utilization_report"
+        ).strip()
+
     def _dynamic_lines_generator(self, report, options, all_column_groups_expression_totals, warnings=None):
         period = self._get_selected_month_start(report, options)
         self.env["tenenet.utilization"].sudo()._sync_for_period(period)
-        utilization_records = self._get_utilization_records(period)
+        utilization_records = self._get_utilization_records(
+            period,
+            search_term=options.get("filter_search_bar"),
+        )
         return [
             (0, self._get_report_line(report, options, utilization))
             for utilization in utilization_records
@@ -40,8 +49,14 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
         date_to = options.get("date", {}).get("date_to") or fields.Date.context_today(self)
         return self.env["tenenet.utilization"]._normalize_period(date_to)
 
-    def _get_utilization_records(self, period):
+    def _get_utilization_records(self, period, search_term=None):
         records = self.env["tenenet.utilization"].search([("period", "=", period)])
+        if search_term:
+            lowered_search_term = search_term.lower()
+            records = records.filtered(
+                lambda rec: lowered_search_term in (rec.employee_id.name or "").lower()
+                or lowered_search_term in (rec.manager_name or "").lower()
+            )
         return records.sorted(
             key=lambda rec: (
                 (rec.manager_name or "").lower(),
@@ -76,4 +91,3 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
         if label == "manager_name":
             return utilization.manager_name or ""
         return utilization[label]
-
