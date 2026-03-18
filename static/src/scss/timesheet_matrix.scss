@@ -224,12 +224,12 @@
 
 // ── Moje timesheety stacked client action ──────────────────────────────────
 .o_tenenet_my_timesheets {
-    // .o_action_manager is position:relative + overflow:hidden with a flex-
-    // derived height, so height:100% doesn't resolve on a normal child.
-    // Absolute positioning fills the frame precisely, letting overflow-y:auto
-    // create a real scroll container inside the clipped action area.
-    position: absolute;
-    inset: 0;
+    // Flex-child scroll pattern: .o_action_manager is a flex column.
+    // flex:1 expands to fill the column; min-height:0 prevents the flex
+    // child from growing past the viewport so overflow-y:auto works.
+    // No position:absolute — that would anchor to body and overlap o_navbar.
+    flex: 1 1 0;
+    min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
     padding: 1.5rem 1.5rem 4rem;
