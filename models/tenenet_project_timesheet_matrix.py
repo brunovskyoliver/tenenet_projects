@@ -219,6 +219,16 @@ class TenenetProjectTimesheetMatrix(models.Model):
         return self.action_open_form()
 
     @api.model
+    def sync_my_matrices(self):
+        """Create missing matrices/timesheets for the current user. Called from the client action."""
+        employee = self.env["hr.employee"].search([("user_id", "=", self.env.uid)], limit=1)
+        if employee:
+            assignments = self.env["tenenet.project.assignment"].search(
+                [("employee_id", "=", employee.id)]
+            )
+            assignments._sync_precreated_timesheets()
+
+    @api.model
     def action_open_my_matrices(self):
         """Sync assignments for the current user, then return the matrix list action."""
         employee = self.env["hr.employee"].search([("user_id", "=", self.env.uid)], limit=1)

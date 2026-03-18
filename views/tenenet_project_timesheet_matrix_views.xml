@@ -143,10 +143,16 @@
         </record>
 
         <record id="action_tenenet_my_timesheet_matrices" model="ir.actions.server">
-            <field name="name">Moje timesheety</field>
+            <field name="name">Moje timesheety (list)</field>
             <field name="model_id" ref="model_tenenet_project_timesheet_matrix"/>
             <field name="state">code</field>
             <field name="code">action = model.action_open_my_matrices()</field>
+        </record>
+
+        <record id="action_tenenet_my_timesheets_client" model="ir.actions.client">
+            <field name="name">Moje timesheety</field>
+            <field name="tag">tenenet_my_timesheets</field>
+            <field name="path">tenenet-my-timesheets</field>
         </record>
     </data>
 </odoo>
