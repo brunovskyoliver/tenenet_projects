@@ -10,6 +10,7 @@
         <menuitem id="menu_tenenet_utilization" name="Vyťaženosť" parent="menu_tenenet_projects" action="action_tenenet_utilization" sequence="40"/>
 
         <menuitem id="menu_tenenet_reporting" name="Reporty" parent="menu_tenenet_root" sequence="15"/>
+        <menuitem id="menu_tenenet_utilization_report" name="Vyťaženosť report" parent="menu_tenenet_reporting" action="action_tenenet_utilization_report" sequence="5"/>
         <menuitem id="menu_tenenet_pl_line" name="P&amp;L podľa programu" parent="menu_tenenet_reporting" action="action_tenenet_pl_line" sequence="10"/>
         <menuitem id="menu_tenenet_company_expense" name="Náklady Tenenet (absencie)" parent="menu_tenenet_reporting" action="action_tenenet_company_expense" sequence="20"/>
         <menuitem id="menu_tenenet_company_expense_summary" name="Súhrn nákladov Tenenet" parent="menu_tenenet_reporting" action="action_tenenet_company_expense_summary" sequence="30"/>

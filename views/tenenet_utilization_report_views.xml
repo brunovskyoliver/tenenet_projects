@@ -145,13 +145,5 @@
             <field name="context" eval="{'report_id': ref('tenenet_projects.tenenet_utilization_report')}"/>
         </record>
 
-        <menuitem
-            id="menu_tenenet_utilization_report"
-            name="Vyťaženosť report"
-            parent="tenenet_projects.menu_tenenet_reporting"
-            action="action_tenenet_utilization_report"
-            sequence="5"
-        />
-
     </data>
 </odoo>
