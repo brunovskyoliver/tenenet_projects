@@ -15,5 +15,6 @@ from . import hr_leave
 from . import tenenet_employee_allocation
 from . import tenenet_utilization
 from . import tenenet_utilization_report
+from . import tenenet_project_yearly_labor_report
 from . import tenenet_utilization_sync_wizard
 from . import tenenet_pl_line

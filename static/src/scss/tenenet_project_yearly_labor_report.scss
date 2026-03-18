@@ -1,0 +1,35 @@
+.account_report.tenenet_project_yearly_labor_report {
+    #filter_project,
+    #filter_date {
+        .o_datetime_input,
+        .o_multi_record_selector {
+            box-shadow: none;
+        }
+    }
+
+    #filter_project {
+        .o_multi_record_selector {
+            min-width: 20rem;
+        }
+    }
+
+    #filter_date {
+        .o_datetime_input {
+            min-width: 5rem;
+            text-align: center;
+        }
+    }
+
+    .line_cell.numeric {
+        text-align: center !important;
+
+        > .wrapper {
+            justify-content: center;
+        }
+
+        > .wrapper > .content {
+            justify-content: center;
+            width: 100%;
+        }
+    }
+}
