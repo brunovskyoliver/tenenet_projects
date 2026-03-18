@@ -22,7 +22,7 @@
             <field name="column_ids">
                 <record id="tenenet_allocation_report_column_metric" model="account.report.column">
                     <field name="sequence">10</field>
-                    <field name="name">Metrika</field>
+                    <field name="name"></field>
                     <field name="expression_label">metric_label</field>
                     <field name="figure_type">string</field>
                 </record>
@@ -64,7 +64,7 @@
                 </record>
                 <record id="tenenet_allocation_report_column_h1" model="account.report.column">
                     <field name="sequence">75</field>
-                    <field name="name">H1</field>
+                    <field name="name">Polrok</field>
                     <field name="expression_label">h1_total</field>
                     <field name="figure_type">float</field>
                 </record>
