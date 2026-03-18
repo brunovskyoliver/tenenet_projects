@@ -9,6 +9,7 @@ from . import tenenet_project_timesheet
 from . import tenenet_project_timesheet_matrix
 from . import tenenet_employee_tenenet_cost
 from . import tenenet_company_expense
+from . import tenenet_project_leave_sync_entry
 from . import hr_leave_type
 from . import hr_leave
 from . import tenenet_employee_allocation

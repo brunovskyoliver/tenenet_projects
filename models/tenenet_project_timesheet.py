@@ -1,4 +1,5 @@
 from odoo import api, fields, models
+from odoo.exceptions import ValidationError
 
 
 HOUR_FIELD_META = {
@@ -82,6 +83,9 @@ HOUR_SCOPE_SELECTION = [
 HOUR_FIELD_BY_TYPE = {
     meta["type"]: field_name for field_name, meta in HOUR_FIELD_META.items()
 }
+LEAVE_HOUR_TYPES = tuple(
+    meta["type"] for meta in HOUR_FIELD_META.values() if meta["scope"] == "leave"
+)
 
 
 class TenenetProjectTimesheet(models.Model):
@@ -411,19 +415,44 @@ class TenenetProjectTimesheetLine(models.Model):
     def _sync_employee_period_costs(self):
         self.mapped("timesheet_id")._sync_employee_period_costs()
 
+    @api.model
+    def _is_leave_hour_type(self, hour_type):
+        return hour_type in LEAVE_HOUR_TYPES
+
+    def _check_leave_lines_not_manually_mutated(self, vals=None):
+        if self.env.context.get("from_hr_leave_sync"):
+            return
+
+        vals = vals or {}
+        mutation_keys = {"hours", "hour_type", "timesheet_id"}
+        targets_leave = self.filtered(lambda line: self._is_leave_hour_type(line.hour_type))
+        moving_to_leave = vals.get("hour_type") and self._is_leave_hour_type(vals["hour_type"])
+        if (targets_leave and (mutation_keys & set(vals))) or moving_to_leave:
+            raise ValidationError(
+                "Absencie (dovolenka/PN/lekár/sviatky) je možné meniť iba cez HR Dovolenky."
+            )
+
     @api.model_create_multi
     def create(self, vals_list):
+        if not self.env.context.get("from_hr_leave_sync"):
+            for vals in vals_list:
+                if self._is_leave_hour_type(vals.get("hour_type")):
+                    raise ValidationError(
+                        "Absencie (dovolenka/PN/lekár/sviatky) je možné pridávať iba cez HR Dovolenky."
+                    )
         records = super().create(vals_list)
         records._sync_employee_period_costs()
         return records
 
     def write(self, vals):
+        self._check_leave_lines_not_manually_mutated(vals)
         old_timesheets = self.mapped("timesheet_id")
         result = super().write(vals)
         (old_timesheets | self.mapped("timesheet_id"))._sync_employee_period_costs()
         return result
 
     def unlink(self):
+        self._check_leave_lines_not_manually_mutated({"hours": 0.0})
         timesheets = self.mapped("timesheet_id")
         result = super().unlink()
         timesheets._sync_employee_period_costs()

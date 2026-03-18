@@ -58,7 +58,7 @@ class TestTenenetPlan04Utilization(TransactionCase):
     def _create_timesheet(self, assignment, period, **hours):
         vals = {"assignment_id": assignment.id, "period": period}
         vals.update(hours)
-        return self.env["tenenet.project.timesheet"].create(vals)
+        return self.env["tenenet.project.timesheet"].with_context(from_hr_leave_sync=True).create(vals)
 
     def _create_utilization(self, period, capacity_hours=100.0, **overrides):
         vals = {

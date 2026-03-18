@@ -157,6 +157,42 @@ class TenenetProjectAssignment(models.Model):
             if years:
                 Matrix._ensure_for_assignment_years(rec, years)
 
+    @api.model
+    def _default_rates_for_employee(self, employee):
+        assignments = self.search([
+            ("employee_id", "=", employee.id),
+            ("active", "=", True),
+            ("project_id.is_tenenet_internal", "=", False),
+        ])
+        if assignments:
+            count = len(assignments)
+            avg_hm = sum(assignments.mapped("wage_hm")) / count
+            avg_ccp = sum(assignments.mapped("wage_ccp")) / count
+            return avg_hm, avg_ccp
+        hourly = employee.hourly_rate or 0.0
+        return hourly, hourly
+
+    @api.model
+    def _get_or_create_internal_assignment(self, employee):
+        internal_project = self.env["tenenet.project"]._get_or_create_internal_project()
+        assignment = self.with_context(active_test=False).search([
+            ("employee_id", "=", employee.id),
+            ("project_id", "=", internal_project.id),
+        ], limit=1)
+        if assignment:
+            if not assignment.active:
+                assignment.active = True
+            return assignment
+
+        wage_hm, wage_ccp = self._default_rates_for_employee(employee)
+        return self.create({
+            "employee_id": employee.id,
+            "project_id": internal_project.id,
+            "wage_hm": wage_hm,
+            "wage_ccp": wage_ccp,
+            "active": True,
+        })
+
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)

@@ -31,13 +31,13 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
             "period": "2026-01-01",
             "hours_pp": 80.0,
             "hours_np": 20.0,
-            "hours_vacation": 10.0,
+            "hours_vacation": 0.0,
         }
         vals.update(overrides)
         return vals
 
     def test_computed_hour_totals(self):
-        ts = self.env["tenenet.project.timesheet"].create(self._timesheet_vals(
+        ts = self.env["tenenet.project.timesheet"].with_context(from_hr_leave_sync=True).create(self._timesheet_vals(
             hours_pp=80.0,
             hours_np=20.0,
             hours_travel=5.0,
@@ -61,7 +61,7 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
             "assignment_id": self.assignment.id,
             "period": "2026-04-01",
         })
-        self.env["tenenet.project.timesheet.line"].create([
+        self.env["tenenet.project.timesheet.line"].with_context(from_hr_leave_sync=True).create([
             {
                 "timesheet_id": ts.id,
                 "hour_type": "pp",
@@ -91,7 +91,7 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
             "assignment_id": self.assignment.id,
             "period": "2026-05-01",
         })
-        ts.write({
+        ts.with_context(from_hr_leave_sync=True).write({
             "hours_pp": 12.0,
             "hours_np": 6.0,
             "hours_vacation": 2.0,
@@ -198,7 +198,7 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
             "hours_pp": 11.0,
             "hours_np": 4.0,
         })
-        self.env["tenenet.project.timesheet"].create({
+        self.env["tenenet.project.timesheet"].with_context(from_hr_leave_sync=True).create({
             "assignment_id": self.assignment2.id,
             "period": "2026-03-01",
             "hours_vacation": 7.0,
@@ -226,12 +226,12 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
         row_pp = matrix.line_ids.filtered(
             lambda line: line.assignment_id == self.assignment and line.hour_type == "pp"
         )
-        row_vacation = matrix.line_ids.filtered(
-            lambda line: line.assignment_id == self.assignment and line.hour_type == "vacation"
+        row_np = matrix.line_ids.filtered(
+            lambda line: line.assignment_id == self.assignment and line.hour_type == "np"
         )
         row_pp.month_01 = 14.0
         row_pp.month_02 = 9.0
-        row_vacation.month_02 = 3.0
+        row_np.month_02 = 3.0
 
         january = self.env["tenenet.project.timesheet"].search([
             ("assignment_id", "=", self.assignment.id),
@@ -243,7 +243,7 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
         ], limit=1)
         self.assertAlmostEqual(january.hours_pp, 14.0)
         self.assertAlmostEqual(february.hours_pp, 9.0)
-        self.assertAlmostEqual(february.hours_vacation, 3.0)
+        self.assertAlmostEqual(february.hours_np, 3.0)
 
     def test_assignment_precreates_monthly_timesheets_for_project_range(self):
         project = self.env["tenenet.project"].create({
@@ -372,12 +372,12 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
         self.assertAlmostEqual(december.hours_pp, 8.0)
 
     def test_utilization_aggregate_from_timesheets(self):
-        self.env["tenenet.project.timesheet"].create(self._timesheet_vals(
+        self.env["tenenet.project.timesheet"].with_context(from_hr_leave_sync=True).create(self._timesheet_vals(
             period="2026-03-01",
             hours_pp=80.0, hours_np=20.0,
             hours_vacation=10.0, hours_sick=5.0, hours_doctor=3.0,
         ))
-        self.env["tenenet.project.timesheet"].create(self._timesheet_vals(
+        self.env["tenenet.project.timesheet"].with_context(from_hr_leave_sync=True).create(self._timesheet_vals(
             assignment=self.assignment2, period="2026-03-01",
             hours_pp=40.0, hours_np=10.0,
             hours_vacation=5.0,
@@ -394,3 +394,27 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
         self.assertAlmostEqual(util.hours_sick, 5.0)
         self.assertAlmostEqual(util.hours_doctor, 3.0)
         self.assertAlmostEqual(util.hours_project_total, 150.0)
+
+    def test_manual_leave_rows_are_blocked(self):
+        ts = self.env["tenenet.project.timesheet"].create({
+            "assignment_id": self.assignment.id,
+            "period": "2026-08-01",
+        })
+        with self.assertRaises(ValidationError):
+            ts.write({"hours_vacation": 2.0})
+
+        with self.assertRaises(ValidationError):
+            self.env["tenenet.project.timesheet.line"].create({
+                "timesheet_id": ts.id,
+                "hour_type": "sick",
+                "hours": 3.0,
+            })
+
+    def test_matrix_leave_rows_are_blocked_for_manual_edit(self):
+        matrix = self.env["tenenet.project.timesheet.matrix"].create({
+            "assignment_id": self.assignment.id,
+            "year": 2026,
+        })
+        leave_row = matrix.line_ids.filtered(lambda line: line.hour_type == "vacation")[:1]
+        with self.assertRaises(ValidationError):
+            leave_row.write({"month_01": 5.0})

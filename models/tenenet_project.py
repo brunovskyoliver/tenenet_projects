@@ -1,4 +1,5 @@
 from odoo import api, fields, models
+from odoo.exceptions import ValidationError
 
 
 class TenenetProject(models.Model):
@@ -11,6 +12,11 @@ class TenenetProject(models.Model):
     description = fields.Text(string="Popis")
     year = fields.Integer(string="Rok")
     active = fields.Boolean(string="Aktívny", default=True)
+    is_tenenet_internal = fields.Boolean(
+        string="Interný TENENET projekt",
+        default=False,
+        help="Interný projekt pre náklady absencií, ktoré nie sú pokryté projektovými pravidlami.",
+    )
     contract_number = fields.Char(string="Číslo zmluvy")
     duration = fields.Integer(string="Trvanie (mesiace)", compute="_compute_duration", store=True)
     recipient_name = fields.Char(string="Príjemca", related="recipient_partner_id.name", store=True, readonly=True, translate=False)
@@ -250,3 +256,41 @@ class TenenetProject(models.Model):
             lines.append(partner.website)
 
         return "\n".join(lines) if lines else False
+
+    @api.constrains("is_tenenet_internal", "active")
+    def _check_single_active_internal_project(self):
+        for rec in self:
+            if not rec.is_tenenet_internal or not rec.active:
+                continue
+            duplicate_count = self.search_count([
+                ("id", "!=", rec.id),
+                ("is_tenenet_internal", "=", True),
+                ("active", "=", True),
+            ])
+            if duplicate_count:
+                raise ValidationError(
+                    "Môže existovať iba jeden aktívny interný TENENET projekt."
+                )
+
+    @api.model
+    def _get_or_create_internal_project(self):
+        project = self.with_context(active_test=False).search([
+            ("is_tenenet_internal", "=", True),
+            ("active", "=", True),
+        ], limit=1)
+        if project:
+            return project
+
+        project = self.with_context(active_test=False).search([
+            ("is_tenenet_internal", "=", True),
+        ], limit=1)
+        if project:
+            if not project.active:
+                project.active = True
+            return project
+
+        return self.create({
+            "name": "TENENET interné náklady",
+            "is_tenenet_internal": True,
+            "active": True,
+        })

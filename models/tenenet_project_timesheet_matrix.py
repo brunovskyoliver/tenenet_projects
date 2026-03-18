@@ -276,6 +276,11 @@ class TenenetProjectTimesheetMatrixLine(models.Model):
         compute="_compute_metadata",
         store=True,
     )
+    leave_sync_managed = fields.Boolean(
+        string="Absencia spravovaná HR",
+        compute="_compute_metadata",
+        store=True,
+    )
     name = fields.Char(
         string="Kategória",
         compute="_compute_metadata",
@@ -331,12 +336,14 @@ class TenenetProjectTimesheetMatrixLine(models.Model):
                 rec.scope = "total"
                 rec.sequence = 9999
                 rec.is_total = True
+                rec.leave_sync_managed = False
             else:
                 meta = meta_by_type.get(rec.hour_type, {})
                 rec.name = meta.get("full_label") or False
                 rec.scope = meta.get("scope") or False
                 rec.sequence = meta.get("sequence") or 0
                 rec.is_total = False
+                rec.leave_sync_managed = rec.scope == "leave"
 
     @api.depends(
         "hour_type",
@@ -396,7 +403,7 @@ class TenenetProjectTimesheetMatrixLine(models.Model):
 
         for rec in self:
             # Skip total rows - they don't sync to timesheets
-            if rec.hour_type == "total":
+            if rec.hour_type == "total" or rec.scope == "leave":
                 continue
             rec.assignment_id._sync_precreated_timesheets()
             for field_name in month_field_names:
@@ -426,6 +433,14 @@ class TenenetProjectTimesheetMatrixLine(models.Model):
             return
 
         for rec in self:
+            if rec.scope == "leave":
+                for field_name in month_field_names:
+                    new_value = vals.get(field_name, 0.0) or 0.0
+                    old_value = rec[field_name] or 0.0
+                    if abs(new_value - old_value) > 1e-9:
+                        raise ValidationError(
+                            "Riadky absencií sú spravované iba cez HR Dovolenky a nie je možné ich ručne upravovať v matici."
+                        )
             for field_name in month_field_names:
                 editable_field = f"{field_name}_editable"
                 if not rec[editable_field]:
