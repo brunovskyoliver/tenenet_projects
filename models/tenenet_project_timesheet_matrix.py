@@ -76,8 +76,9 @@ class TenenetProjectTimesheetMatrix(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
-        for record in records.filtered(lambda rec: not rec.year_picker):
-            record.year_picker = str(record.year)
+        for record in records:
+            if not record.year_picker:
+                record.year_picker = str(record.year)
         records._ensure_line_rows()
         records._load_from_timesheets()
         return records
@@ -132,6 +133,9 @@ class TenenetProjectTimesheetMatrix(models.Model):
         years = self.env.context.get("matrix_year_options")
         if years:
             return [(str(year), str(year)) for year in years]
+        # Use the record's year if available, otherwise fall back to current year
+        if self and self.year:
+            return [(str(self.year), str(self.year))]
         current_year = fields.Date.today().year
         return [(str(current_year), str(current_year))]
 
@@ -151,8 +155,8 @@ class TenenetProjectTimesheetMatrix(models.Model):
         if expected_years:
             self._ensure_for_assignment_years(self.assignment_id, expected_years)
         self._load_from_timesheets()
-        if not self.year_picker:
-            self.year_picker = str(self.year)
+        # Always set year_picker to the matrix's year
+        self.year_picker = str(self.year)
         year_options = expected_years or sorted(self.assignment_id.matrix_ids.mapped("year"))
         if self.year not in year_options:
             year_options = sorted(set(year_options + [self.year]))
