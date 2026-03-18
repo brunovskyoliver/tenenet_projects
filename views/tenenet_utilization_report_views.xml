@@ -138,11 +138,5 @@
             </field>
         </record>
 
-        <record id="action_tenenet_utilization_report" model="ir.actions.client">
-            <field name="name">Vyťaženosť report</field>
-            <field name="tag">account_report</field>
-            <field name="path">tenenet-utilization-report</field>
-            <field name="context" eval="{'report_id': ref('tenenet_projects.tenenet_utilization_report')}"/>
-        </record>
     </data>
 </odoo>
