@@ -21,6 +21,9 @@ MONTH_LABELS = {
     12: "Dec",
 }
 
+# Extended hour type selection with total row
+MATRIX_HOUR_TYPE_SELECTION = HOUR_TYPE_SELECTION + [("total", "SPOLU")]
+
 
 class TenenetProjectTimesheetMatrix(models.Model):
     _name = "tenenet.project.timesheet.matrix"
@@ -80,19 +83,6 @@ class TenenetProjectTimesheetMatrix(models.Model):
         string="Nasledujúci rok",
         compute="_compute_year_navigation",
     )
-    # Monthly totals (computed from line_ids)
-    total_month_01 = fields.Float(string=MONTH_LABELS[1], compute="_compute_monthly_totals", digits=(10, 2))
-    total_month_02 = fields.Float(string=MONTH_LABELS[2], compute="_compute_monthly_totals", digits=(10, 2))
-    total_month_03 = fields.Float(string=MONTH_LABELS[3], compute="_compute_monthly_totals", digits=(10, 2))
-    total_month_04 = fields.Float(string=MONTH_LABELS[4], compute="_compute_monthly_totals", digits=(10, 2))
-    total_month_05 = fields.Float(string=MONTH_LABELS[5], compute="_compute_monthly_totals", digits=(10, 2))
-    total_month_06 = fields.Float(string=MONTH_LABELS[6], compute="_compute_monthly_totals", digits=(10, 2))
-    total_month_07 = fields.Float(string=MONTH_LABELS[7], compute="_compute_monthly_totals", digits=(10, 2))
-    total_month_08 = fields.Float(string=MONTH_LABELS[8], compute="_compute_monthly_totals", digits=(10, 2))
-    total_month_09 = fields.Float(string=MONTH_LABELS[9], compute="_compute_monthly_totals", digits=(10, 2))
-    total_month_10 = fields.Float(string=MONTH_LABELS[10], compute="_compute_monthly_totals", digits=(10, 2))
-    total_month_11 = fields.Float(string=MONTH_LABELS[11], compute="_compute_monthly_totals", digits=(10, 2))
-    total_month_12 = fields.Float(string=MONTH_LABELS[12], compute="_compute_monthly_totals", digits=(10, 2))
 
     _unique_assignment_year = models.Constraint(
         "UNIQUE(assignment_id, year)",
@@ -117,6 +107,7 @@ class TenenetProjectTimesheetMatrix(models.Model):
         Line = self.env["tenenet.project.timesheet.matrix.line"]
         for rec in self:
             existing_types = set(rec.line_ids.mapped("hour_type"))
+            # Create hour type rows
             for field_name, meta in sorted(
                 HOUR_FIELD_META.items(),
                 key=lambda item: item[1]["sequence"],
@@ -126,6 +117,12 @@ class TenenetProjectTimesheetMatrix(models.Model):
                 Line.create({
                     "matrix_id": rec.id,
                     "hour_type": meta["type"],
+                })
+            # Create total row (always last, sequence 9999)
+            if "total" not in existing_types:
+                Line.create({
+                    "matrix_id": rec.id,
+                    "hour_type": "total",
                 })
 
     @api.model
@@ -167,18 +164,6 @@ class TenenetProjectTimesheetMatrix(models.Model):
             rec.next_year = rec.year + 1 if rec.year else 0
             rec.can_go_previous = rec.previous_year in expected_years
             rec.can_go_next = rec.next_year in expected_years
-
-    @api.depends("line_ids.month_01", "line_ids.month_02", "line_ids.month_03",
-                 "line_ids.month_04", "line_ids.month_05", "line_ids.month_06",
-                 "line_ids.month_07", "line_ids.month_08", "line_ids.month_09",
-                 "line_ids.month_10", "line_ids.month_11", "line_ids.month_12")
-    def _compute_monthly_totals(self):
-        for rec in self:
-            for month in range(1, 13):
-                field_name = f"month_{month:02d}"
-                total_field = f"total_{field_name}"
-                total = sum(line[field_name] or 0.0 for line in rec.line_ids)
-                rec[total_field] = total
 
     @api.depends("project_id.name", "employee_id.name", "year")
     def _compute_name(self):
@@ -282,9 +267,14 @@ class TenenetProjectTimesheetMatrixLine(models.Model):
         readonly=True,
     )
     hour_type = fields.Selection(
-        HOUR_TYPE_SELECTION,
+        MATRIX_HOUR_TYPE_SELECTION,
         string="Typ hodín",
         required=True,
+    )
+    is_total = fields.Boolean(
+        string="Je súčtový riadok",
+        compute="_compute_metadata",
+        store=True,
     )
     name = fields.Char(
         string="Kategória",
@@ -292,7 +282,7 @@ class TenenetProjectTimesheetMatrixLine(models.Model):
         store=True,
     )
     scope = fields.Selection(
-        HOUR_SCOPE_SELECTION,
+        HOUR_SCOPE_SELECTION + [("total", "Súčet")],
         string="Skupina",
         compute="_compute_metadata",
         store=True,
@@ -336,12 +326,20 @@ class TenenetProjectTimesheetMatrixLine(models.Model):
     def _compute_metadata(self):
         meta_by_type = {meta["type"]: meta for meta in HOUR_FIELD_META.values()}
         for rec in self:
-            meta = meta_by_type.get(rec.hour_type, {})
-            rec.name = meta.get("full_label") or False
-            rec.scope = meta.get("scope") or False
-            rec.sequence = meta.get("sequence") or 0
+            if rec.hour_type == "total":
+                rec.name = "SPOLU"
+                rec.scope = "total"
+                rec.sequence = 9999
+                rec.is_total = True
+            else:
+                meta = meta_by_type.get(rec.hour_type, {})
+                rec.name = meta.get("full_label") or False
+                rec.scope = meta.get("scope") or False
+                rec.sequence = meta.get("sequence") or 0
+                rec.is_total = False
 
     @api.depends(
+        "hour_type",
         "year",
         "assignment_id.date_start",
         "assignment_id.date_end",
@@ -352,12 +350,16 @@ class TenenetProjectTimesheetMatrixLine(models.Model):
         for rec in self:
             for month in range(1, 13):
                 editable = False
-                if rec.assignment_id and rec.year:
+                # Total row is never editable
+                if rec.hour_type != "total" and rec.assignment_id and rec.year:
                     editable = rec.assignment_id._is_period_in_scope(date(rec.year, month, 1))
                 rec[f"month_{month:02d}_editable"] = editable
 
     def _load_month_values_from_timesheets(self):
         for rec in self:
+            # Skip total rows - they are computed separately
+            if rec.hour_type == "total":
+                continue
             values = {month: 0.0 for month in range(1, 13)}
             relevant_timesheets = rec.assignment_id.timesheet_ids.filtered(
                 lambda timesheet: timesheet.period and timesheet.period.year == rec.year
@@ -371,12 +373,31 @@ class TenenetProjectTimesheetMatrixLine(models.Model):
                 f"month_{month:02d}": values[month]
                 for month in range(1, 13)
             })
+        # Update total rows after loading data
+        self._update_total_rows()
+
+    def _update_total_rows(self):
+        """Update total row values based on sum of all other rows in the matrix."""
+        matrices = self.mapped("matrix_id")
+        for matrix in matrices:
+            total_line = matrix.line_ids.filtered(lambda l: l.hour_type == "total")[:1]
+            if not total_line:
+                continue
+            data_lines = matrix.line_ids.filtered(lambda l: l.hour_type != "total")
+            totals = {}
+            for month in range(1, 13):
+                field_name = f"month_{month:02d}"
+                totals[field_name] = sum(line[field_name] or 0.0 for line in data_lines)
+            total_line.with_context(skip_matrix_month_sync=True).write(totals)
 
     def _sync_month_values_to_timesheets(self, month_field_names):
         Timesheet = self.env["tenenet.project.timesheet"]
         Line = self.env["tenenet.project.timesheet.line"]
 
         for rec in self:
+            # Skip total rows - they don't sync to timesheets
+            if rec.hour_type == "total":
+                continue
             rec.assignment_id._sync_precreated_timesheets()
             for field_name in month_field_names:
                 month = int(field_name.split("_")[1])
@@ -419,7 +440,11 @@ class TenenetProjectTimesheetMatrixLine(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
-        records._load_month_values_from_timesheets()
+        # Load values for non-total rows, then update totals
+        non_total_records = records.filtered(lambda r: r.hour_type != "total")
+        non_total_records._load_month_values_from_timesheets()
+        # Ensure total rows are updated
+        records._update_total_rows()
         return records
 
     def write(self, vals):
