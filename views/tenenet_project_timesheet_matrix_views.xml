@@ -33,18 +33,28 @@
                                     <span class="o_tenenet_matrix_label">Priradenie</span>
                                     <field name="assignment_id" readonly="1" nolabel="1"/>
                                 </div>
-                                <div class="o_tenenet_matrix_meta">
-                                    <span class="o_tenenet_matrix_label">Aktuálny rok</span>
-                                    <field name="year" readonly="1" nolabel="1"/>
+                                <!-- Year navigation with arrow buttons -->
+                                <div class="o_tenenet_matrix_year_nav">
+                                    <field name="can_go_previous" invisible="1"/>
+                                    <field name="can_go_next" invisible="1"/>
+                                    <field name="previous_year" invisible="1"/>
+                                    <field name="next_year" invisible="1"/>
+                                    <button name="action_previous_year"
+                                            type="object"
+                                            icon="fa-chevron-left"
+                                            class="btn btn-secondary o_tenenet_year_nav_btn"
+                                            invisible="not can_go_previous"
+                                            title="Predchádzajúci rok"/>
+                                    <span class="o_tenenet_year_display">
+                                        <field name="year" readonly="1" nolabel="1"/>
+                                    </span>
+                                    <button name="action_next_year"
+                                            type="object"
+                                            icon="fa-chevron-right"
+                                            class="btn btn-secondary o_tenenet_year_nav_btn"
+                                            invisible="not can_go_next"
+                                            title="Nasledujúci rok"/>
                                 </div>
-                                <div class="o_tenenet_matrix_year_switch">
-                                    <span class="o_tenenet_matrix_label">Prepnúť rok</span>
-                                    <field name="year_picker" widget="selection" nolabel="1"/>
-                                </div>
-                                <button name="action_open_selected_year"
-                                        type="object"
-                                        string="Prepnúť rok"
-                                        class="btn btn-primary"/>
                             </div>
                             <field name="line_ids" nolabel="1">
                                 <list string="Mesačná matica"
@@ -83,6 +93,28 @@
                                     <field name="month_12_editable" column_invisible="1"/>
                                 </list>
                             </field>
+                            <!-- Totals row -->
+                            <div class="o_tenenet_matrix_totals">
+                                <group>
+                                    <group string="Súčet hodín za mesiac">
+                                        <div class="o_tenenet_totals_row">
+                                            <span class="o_tenenet_total_label">Spolu</span>
+                                            <field name="total_month_01" readonly="1" nolabel="1" class="o_tenenet_total_value"/>
+                                            <field name="total_month_02" readonly="1" nolabel="1" class="o_tenenet_total_value"/>
+                                            <field name="total_month_03" readonly="1" nolabel="1" class="o_tenenet_total_value"/>
+                                            <field name="total_month_04" readonly="1" nolabel="1" class="o_tenenet_total_value"/>
+                                            <field name="total_month_05" readonly="1" nolabel="1" class="o_tenenet_total_value"/>
+                                            <field name="total_month_06" readonly="1" nolabel="1" class="o_tenenet_total_value"/>
+                                            <field name="total_month_07" readonly="1" nolabel="1" class="o_tenenet_total_value"/>
+                                            <field name="total_month_08" readonly="1" nolabel="1" class="o_tenenet_total_value"/>
+                                            <field name="total_month_09" readonly="1" nolabel="1" class="o_tenenet_total_value"/>
+                                            <field name="total_month_10" readonly="1" nolabel="1" class="o_tenenet_total_value"/>
+                                            <field name="total_month_11" readonly="1" nolabel="1" class="o_tenenet_total_value"/>
+                                            <field name="total_month_12" readonly="1" nolabel="1" class="o_tenenet_total_value"/>
+                                        </div>
+                                    </group>
+                                </group>
+                            </div>
                         </div>
                     </sheet>
                 </form>

@@ -47,10 +47,10 @@
     }
 
     .o_tenenet_matrix_toolbar {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(160px, 1fr)) minmax(140px, 180px) auto;
+        display: flex;
+        flex-wrap: wrap;
         gap: 12px;
-        align-items: end;
+        align-items: center;
         margin-bottom: 16px;
         padding: 16px;
         border-radius: 16px;
@@ -61,8 +61,7 @@
             min-width: 0;
         }
 
-        .o_tenenet_matrix_meta,
-        .o_tenenet_matrix_year_switch {
+        .o_tenenet_matrix_meta {
             display: flex;
             flex-direction: column;
             gap: 6px;
@@ -87,24 +86,52 @@
             font-weight: 600;
         }
 
-        .o_field_selection .o_input,
-        .o_select_menu_toggler {
-            border-radius: 10px;
-            min-height: 42px;
+        // Year navigation styles
+        .o_tenenet_matrix_year_nav {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: auto;
             padding: 8px 12px;
-            background: rgba(255, 255, 255, 0.04);
-        }
-
-        > .btn {
-            min-height: 46px;
             border-radius: 12px;
-            padding: 0 18px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+
+            .o_tenenet_year_nav_btn {
+                min-width: 40px;
+                min-height: 40px;
+                padding: 0;
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(255, 255, 255, 0.05);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                transition: all 0.2s ease;
+
+                &:hover {
+                    background: rgba(255, 255, 255, 0.1);
+                    border-color: rgba(255, 255, 255, 0.2);
+                }
+
+                .fa {
+                    font-size: 16px;
+                }
+            }
+
+            .o_tenenet_year_display {
+                min-width: 80px;
+                text-align: center;
+                font-size: 24px;
+                font-weight: 700;
+                padding: 0 16px;
+            }
         }
     }
 
     .o_field_x2many .o_list_renderer {
         overflow: auto;
-        max-height: calc(100vh - 250px);
+        max-height: calc(100vh - 320px);
         border-radius: 12px;
         width: 100%;
     }
@@ -161,10 +188,54 @@
     .o_group .o_list_table tbody td {
         white-space: nowrap;
     }
+
+    // Totals row styles
+    .o_tenenet_matrix_totals {
+        margin-top: 16px;
+        padding: 16px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+
+        .o_inner_group {
+            width: 100%;
+        }
+
+        .o_tenenet_totals_row {
+            display: grid;
+            grid-template-columns: 150px repeat(12, 1fr);
+            gap: 8px;
+            align-items: center;
+            padding: 12px 0;
+            font-weight: 600;
+            font-size: 15px;
+
+            .o_tenenet_total_label {
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                color: rgba(255, 255, 255, 0.8);
+            }
+
+            .o_tenenet_total_value {
+                text-align: right;
+                padding: 8px 12px;
+                border-radius: 8px;
+                background: rgba(255, 255, 255, 0.04);
+                min-width: 80px;
+            }
+        }
+    }
 }
 
 @media (max-width: 1400px) {
     .o_tenenet_timesheet_matrix_view .o_tenenet_matrix_toolbar {
-        grid-template-columns: repeat(2, minmax(160px, 1fr));
+        flex-direction: column;
+        align-items: stretch;
+
+        .o_tenenet_matrix_year_nav {
+            margin-left: 0;
+            justify-content: center;
+        }
     }
 }

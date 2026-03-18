@@ -63,10 +63,36 @@ class TenenetProjectTimesheetMatrix(models.Model):
         "matrix_id",
         string="Riadky matice",
     )
-    year_picker = fields.Selection(
-        selection="_selection_year_picker",
-        string="Prepnúť rok",
+    # Year navigation
+    can_go_previous = fields.Boolean(
+        string="Môže ísť späť",
+        compute="_compute_year_navigation",
     )
+    can_go_next = fields.Boolean(
+        string="Môže ísť ďalej",
+        compute="_compute_year_navigation",
+    )
+    previous_year = fields.Integer(
+        string="Predchádzajúci rok",
+        compute="_compute_year_navigation",
+    )
+    next_year = fields.Integer(
+        string="Nasledujúci rok",
+        compute="_compute_year_navigation",
+    )
+    # Monthly totals (computed from line_ids)
+    total_month_01 = fields.Float(string=MONTH_LABELS[1], compute="_compute_monthly_totals", digits=(10, 2))
+    total_month_02 = fields.Float(string=MONTH_LABELS[2], compute="_compute_monthly_totals", digits=(10, 2))
+    total_month_03 = fields.Float(string=MONTH_LABELS[3], compute="_compute_monthly_totals", digits=(10, 2))
+    total_month_04 = fields.Float(string=MONTH_LABELS[4], compute="_compute_monthly_totals", digits=(10, 2))
+    total_month_05 = fields.Float(string=MONTH_LABELS[5], compute="_compute_monthly_totals", digits=(10, 2))
+    total_month_06 = fields.Float(string=MONTH_LABELS[6], compute="_compute_monthly_totals", digits=(10, 2))
+    total_month_07 = fields.Float(string=MONTH_LABELS[7], compute="_compute_monthly_totals", digits=(10, 2))
+    total_month_08 = fields.Float(string=MONTH_LABELS[8], compute="_compute_monthly_totals", digits=(10, 2))
+    total_month_09 = fields.Float(string=MONTH_LABELS[9], compute="_compute_monthly_totals", digits=(10, 2))
+    total_month_10 = fields.Float(string=MONTH_LABELS[10], compute="_compute_monthly_totals", digits=(10, 2))
+    total_month_11 = fields.Float(string=MONTH_LABELS[11], compute="_compute_monthly_totals", digits=(10, 2))
+    total_month_12 = fields.Float(string=MONTH_LABELS[12], compute="_compute_monthly_totals", digits=(10, 2))
 
     _unique_assignment_year = models.Constraint(
         "UNIQUE(assignment_id, year)",
@@ -76,9 +102,6 @@ class TenenetProjectTimesheetMatrix(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
-        for record in records:
-            if not record.year_picker:
-                record.year_picker = str(record.year)
         records._ensure_line_rows()
         records._load_from_timesheets()
         return records
@@ -88,9 +111,6 @@ class TenenetProjectTimesheetMatrix(models.Model):
         if "assignment_id" in vals or "year" in vals:
             self._ensure_line_rows()
             self._load_from_timesheets()
-        if "year" in vals and "year_picker" not in vals:
-            for record in self:
-                record.year_picker = str(record.year)
         return result
 
     def _ensure_line_rows(self):
@@ -130,27 +150,35 @@ class TenenetProjectTimesheetMatrix(models.Model):
         return existing | created
 
     def _selection_year_picker(self):
-        # Priority 1: Context with explicit year options
-        years = self.env.context.get("matrix_year_options")
-        if years:
-            return [(str(year), str(year)) for year in years]
-        
-        # Priority 2: If we have a record with an assignment, get expected years
-        if self and self.assignment_id:
-            expected_years = self.assignment_id._get_expected_years()
-            if expected_years:
-                # Ensure current year is included
-                if self.year and self.year not in expected_years:
-                    expected_years = sorted(set(expected_years + [self.year]))
-                return [(str(year), str(year)) for year in expected_years]
-        
-        # Priority 3: Use the record's year if available
+        # Kept for backward compatibility, not used in UI anymore
         if self and self.year:
             return [(str(self.year), str(self.year))]
-        
-        # Priority 4: Fall back to current year only as last resort
         current_year = fields.Date.today().year
         return [(str(current_year), str(current_year))]
+
+    @api.depends("year", "assignment_id.date_start", "assignment_id.date_end")
+    def _compute_year_navigation(self):
+        for rec in self:
+            expected_years = rec.assignment_id._get_expected_years() if rec.assignment_id else []
+            if not expected_years:
+                expected_years = [rec.year] if rec.year else []
+            
+            rec.previous_year = rec.year - 1 if rec.year else 0
+            rec.next_year = rec.year + 1 if rec.year else 0
+            rec.can_go_previous = rec.previous_year in expected_years
+            rec.can_go_next = rec.next_year in expected_years
+
+    @api.depends("line_ids.month_01", "line_ids.month_02", "line_ids.month_03",
+                 "line_ids.month_04", "line_ids.month_05", "line_ids.month_06",
+                 "line_ids.month_07", "line_ids.month_08", "line_ids.month_09",
+                 "line_ids.month_10", "line_ids.month_11", "line_ids.month_12")
+    def _compute_monthly_totals(self):
+        for rec in self:
+            for month in range(1, 13):
+                field_name = f"month_{month:02d}"
+                total_field = f"total_{field_name}"
+                total = sum(line[field_name] or 0.0 for line in rec.line_ids)
+                rec[total_field] = total
 
     @api.depends("project_id.name", "employee_id.name", "year")
     def _compute_name(self):
@@ -168,11 +196,6 @@ class TenenetProjectTimesheetMatrix(models.Model):
         if expected_years:
             self._ensure_for_assignment_years(self.assignment_id, expected_years)
         self._load_from_timesheets()
-        # Always set year_picker to the matrix's year
-        self.year_picker = str(self.year)
-        year_options = expected_years or sorted(self.assignment_id.matrix_ids.mapped("year"))
-        if self.year not in year_options:
-            year_options = sorted(set(year_options + [self.year]))
         return {
             "type": "ir.actions.act_window",
             "name": "Mesačná matica hodín",
@@ -183,20 +206,32 @@ class TenenetProjectTimesheetMatrix(models.Model):
             ],
             "res_id": self.id,
             "target": "current",
-            "context": {
-                **self.env.context,
-                "matrix_year_options": year_options,
-            },
         }
 
-    def action_open_selected_year(self):
+    def _action_open_year(self, target_year):
+        """Open the matrix for the specified year."""
         self.ensure_one()
-        selected_year = int(self.year_picker or self.year)
         matrix = self._ensure_for_assignment_years(
             self.assignment_id,
-            [selected_year],
-        ).filtered(lambda rec: rec.year == selected_year)[:1]
-        return matrix.action_open_form()
+            [target_year],
+        ).filtered(lambda rec: rec.year == target_year)[:1]
+        if matrix:
+            return matrix.action_open_form()
+        return self.action_open_form()
+
+    def action_previous_year(self):
+        """Navigate to the previous year's matrix."""
+        self.ensure_one()
+        if self.can_go_previous:
+            return self._action_open_year(self.previous_year)
+        return self.action_open_form()
+
+    def action_next_year(self):
+        """Navigate to the next year's matrix."""
+        self.ensure_one()
+        if self.can_go_next:
+            return self._action_open_year(self.next_year)
+        return self.action_open_form()
 
     def name_get(self):
         return [
