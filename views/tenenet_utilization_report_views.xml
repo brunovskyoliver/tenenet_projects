@@ -21,121 +21,139 @@
             <field name="custom_handler_model_id" ref="model_tenenet_utilization_report_handler"/>
             <field name="column_ids">
                 <record id="tenenet_utilization_report_column_employee" model="account.report.column">
+                    <field name="sequence">10</field>
                     <field name="name">Zamestnanec</field>
                     <field name="expression_label">employee_name</field>
                     <field name="figure_type">string</field>
                 </record>
                 <record id="tenenet_utilization_report_column_manager" model="account.report.column">
+                    <field name="sequence">20</field>
                     <field name="name">Manažér</field>
                     <field name="expression_label">manager_name</field>
                     <field name="figure_type">string</field>
                 </record>
                 <record id="tenenet_utilization_report_column_work_ratio" model="account.report.column">
+                    <field name="sequence">30</field>
                     <field name="name">Úväzok (%)</field>
                     <field name="expression_label">work_ratio</field>
                     <field name="figure_type">float</field>
                 </record>
                 <record id="tenenet_utilization_report_column_capacity_hours" model="account.report.column">
+                    <field name="sequence">40</field>
                     <field name="name">Pracovné hodiny</field>
                     <field name="expression_label">capacity_hours</field>
                     <field name="figure_type">float</field>
                 </record>
                 <record id="tenenet_utilization_report_column_leaves_kpi_hours" model="account.report.column">
+                    <field name="sequence">50</field>
                     <field name="name">Absencie pre KPI</field>
                     <field name="expression_label">leaves_kpi_hours</field>
                     <field name="figure_type">float</field>
                 </record>
                 <record id="tenenet_utilization_report_column_hours_pp" model="account.report.column">
+                    <field name="sequence">60</field>
                     <field name="name">PP</field>
                     <field name="expression_label">hours_pp</field>
                     <field name="figure_type">float</field>
                 </record>
                 <record id="tenenet_utilization_report_column_hours_np" model="account.report.column">
+                    <field name="sequence">70</field>
                     <field name="name">NP</field>
                     <field name="expression_label">hours_np</field>
                     <field name="figure_type">float</field>
                 </record>
                 <record id="tenenet_utilization_report_column_hours_travel" model="account.report.column">
+                    <field name="sequence">80</field>
                     <field name="name">Cesta</field>
                     <field name="expression_label">hours_travel</field>
                     <field name="figure_type">float</field>
                 </record>
                 <record id="tenenet_utilization_report_column_hours_training" model="account.report.column">
+                    <field name="sequence">90</field>
                     <field name="name">Školenie</field>
                     <field name="expression_label">hours_training</field>
                     <field name="figure_type">float</field>
                 </record>
                 <record id="tenenet_utilization_report_column_hours_ambulance" model="account.report.column">
+                    <field name="sequence">100</field>
                     <field name="name">Ambulancia</field>
                     <field name="expression_label">hours_ambulance</field>
                     <field name="figure_type">float</field>
                 </record>
                 <record id="tenenet_utilization_report_column_hours_international" model="account.report.column">
+                    <field name="sequence">110</field>
                     <field name="name">Medzinárodné</field>
                     <field name="expression_label">hours_international</field>
                     <field name="figure_type">float</field>
                 </record>
                 <record id="tenenet_utilization_report_column_hours_project_total" model="account.report.column">
+                    <field name="sequence">120</field>
                     <field name="name">Projekt spolu</field>
                     <field name="expression_label">hours_project_total</field>
                     <field name="figure_type">float</field>
                 </record>
                 <record id="tenenet_utilization_report_column_hours_vacation" model="account.report.column">
+                    <field name="sequence">130</field>
                     <field name="name">Dovolenka</field>
                     <field name="expression_label">hours_vacation</field>
                     <field name="figure_type">float</field>
                 </record>
                 <record id="tenenet_utilization_report_column_hours_doctor" model="account.report.column">
+                    <field name="sequence">140</field>
                     <field name="name">Lekár</field>
                     <field name="expression_label">hours_doctor</field>
                     <field name="figure_type">float</field>
                 </record>
                 <record id="tenenet_utilization_report_column_hours_sick" model="account.report.column">
+                    <field name="sequence">150</field>
                     <field name="name">PN/OČR</field>
                     <field name="expression_label">hours_sick</field>
                     <field name="figure_type">float</field>
                 </record>
                 <record id="tenenet_utilization_report_column_hours_holidays" model="account.report.column">
+                    <field name="sequence">160</field>
                     <field name="name">Sviatky</field>
                     <field name="expression_label">hours_holidays</field>
                     <field name="figure_type">float</field>
                 </record>
                 <record id="tenenet_utilization_report_column_hours_ballast" model="account.report.column">
+                    <field name="sequence">170</field>
                     <field name="name">Balast</field>
                     <field name="expression_label">hours_ballast</field>
                     <field name="figure_type">float</field>
                 </record>
                 <record id="tenenet_utilization_report_column_hours_non_project_total" model="account.report.column">
+                    <field name="sequence">180</field>
                     <field name="name">Neprojekt spolu</field>
                     <field name="expression_label">hours_non_project_total</field>
                     <field name="figure_type">float</field>
                 </record>
                 <record id="tenenet_utilization_report_column_utilization_rate" model="account.report.column">
+                    <field name="sequence">190</field>
                     <field name="name">Vyťaženosť</field>
                     <field name="expression_label">utilization_rate</field>
                     <field name="figure_type">percentage</field>
                 </record>
                 <record id="tenenet_utilization_report_column_utilization_status" model="account.report.column">
+                    <field name="sequence">200</field>
                     <field name="name">Stav vyťaženosti</field>
                     <field name="expression_label">utilization_status</field>
                     <field name="figure_type">string</field>
                 </record>
-                <!-- <record id="tenenet_utilization_report_column_non_project_rate" model="account.report.column">
-                    <field name="name">Miera balastu</field>
-                    <field name="expression_label">non_project_rate</field>
-                    <field name="figure_type">percentage</field>
-                </record> -->
-                <record id="tenenet_utilization_report_column_non_project_percentage" model="account.report.column">
+                <record id="tenenet_utilization_report_column_non_project_rate" model="account.report.column">
+                    <field name="sequence">210</field>
                     <field name="name">Procento balastu</field>
                     <field name="expression_label">non_project_percentage</field>
-                    <field name="figure_type">percentage</field>
+                    <field name="figure_type">float</field>
                 </record>
                 <record id="tenenet_utilization_report_column_non_project_status" model="account.report.column">
+                    <field name="sequence">220</field>
                     <field name="name">Stav balastu</field>
                     <field name="expression_label">non_project_status</field>
                     <field name="figure_type">string</field>
                 </record>
                 <record id="tenenet_utilization_report_column_hours_diff" model="account.report.column">
+                    <field name="sequence">230</field>
                     <field name="name">Rozdiel hodín</field>
                     <field name="expression_label">hours_diff</field>
                     <field name="figure_type">float</field>
