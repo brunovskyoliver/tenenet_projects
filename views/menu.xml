@@ -19,5 +19,6 @@
         <menuitem id="menu_tenenet_donors" name="Donori" parent="menu_tenenet_configuration" action="action_tenenet_donor" sequence="20"/>
         <menuitem id="menu_tenenet_assignments" name="Priradenia zamestnancov" parent="menu_tenenet_configuration" action="action_tenenet_project_assignment" sequence="30"/>
         <menuitem id="menu_tenenet_tenenet_cost" name="Tenenet náklady (rezíduum)" parent="menu_tenenet_configuration" action="action_tenenet_employee_tenenet_cost" sequence="40"/>
+        <menuitem id="menu_tenenet_utilization_sync" name="Synchronizovať vyťaženosť" parent="menu_tenenet_configuration" action="action_tenenet_utilization_sync_wizard" sequence="50" groups="tenenet_projects.group_tenenet_manager"/>
     </data>
 </odoo>

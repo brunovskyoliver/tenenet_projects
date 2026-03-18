@@ -382,11 +382,15 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
             hours_pp=40.0, hours_np=10.0,
             hours_vacation=5.0,
         ))
-        util = self.env["tenenet.utilization"].create({
-            "employee_id": self.employee.id,
-            "period": "2026-03-01",
-            "capacity_hours": 176.0,
-        })
+        util = self.env["tenenet.utilization"].search([
+            ("employee_id", "=", self.employee.id),
+            ("period", "=", "2026-03-01"),
+        ], limit=1)
+        if not util:
+            util = self.env["tenenet.utilization"].create({
+                "employee_id": self.employee.id,
+                "period": "2026-03-01",
+            })
         util.invalidate_recordset()
         self.assertAlmostEqual(util.hours_pp, 120.0)
         self.assertAlmostEqual(util.hours_np, 30.0)

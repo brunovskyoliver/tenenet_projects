@@ -40,8 +40,9 @@ class TestTenenetPlan01(TransactionCase):
             }
         )
 
-        self.assertAlmostEqual(p1.allocation_pct, 0.8, places=4)
-        self.assertAlmostEqual(p2.allocation_pct, 0.2, places=4)
+        total_headcount = sum(self.env["tenenet.program"].search([]).mapped("headcount"))
+        self.assertAlmostEqual(p1.allocation_pct, p1.headcount / total_headcount, places=4)
+        self.assertAlmostEqual(p2.allocation_pct, p2.headcount / total_headcount, places=4)
 
     def test_donor_creation_with_selection(self):
         partner = self.env["res.partner"].create(
@@ -64,14 +65,15 @@ class TestTenenetPlan01(TransactionCase):
 
     def test_hr_employee_tenenet_fields(self):
         position = self.env["hr.job"].create({"name": "Sociálny pracovník"})
+        calendar = self.env["resource.calendar"].create({"name": "Kalendár 6h"})
+        calendar.hours_per_day = 6.0
         employee = self.env["hr.employee"].create(
             {
                 "name": "Test Zamestnanec",
                 "tenenet_number": 123,
                 "title_academic": "Mgr.",
                 "job_id": position.id,
-                "work_hours": 8.0,
-                "work_ratio": 100.0,
+                "resource_calendar_id": calendar.id,
                 "hourly_rate": 15.5,
             }
         )
@@ -80,3 +82,5 @@ class TestTenenetPlan01(TransactionCase):
         self.assertEqual(employee.title_academic, "Mgr.")
         self.assertEqual(employee.job_id, position)
         self.assertEqual(employee.position, "Sociálny pracovník")
+        self.assertAlmostEqual(employee.work_ratio, 75.0, places=2)
+        self.assertAlmostEqual(employee.work_hours, 120.0, places=2)

@@ -270,6 +270,7 @@ class TenenetProjectTimesheet(models.Model):
         for record, (_vals, hour_vals) in zip(records, split_vals):
             record._sync_line_hours(hour_vals)
         records._sync_employee_period_costs()
+        self.env["tenenet.utilization"]._sync_current_period()
         return records
 
     def write(self, vals):
@@ -279,6 +280,7 @@ class TenenetProjectTimesheet(models.Model):
             self._sync_line_hours(hour_vals)
         if hour_vals or {"assignment_id", "period"} & set(clean_vals):
             self._sync_employee_period_costs()
+        self.env["tenenet.utilization"]._sync_current_period()
         return result
 
     def unlink(self):
@@ -287,6 +289,7 @@ class TenenetProjectTimesheet(models.Model):
         Cost = self.env["tenenet.employee.tenenet.cost"]
         for employee_id, period in sync_keys:
             Cost._sync_for_employee_period(employee_id, period)
+        self.env["tenenet.utilization"]._sync_current_period()
         return result
 
     @api.depends("line_ids.hour_type", "line_ids.hours")

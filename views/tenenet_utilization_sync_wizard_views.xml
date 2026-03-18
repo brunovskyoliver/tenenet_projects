@@ -1,0 +1,27 @@
+<odoo>
+    <data>
+        <record id="view_tenenet_utilization_sync_wizard_form" model="ir.ui.view">
+            <field name="name">tenenet.utilization.sync.wizard.form</field>
+            <field name="model">tenenet.utilization.sync.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Synchronizácia vyťaženosti">
+                    <group>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+                    <footer>
+                        <button string="Synchronizovať" type="object" name="action_sync" class="btn-primary"/>
+                        <button string="Zrušiť" special="cancel" class="btn-secondary"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_tenenet_utilization_sync_wizard" model="ir.actions.act_window">
+            <field name="name">Synchronizovať vyťaženosť</field>
+            <field name="res_model">tenenet.utilization.sync.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+    </data>
+</odoo>

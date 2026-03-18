@@ -143,6 +143,7 @@ class HrLeave(models.Model):
                 len(allocations),
             )
             SyncEntry._replace_for_leave(leave, allocations)
+        self.env["tenenet.utilization"]._sync_current_period()
 
     def _ensure_tenenet_leave_mapping(self):
         """Validation guard: each approved leave must resolve to a TENENET leave category."""
