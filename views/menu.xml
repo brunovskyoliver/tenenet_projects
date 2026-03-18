@@ -11,11 +11,13 @@
 
         <menuitem id="menu_tenenet_reporting" name="Reporty" parent="menu_tenenet_root" sequence="15"/>
         <menuitem id="menu_tenenet_pl_line" name="P&amp;L podľa programu" parent="menu_tenenet_reporting" action="action_tenenet_pl_line" sequence="10"/>
+        <menuitem id="menu_tenenet_company_expense" name="Náklady Tenenet (absencie)" parent="menu_tenenet_reporting" action="action_tenenet_company_expense" sequence="20"/>
+        <menuitem id="menu_tenenet_company_expense_summary" name="Súhrn nákladov Tenenet" parent="menu_tenenet_reporting" action="action_tenenet_company_expense_summary" sequence="30"/>
 
         <menuitem id="menu_tenenet_configuration" name="Konfigurácia" parent="menu_tenenet_root" sequence="20" groups="tenenet_projects.group_tenenet_manager"/>
         <menuitem id="menu_tenenet_programs" name="Programy" parent="menu_tenenet_configuration" action="action_tenenet_program" sequence="10"/>
         <menuitem id="menu_tenenet_donors" name="Donori" parent="menu_tenenet_configuration" action="action_tenenet_donor" sequence="20"/>
         <menuitem id="menu_tenenet_assignments" name="Priradenia zamestnancov" parent="menu_tenenet_configuration" action="action_tenenet_project_assignment" sequence="30"/>
-        <menuitem id="menu_tenenet_tenenet_cost" name="Tenenet náklady" parent="menu_tenenet_configuration" action="action_tenenet_employee_tenenet_cost" sequence="40"/>
+        <menuitem id="menu_tenenet_tenenet_cost" name="Tenenet náklady (rezíduum)" parent="menu_tenenet_configuration" action="action_tenenet_employee_tenenet_cost" sequence="40"/>
     </data>
 </odoo>

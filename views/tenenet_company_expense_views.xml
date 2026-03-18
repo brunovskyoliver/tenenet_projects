@@ -1,0 +1,195 @@
+<odoo>
+    <data>
+        <!-- Tenenet Company Expense - List View -->
+        <record id="view_tenenet_company_expense_list" model="ir.ui.view">
+            <field name="name">tenenet.company.expense.list</field>
+            <field name="model">tenenet.company.expense</field>
+            <field name="arch" type="xml">
+                <list string="Náklady Tenenet">
+                    <field name="period"/>
+                    <field name="employee_id"/>
+                    <field name="expense_type"/>
+                    <field name="hours" sum="Hodiny spolu"/>
+                    <field name="hourly_rate_hm" optional="hide"/>
+                    <field name="hourly_rate_ccp" optional="hide"/>
+                    <field name="cost_hm" sum="HM spolu"/>
+                    <field name="cost_ccp" sum="CCP spolu"/>
+                    <field name="leave_id" optional="hide"/>
+                    <field name="note" optional="hide"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Tenenet Company Expense - Form View -->
+        <record id="view_tenenet_company_expense_form" model="ir.ui.view">
+            <field name="name">tenenet.company.expense.form</field>
+            <field name="model">tenenet.company.expense</field>
+            <field name="arch" type="xml">
+                <form string="Náklad Tenenet">
+                    <sheet>
+                        <group>
+                            <group string="Základné údaje">
+                                <field name="employee_id"/>
+                                <field name="period"/>
+                                <field name="expense_type"/>
+                                <field name="leave_id"/>
+                            </group>
+                            <group string="Hodiny a sadzby">
+                                <field name="hours"/>
+                                <field name="hourly_rate_hm"/>
+                                <field name="hourly_rate_ccp"/>
+                            </group>
+                        </group>
+                        <group>
+                            <group string="Náklady">
+                                <field name="currency_id" invisible="1"/>
+                                <field name="cost_hm"/>
+                                <field name="cost_ccp"/>
+                            </group>
+                        </group>
+                        <group string="Poznámka">
+                            <field name="note" nolabel="1"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Tenenet Company Expense - Search View -->
+        <record id="view_tenenet_company_expense_search" model="ir.ui.view">
+            <field name="name">tenenet.company.expense.search</field>
+            <field name="model">tenenet.company.expense</field>
+            <field name="arch" type="xml">
+                <search string="Náklady Tenenet">
+                    <field name="employee_id"/>
+                    <field name="period"/>
+                    <field name="expense_type"/>
+                    <separator/>
+                    <filter string="Dovolenka" name="filter_vacation" domain="[('expense_type', '=', 'vacation')]"/>
+                    <filter string="PN/OČR" name="filter_sick" domain="[('expense_type', '=', 'sick')]"/>
+                    <filter string="Lekár" name="filter_doctor" domain="[('expense_type', '=', 'doctor')]"/>
+                    <filter string="Sviatky" name="filter_holidays" domain="[('expense_type', '=', 'holidays')]"/>
+                    <separator/>
+                    <filter string="Aktuálny mesiac" name="filter_current_month"
+                            domain="[('period', '&gt;=', (context_today() - relativedelta(day=1)).strftime('%Y-%m-%d')),
+                                     ('period', '&lt;', (context_today() + relativedelta(months=1, day=1)).strftime('%Y-%m-%d'))]"/>
+                    <filter string="Aktuálny rok" name="filter_current_year"
+                            domain="[('period', '&gt;=', (context_today() - relativedelta(month=1, day=1)).strftime('%Y-%m-%d')),
+                                     ('period', '&lt;', (context_today() + relativedelta(years=1, month=1, day=1)).strftime('%Y-%m-%d'))]"/>
+                    <separator/>
+                    <group expand="0" string="Zoskupiť podľa">
+                        <filter string="Zamestnanec" name="group_employee" context="{'group_by': 'employee_id'}"/>
+                        <filter string="Obdobie" name="group_period" context="{'group_by': 'period'}"/>
+                        <filter string="Typ nákladu" name="group_type" context="{'group_by': 'expense_type'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- Tenenet Company Expense - Pivot View -->
+        <record id="view_tenenet_company_expense_pivot" model="ir.ui.view">
+            <field name="name">tenenet.company.expense.pivot</field>
+            <field name="model">tenenet.company.expense</field>
+            <field name="arch" type="xml">
+                <pivot string="Náklady Tenenet">
+                    <field name="period" type="row" interval="month"/>
+                    <field name="expense_type" type="col"/>
+                    <field name="hours" type="measure"/>
+                    <field name="cost_hm" type="measure"/>
+                    <field name="cost_ccp" type="measure"/>
+                </pivot>
+            </field>
+        </record>
+
+        <!-- Tenenet Company Expense - Graph View -->
+        <record id="view_tenenet_company_expense_graph" model="ir.ui.view">
+            <field name="name">tenenet.company.expense.graph</field>
+            <field name="model">tenenet.company.expense</field>
+            <field name="arch" type="xml">
+                <graph string="Náklady Tenenet" type="bar">
+                    <field name="period" interval="month"/>
+                    <field name="cost_ccp" type="measure"/>
+                </graph>
+            </field>
+        </record>
+
+        <!-- Tenenet Company Expense - Action -->
+        <record id="action_tenenet_company_expense" model="ir.actions.act_window">
+            <field name="name">Náklady Tenenet</field>
+            <field name="res_model">tenenet.company.expense</field>
+            <field name="view_mode">list,form,pivot,graph</field>
+            <field name="search_view_id" ref="view_tenenet_company_expense_search"/>
+            <field name="context">{'search_default_group_period': 1}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Žiadne náklady Tenenet
+                </p>
+                <p>
+                    Tu sa zobrazujú náklady na absencie, ktoré nie sú fakturované žiadnemu projektu.
+                    Tieto náklady znáša spoločnosť Tenenet.
+                </p>
+            </field>
+        </record>
+
+        <!-- Tenenet Company Expense Summary - List View -->
+        <record id="view_tenenet_company_expense_summary_list" model="ir.ui.view">
+            <field name="name">tenenet.company.expense.summary.list</field>
+            <field name="model">tenenet.company.expense.summary</field>
+            <field name="arch" type="xml">
+                <list string="Súhrn nákladov Tenenet" create="0" edit="0" delete="0">
+                    <field name="period"/>
+                    <field name="expense_type"/>
+                    <field name="employee_count"/>
+                    <field name="total_hours" sum="Hodiny spolu"/>
+                    <field name="total_cost_hm" sum="HM spolu"/>
+                    <field name="total_cost_ccp" sum="CCP spolu"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Tenenet Company Expense Summary - Pivot View -->
+        <record id="view_tenenet_company_expense_summary_pivot" model="ir.ui.view">
+            <field name="name">tenenet.company.expense.summary.pivot</field>
+            <field name="model">tenenet.company.expense.summary</field>
+            <field name="arch" type="xml">
+                <pivot string="Súhrn nákladov Tenenet">
+                    <field name="period" type="row" interval="month"/>
+                    <field name="expense_type" type="col"/>
+                    <field name="total_hours" type="measure"/>
+                    <field name="total_cost_hm" type="measure"/>
+                    <field name="total_cost_ccp" type="measure"/>
+                </pivot>
+            </field>
+        </record>
+
+        <!-- Tenenet Company Expense Summary - Action -->
+        <record id="action_tenenet_company_expense_summary" model="ir.actions.act_window">
+            <field name="name">Súhrn nákladov Tenenet</field>
+            <field name="res_model">tenenet.company.expense.summary</field>
+            <field name="view_mode">list,pivot</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Žiadne náklady Tenenet
+                </p>
+                <p>
+                    Súhrnný prehľad nákladov na absencie podľa obdobia a typu.
+                </p>
+            </field>
+        </record>
+
+        <!-- hr.leave.type - Extend Form View -->
+        <record id="view_hr_leave_type_form_tenenet" model="ir.ui.view">
+            <field name="name">hr.leave.type.form.tenenet</field>
+            <field name="model">hr.leave.type</field>
+            <field name="inherit_id" ref="hr_holidays.edit_holiday_status_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//group[@name='request_details']" position="after">
+                    <group string="Tenenet integrácia" name="tenenet_integration">
+                        <field name="is_tenenet_leave"/>
+                        <field name="tenenet_hour_type" invisible="not is_tenenet_leave"/>
+                    </group>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

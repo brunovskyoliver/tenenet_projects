@@ -1,0 +1,269 @@
+<odoo>
+    <data noupdate="1">
+        <!--
+            Tenenet Leave Types (hr.leave.type)
+            These are the absence types used in Tenenet timesheet calculations.
+            Each is mapped to a specific hour category via tenenet_hour_type.
+        -->
+
+        <!-- Dovolenka (Vacation) -->
+        <record id="leave_type_dovolenka" model="hr.leave.type">
+            <field name="name">Dovolenka</field>
+            <field name="tenenet_hour_type">vacation</field>
+            <field name="is_tenenet_leave">True</field>
+            <field name="time_type">leave</field>
+            <field name="request_unit">day</field>
+            <field name="leave_validation_type">both</field>
+            <field name="allocation_validation_type">hr</field>
+            <field name="requires_allocation">True</field>
+            <field name="employee_requests">True</field>
+            <field name="create_calendar_meeting">True</field>
+            <field name="color">2</field>
+            <field name="sequence">10</field>
+        </record>
+
+        <!-- PN - Práceneschopnosť (Sick Leave) -->
+        <record id="leave_type_pn" model="hr.leave.type">
+            <field name="name">PN (Práceneschopnosť)</field>
+            <field name="tenenet_hour_type">sick</field>
+            <field name="is_tenenet_leave">True</field>
+            <field name="time_type">leave</field>
+            <field name="request_unit">day</field>
+            <field name="leave_validation_type">hr</field>
+            <field name="allocation_validation_type">no</field>
+            <field name="requires_allocation">False</field>
+            <field name="employee_requests">True</field>
+            <field name="support_document">True</field>
+            <field name="create_calendar_meeting">True</field>
+            <field name="unpaid">False</field>
+            <field name="color">1</field>
+            <field name="sequence">20</field>
+        </record>
+
+        <!-- OČR - Ošetrovanie člena rodiny -->
+        <record id="leave_type_ocr" model="hr.leave.type">
+            <field name="name">OČR (Ošetrovanie člena rodiny)</field>
+            <field name="tenenet_hour_type">sick</field>
+            <field name="is_tenenet_leave">True</field>
+            <field name="time_type">leave</field>
+            <field name="request_unit">day</field>
+            <field name="leave_validation_type">hr</field>
+            <field name="allocation_validation_type">no</field>
+            <field name="requires_allocation">False</field>
+            <field name="employee_requests">True</field>
+            <field name="support_document">True</field>
+            <field name="create_calendar_meeting">True</field>
+            <field name="unpaid">False</field>
+            <field name="color">1</field>
+            <field name="sequence">25</field>
+        </record>
+
+        <!-- Lekár (Doctor visit) -->
+        <record id="leave_type_lekar" model="hr.leave.type">
+            <field name="name">Lekár</field>
+            <field name="tenenet_hour_type">doctor</field>
+            <field name="is_tenenet_leave">True</field>
+            <field name="time_type">leave</field>
+            <field name="request_unit">hour</field>
+            <field name="leave_validation_type">manager</field>
+            <field name="allocation_validation_type">no</field>
+            <field name="requires_allocation">False</field>
+            <field name="employee_requests">True</field>
+            <field name="create_calendar_meeting">True</field>
+            <field name="unpaid">False</field>
+            <field name="color">3</field>
+            <field name="sequence">30</field>
+        </record>
+
+        <!-- Sprevádzanie rodinného príslušníka k lekárovi -->
+        <record id="leave_type_lekar_rodina" model="hr.leave.type">
+            <field name="name">Sprevádzanie k lekárovi</field>
+            <field name="tenenet_hour_type">doctor</field>
+            <field name="is_tenenet_leave">True</field>
+            <field name="time_type">leave</field>
+            <field name="request_unit">hour</field>
+            <field name="leave_validation_type">manager</field>
+            <field name="allocation_validation_type">no</field>
+            <field name="requires_allocation">False</field>
+            <field name="employee_requests">True</field>
+            <field name="create_calendar_meeting">True</field>
+            <field name="unpaid">False</field>
+            <field name="color">3</field>
+            <field name="sequence">35</field>
+        </record>
+
+        <!-- Platené sviatky (Public Holidays) -->
+        <record id="leave_type_sviatky" model="hr.leave.type">
+            <field name="name">Platené sviatky</field>
+            <field name="tenenet_hour_type">holidays</field>
+            <field name="is_tenenet_leave">True</field>
+            <field name="time_type">leave</field>
+            <field name="request_unit">day</field>
+            <field name="leave_validation_type">no_validation</field>
+            <field name="allocation_validation_type">no</field>
+            <field name="requires_allocation">False</field>
+            <field name="employee_requests">False</field>
+            <field name="create_calendar_meeting">False</field>
+            <field name="unpaid">False</field>
+            <field name="color">5</field>
+            <field name="sequence">40</field>
+        </record>
+
+        <!-- Neplatené voľno (Unpaid Leave) - goes to company expense always -->
+        <record id="leave_type_neplatene" model="hr.leave.type">
+            <field name="name">Neplatené voľno</field>
+            <field name="tenenet_hour_type" eval="False"/>
+            <field name="is_tenenet_leave">True</field>
+            <field name="time_type">leave</field>
+            <field name="request_unit">day</field>
+            <field name="leave_validation_type">both</field>
+            <field name="allocation_validation_type">no</field>
+            <field name="requires_allocation">False</field>
+            <field name="employee_requests">True</field>
+            <field name="create_calendar_meeting">True</field>
+            <field name="unpaid">True</field>
+            <field name="color">4</field>
+            <field name="sequence">50</field>
+        </record>
+
+        <!-- Náhradné voľno za prácu nadčas (Comp time) -->
+        <record id="leave_type_nahradne_volno" model="hr.leave.type">
+            <field name="name">Náhradné voľno za nadčas</field>
+            <field name="tenenet_hour_type">vacation</field>
+            <field name="is_tenenet_leave">True</field>
+            <field name="time_type">leave</field>
+            <field name="request_unit">day</field>
+            <field name="leave_validation_type">manager</field>
+            <field name="allocation_validation_type">hr</field>
+            <field name="requires_allocation">True</field>
+            <field name="employee_requests">True</field>
+            <field name="create_calendar_meeting">True</field>
+            <field name="unpaid">False</field>
+            <field name="color">6</field>
+            <field name="sequence">60</field>
+        </record>
+
+        <!-- Študijné voľno (Study leave) -->
+        <record id="leave_type_studijne" model="hr.leave.type">
+            <field name="name">Študijné voľno</field>
+            <field name="tenenet_hour_type">vacation</field>
+            <field name="is_tenenet_leave">True</field>
+            <field name="time_type">leave</field>
+            <field name="request_unit">day</field>
+            <field name="leave_validation_type">both</field>
+            <field name="allocation_validation_type">hr</field>
+            <field name="requires_allocation">True</field>
+            <field name="employee_requests">True</field>
+            <field name="support_document">True</field>
+            <field name="create_calendar_meeting">True</field>
+            <field name="unpaid">False</field>
+            <field name="color">7</field>
+            <field name="sequence">70</field>
+        </record>
+
+        <!-- Svadba (Wedding leave) -->
+        <record id="leave_type_svadba" model="hr.leave.type">
+            <field name="name">Svadba</field>
+            <field name="tenenet_hour_type">vacation</field>
+            <field name="is_tenenet_leave">True</field>
+            <field name="time_type">leave</field>
+            <field name="request_unit">day</field>
+            <field name="leave_validation_type">manager</field>
+            <field name="allocation_validation_type">no</field>
+            <field name="requires_allocation">False</field>
+            <field name="employee_requests">True</field>
+            <field name="create_calendar_meeting">True</field>
+            <field name="unpaid">False</field>
+            <field name="color">8</field>
+            <field name="sequence">80</field>
+        </record>
+
+        <!-- Pohreb (Funeral leave) -->
+        <record id="leave_type_pohreb" model="hr.leave.type">
+            <field name="name">Pohreb</field>
+            <field name="tenenet_hour_type">vacation</field>
+            <field name="is_tenenet_leave">True</field>
+            <field name="time_type">leave</field>
+            <field name="request_unit">day</field>
+            <field name="leave_validation_type">manager</field>
+            <field name="allocation_validation_type">no</field>
+            <field name="requires_allocation">False</field>
+            <field name="employee_requests">True</field>
+            <field name="create_calendar_meeting">True</field>
+            <field name="unpaid">False</field>
+            <field name="color">9</field>
+            <field name="sequence">85</field>
+        </record>
+
+        <!-- Narodenie dieťaťa (Paternity leave) -->
+        <record id="leave_type_narodenie" model="hr.leave.type">
+            <field name="name">Narodenie dieťaťa</field>
+            <field name="tenenet_hour_type">vacation</field>
+            <field name="is_tenenet_leave">True</field>
+            <field name="time_type">leave</field>
+            <field name="request_unit">day</field>
+            <field name="leave_validation_type">hr</field>
+            <field name="allocation_validation_type">no</field>
+            <field name="requires_allocation">False</field>
+            <field name="employee_requests">True</field>
+            <field name="support_document">True</field>
+            <field name="create_calendar_meeting">True</field>
+            <field name="unpaid">False</field>
+            <field name="color">10</field>
+            <field name="sequence">90</field>
+        </record>
+
+        <!-- Materská dovolenka (Maternity leave) -->
+        <record id="leave_type_materska" model="hr.leave.type">
+            <field name="name">Materská dovolenka</field>
+            <field name="tenenet_hour_type">sick</field>
+            <field name="is_tenenet_leave">True</field>
+            <field name="time_type">leave</field>
+            <field name="request_unit">day</field>
+            <field name="leave_validation_type">hr</field>
+            <field name="allocation_validation_type">no</field>
+            <field name="requires_allocation">False</field>
+            <field name="employee_requests">True</field>
+            <field name="support_document">True</field>
+            <field name="create_calendar_meeting">True</field>
+            <field name="unpaid">False</field>
+            <field name="color">11</field>
+            <field name="sequence">100</field>
+        </record>
+
+        <!-- Rodičovská dovolenka (Parental leave) -->
+        <record id="leave_type_rodicovska" model="hr.leave.type">
+            <field name="name">Rodičovská dovolenka</field>
+            <field name="tenenet_hour_type">sick</field>
+            <field name="is_tenenet_leave">True</field>
+            <field name="time_type">leave</field>
+            <field name="request_unit">day</field>
+            <field name="leave_validation_type">hr</field>
+            <field name="allocation_validation_type">no</field>
+            <field name="requires_allocation">False</field>
+            <field name="employee_requests">True</field>
+            <field name="support_document">True</field>
+            <field name="create_calendar_meeting">True</field>
+            <field name="unpaid">False</field>
+            <field name="color">11</field>
+            <field name="sequence">105</field>
+        </record>
+
+        <!-- Prekážky v práci zo strany zamestnávateľa -->
+        <record id="leave_type_prekazky" model="hr.leave.type">
+            <field name="name">Prekážky v práci (zamestnávateľ)</field>
+            <field name="tenenet_hour_type" eval="False"/>
+            <field name="is_tenenet_leave">True</field>
+            <field name="time_type">leave</field>
+            <field name="request_unit">day</field>
+            <field name="leave_validation_type">hr</field>
+            <field name="allocation_validation_type">no</field>
+            <field name="requires_allocation">False</field>
+            <field name="employee_requests">False</field>
+            <field name="create_calendar_meeting">True</field>
+            <field name="unpaid">False</field>
+            <field name="color">4</field>
+            <field name="sequence">110</field>
+        </record>
+    </data>
+</odoo>
