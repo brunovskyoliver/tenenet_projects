@@ -1,8 +1,11 @@
+import logging
 from datetime import date
 
 from odoo import api, models
 
 from .tenenet_project_timesheet import HOUR_FIELD_BY_TYPE
+
+_logger = logging.getLogger(__name__)
 
 
 class HrLeave(models.Model):
@@ -16,101 +19,199 @@ class HrLeave(models.Model):
     def _sync_tenenet_timesheets(self):
         """Sync approved leave hours into tenenet.project.timesheet lines.
 
-        For each validated leave:
-        - Find active project assignments for the employee covering the leave period
-        - Check per-project leave rules (tenenet.project.leave.rule)
-        - Distribute hours to timesheet lines where included=True
-        - Route remaining hours to tenenet.company.expense when not covered by projects
-        - Trigger residual recompute for affected employee+periods
+        Logic:
+        - By default, leave hours are allocated to ALL eligible project assignments
+        - A project can EXCLUDE a leave type by setting included=False in leave rules
+        - Only hours not covered by any project go to tenenet.company.expense
         """
         Timesheet = self.env["tenenet.project.timesheet"]
         Assignment = self.env["tenenet.project.assignment"]
         TenenetCost = self.env["tenenet.employee.tenenet.cost"]
         CompanyExpense = self.env["tenenet.company.expense"]
+        LeaveRule = self.env["tenenet.project.leave.rule"]
 
         for leave in self.filtered(lambda l: l.state == "validate"):
             employee = leave.employee_id
             if not employee:
+                _logger.debug("Leave %s: No employee, skipping", leave.id)
                 continue
 
             leave_type = leave.holiday_status_id
             date_from = leave.date_from.date() if leave.date_from else False
             date_to = leave.date_to.date() if leave.date_to else False
             if not date_from:
+                _logger.debug("Leave %s: No date_from, skipping", leave.id)
                 continue
+
+            _logger.info(
+                "Syncing leave %s: employee=%s, type=%s, dates=%s to %s, hours=%s",
+                leave.id, employee.name, leave_type.name, date_from, date_to, leave.number_of_hours
+            )
 
             # Get hour type mapping from leave type
             hour_type = self._get_hour_type_for_leave(leave_type)
+            _logger.debug("Leave %s: hour_type=%s", leave.id, hour_type)
+
             if not hour_type:
-                # No mapping found - route all hours to company expense as general
+                # No mapping found - route all hours to company expense
+                _logger.info(
+                    "Leave %s: No hour_type mapping for '%s', routing to company expense",
+                    leave.id, leave_type.name
+                )
                 self._route_to_company_expense(leave, employee, date_from, date_to, None)
                 continue
 
             affected_months = self._months_in_range(date_from, date_to or date_from)
+            _logger.debug("Leave %s: affected_months=%s", leave.id, affected_months)
 
             # Get all active assignments for this employee
             assignments = Assignment.search([
                 ("employee_id", "=", employee.id),
                 ("active", "=", True),
             ])
+            _logger.debug(
+                "Leave %s: Found %d active assignments: %s",
+                leave.id, len(assignments),
+                [(a.id, a.project_id.name) for a in assignments]
+            )
 
             for period_date in affected_months:
                 period_first = period_date.replace(day=1)
                 leave_hours_for_month = leave._hours_in_month(period_date)
+                
+                _logger.debug(
+                    "Leave %s: Processing period=%s, hours_for_month=%s",
+                    leave.id, period_first, leave_hours_for_month
+                )
+                
                 if not leave_hours_for_month:
+                    _logger.debug("Leave %s: No hours for period %s, skipping", leave.id, period_first)
                     continue
 
-                # Find assignments with leave rules that include this leave type
+                # Find eligible assignments (default: included, unless explicitly excluded)
                 hours_allocated_to_projects = 0.0
                 eligible_assignments = []
 
                 for assignment in assignments:
+                    project = assignment.project_id
+                    
                     # Check if this assignment is active for this period
-                    if not assignment._is_period_in_scope(period_first):
+                    in_scope = assignment._is_period_in_scope(period_first)
+                    _logger.debug(
+                        "Leave %s: Assignment %s (project=%s) in_scope=%s",
+                        leave.id, assignment.id, project.name, in_scope
+                    )
+                    
+                    if not in_scope:
                         continue
 
-                    rule = self.env["tenenet.project.leave.rule"].search([
-                        ("project_id", "=", assignment.project_id.id),
+                    # Check leave rule - DEFAULT IS INCLUDED (paid by project)
+                    # Only exclude if there's an explicit rule with included=False
+                    rule = LeaveRule.search([
+                        ("project_id", "=", project.id),
                         ("leave_type_id", "=", leave_type.id),
-                        ("included", "=", True),
                     ], limit=1)
+
                     if rule:
-                        eligible_assignments.append(assignment)
+                        _logger.debug(
+                            "Leave %s: Found rule for project=%s, leave_type=%s, included=%s",
+                            leave.id, project.name, leave_type.name, rule.included
+                        )
+                        if not rule.included:
+                            # Explicitly excluded
+                            _logger.debug(
+                                "Leave %s: Project %s explicitly excludes leave type %s",
+                                leave.id, project.name, leave_type.name
+                            )
+                            continue
+                    else:
+                        # No rule = default included
+                        _logger.debug(
+                            "Leave %s: No rule for project=%s, leave_type=%s - default INCLUDED",
+                            leave.id, project.name, leave_type.name
+                        )
+
+                    eligible_assignments.append(assignment)
+
+                _logger.info(
+                    "Leave %s: Period %s - %d eligible assignments: %s",
+                    leave.id, period_first, len(eligible_assignments),
+                    [(a.id, a.project_id.name) for a in eligible_assignments]
+                )
 
                 if eligible_assignments:
                     # Distribute hours evenly among eligible assignments
                     hours_per_assignment = leave_hours_for_month / len(eligible_assignments)
+                    _logger.debug(
+                        "Leave %s: Distributing %.2f hours each to %d assignments",
+                        leave.id, hours_per_assignment, len(eligible_assignments)
+                    )
 
                     for assignment in eligible_assignments:
                         timesheet = Timesheet.search([
                             ("assignment_id", "=", assignment.id),
                             ("period", "=", period_first),
                         ], limit=1)
+                        
                         if not timesheet:
+                            _logger.debug(
+                                "Leave %s: Creating timesheet for assignment=%s, period=%s",
+                                leave.id, assignment.id, period_first
+                            )
                             timesheet = Timesheet.create({
                                 "assignment_id": assignment.id,
                                 "period": period_first,
                             })
 
                         leave_field = HOUR_FIELD_BY_TYPE.get(hour_type)
+                        _logger.debug(
+                            "Leave %s: hour_type=%s -> field=%s",
+                            leave.id, hour_type, leave_field
+                        )
+                        
                         if leave_field:
                             current_hours = getattr(timesheet, leave_field) or 0.0
+                            new_hours = current_hours + hours_per_assignment
+                            _logger.info(
+                                "Leave %s: Updating timesheet %s.%s: %.2f -> %.2f (+%.2f)",
+                                leave.id, timesheet.id, leave_field,
+                                current_hours, new_hours, hours_per_assignment
+                            )
                             timesheet.write({
-                                leave_field: current_hours + hours_per_assignment,
+                                leave_field: new_hours,
                                 "leave_auto_synced": True,
                             })
                             hours_allocated_to_projects += hours_per_assignment
+                        else:
+                            _logger.warning(
+                                "Leave %s: No field mapping for hour_type=%s",
+                                leave.id, hour_type
+                            )
 
                 # Route remaining hours to company expense
                 unallocated_hours = leave_hours_for_month - hours_allocated_to_projects
+                _logger.debug(
+                    "Leave %s: Period %s - allocated=%.2f, unallocated=%.2f",
+                    leave.id, period_first, hours_allocated_to_projects, unallocated_hours
+                )
+                
                 if unallocated_hours > 0.001:  # Small threshold to avoid floating point issues
+                    note = (
+                        f"Žiadny projekt nepokrýva typ '{leave_type.name}'"
+                        if not eligible_assignments
+                        else f"Zvyšok po rozdelení medzi {len(eligible_assignments)} projekt(y)"
+                    )
+                    _logger.info(
+                        "Leave %s: Routing %.2f unallocated hours to company expense: %s",
+                        leave.id, unallocated_hours, note
+                    )
                     CompanyExpense._create_or_update_expense(
                         employee=employee,
                         period=period_first,
                         expense_type=hour_type,
                         hours=unallocated_hours,
                         leave=leave,
-                        note=f"Dovolenka typu '{leave_type.name}' nie je zahrnutá v žiadnom projekte" if not eligible_assignments else f"Zvyšok po rozdelení medzi {len(eligible_assignments)} projekt(y)",
+                        note=note,
                     )
 
                 TenenetCost._sync_for_employee_period(employee.id, period_first)
@@ -131,6 +232,11 @@ class HrLeave(models.Model):
             # Use the expense type if available, otherwise use 'vacation' as fallback
             expense_type = hour_type or "vacation"
 
+            _logger.info(
+                "Leave %s: Routing %.2f hours to company expense (type=%s, period=%s)",
+                leave.id, leave_hours_for_month, expense_type, period_first
+            )
+
             CompanyExpense._create_or_update_expense(
                 employee=employee,
                 period=period_first,
@@ -150,10 +256,19 @@ class HrLeave(models.Model):
         """
         # Use explicit mapping if available
         if hasattr(leave_type, "tenenet_hour_type") and leave_type.tenenet_hour_type:
+            _logger.debug(
+                "Leave type %s: Using explicit tenenet_hour_type=%s",
+                leave_type.name, leave_type.tenenet_hour_type
+            )
             return leave_type.tenenet_hour_type
 
         # Fall back to pattern matching
-        return self._leave_type_to_hour_type_by_pattern(leave_type)
+        hour_type = self._leave_type_to_hour_type_by_pattern(leave_type)
+        _logger.debug(
+            "Leave type %s: Pattern matching returned hour_type=%s",
+            leave_type.name, hour_type
+        )
+        return hour_type
 
     @api.model
     def _leave_type_to_hour_type_by_pattern(self, leave_type):
