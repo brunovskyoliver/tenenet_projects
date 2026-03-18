@@ -139,6 +139,11 @@ class TenenetUtilization(models.Model):
         compute="_compute_non_project_rate",
         store=True,
     )
+    non_project_percentage = fields.Float(
+        string="Procento balastu",
+        digits=(5, 2),
+        compute="_compute_non_project_percentage",
+    )
     non_project_status = fields.Selection(
         [("ok", "OK"), ("warning", "!")],
         string="Stav balastu",
@@ -165,6 +170,11 @@ class TenenetUtilization(models.Model):
     def _current_period(self):
         return _month_start(fields.Date.today())
 
+    @api.depends('non_project_rate')
+    def _compute_non_project_percentage(self):
+        for rec in self:
+            rec.non_project_percentage = (rec.non_project_rate * 100) if rec.capacity_hours > 0 else 0.0
+            
     @api.model
     def _sync_for_period(self, period, employee_ids=None):
         normalized_period = self._normalize_period(period)

@@ -120,9 +120,14 @@
                     <field name="expression_label">utilization_status</field>
                     <field name="figure_type">string</field>
                 </record>
-                <record id="tenenet_utilization_report_column_non_project_rate" model="account.report.column">
+                <!-- <record id="tenenet_utilization_report_column_non_project_rate" model="account.report.column">
                     <field name="name">Miera balastu</field>
                     <field name="expression_label">non_project_rate</field>
+                    <field name="figure_type">percentage</field>
+                </record> -->
+                <record id="tenenet_utilization_report_column_non_project_percentage" model="account.report.column">
+                    <field name="name">Procento balastu</field>
+                    <field name="expression_label">non_project_percentage</field>
                     <field name="figure_type">percentage</field>
                 </record>
                 <record id="tenenet_utilization_report_column_non_project_status" model="account.report.column">
