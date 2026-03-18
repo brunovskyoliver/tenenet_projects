@@ -3,6 +3,7 @@
 import { Component, onWillStart, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
+import { session } from "@web/session";
 
 const MONTHS = [
     { field: "month_01", label: "Jan" },
@@ -30,7 +31,6 @@ export class TenenetMyTimesheetsAction extends Component {
 
     setup() {
         this.orm = useService("orm");
-        this.user = useService("user");
         this.notification = useService("notification");
         this.state = useState({
             loading: true,
@@ -56,7 +56,7 @@ export class TenenetMyTimesheetsAction extends Component {
         const matrices = await this.orm.searchRead(
             "tenenet.project.timesheet.matrix",
             [
-                ["employee_id.user_id", "=", this.user.userId],
+                ["employee_id.user_id", "=", session.uid],
                 ["year", "=", this.state.year],
             ],
             ["id", "project_id", "year", "line_ids"],
