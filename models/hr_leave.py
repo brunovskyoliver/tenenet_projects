@@ -11,8 +11,21 @@ _logger = logging.getLogger(__name__)
 class HrLeave(models.Model):
     _inherit = "hr.leave"
 
-    def action_validate(self):
-        result = super().action_validate()
+    def action_approve(self, check_state=True):
+        """Override to sync leave hours to timesheets after approval."""
+        _logger.warning("=== TENENET: action_approve called for leaves: %s ===", self.ids)
+        result = super().action_approve(check_state=check_state)
+        # Sync timesheets for leaves that are now validated
+        validated_leaves = self.filtered(lambda l: l.state == 'validate')
+        _logger.warning("=== TENENET: Validated leaves to sync: %s ===", validated_leaves.ids)
+        if validated_leaves:
+            validated_leaves._sync_tenenet_timesheets()
+        return result
+
+    def _action_validate(self, check_state=True):
+        """Override to sync leave hours to timesheets after validation."""
+        _logger.warning("=== TENENET: _action_validate called for leaves: %s ===", self.ids)
+        result = super()._action_validate(check_state=check_state)
         self._sync_tenenet_timesheets()
         return result
 
