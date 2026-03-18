@@ -77,11 +77,9 @@
                             domain="[('period', '&gt;=', (context_today() - relativedelta(month=1, day=1)).strftime('%Y-%m-%d')),
                                      ('period', '&lt;', (context_today() + relativedelta(years=1, month=1, day=1)).strftime('%Y-%m-%d'))]"/>
                     <separator/>
-                    <group expand="0" string="Zoskupiť podľa">
-                        <filter string="Zamestnanec" name="group_employee" context="{'group_by': 'employee_id'}"/>
-                        <filter string="Obdobie" name="group_period" context="{'group_by': 'period'}"/>
-                        <filter string="Typ nákladu" name="group_type" context="{'group_by': 'expense_type'}"/>
-                    </group>
+                    <filter string="Zamestnanec" name="group_employee" context="{'group_by': 'employee_id'}"/>
+                    <filter string="Obdobie" name="group_period" context="{'group_by': 'period'}"/>
+                    <filter string="Typ nákladu" name="group_type" context="{'group_by': 'expense_type'}"/>
                 </search>
             </field>
         </record>
@@ -183,7 +181,7 @@
             <field name="model">hr.leave.type</field>
             <field name="inherit_id" ref="hr_holidays.edit_holiday_status_form"/>
             <field name="arch" type="xml">
-                <xpath expr="//group[@name='request_details']" position="after">
+                <xpath expr="//group[@name='configuration']" position="after">
                     <group string="Tenenet integrácia" name="tenenet_integration">
                         <field name="is_tenenet_leave"/>
                         <field name="tenenet_hour_type" invisible="not is_tenenet_leave"/>
