@@ -3,7 +3,6 @@
 import { Component, onWillStart, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
-import { session } from "@web/session";
 
 const MONTHS = [
     { field: "month_01", label: "Jan" },
@@ -32,6 +31,7 @@ export class TenenetMyTimesheetsAction extends Component {
     setup() {
         this.orm = useService("orm");
         this.notification = useService("notification");
+        this.employeeId = null;
         this.state = useState({
             loading: true,
             year: new Date().getFullYear(),
@@ -47,16 +47,24 @@ export class TenenetMyTimesheetsAction extends Component {
 
     async loadData() {
         this.state.loading = true;
-        await this.orm.call("tenenet.project.timesheet.matrix", "sync_my_matrices", []);
+        // sync_my_matrices returns the employee ID (or false) so we can filter
+        // by employee_id directly rather than traversing employee_id.user_id.
+        this.employeeId = await this.orm.call(
+            "tenenet.project.timesheet.matrix", "sync_my_matrices", []
+        );
         await this.fetchMatrices();
         this.state.loading = false;
     }
 
     async fetchMatrices() {
+        if (!this.employeeId) {
+            this.state.matrices = [];
+            return;
+        }
         const matrices = await this.orm.searchRead(
             "tenenet.project.timesheet.matrix",
             [
-                ["employee_id.user_id", "=", session.uid],
+                ["employee_id", "=", this.employeeId],
                 ["year", "=", this.state.year],
             ],
             ["id", "project_id", "year", "line_ids"],

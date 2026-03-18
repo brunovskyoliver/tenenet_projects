@@ -220,13 +220,29 @@ class TenenetProjectTimesheetMatrix(models.Model):
 
     @api.model
     def sync_my_matrices(self):
-        """Create missing matrices/timesheets for the current user. Called from the client action."""
+        """Sync matrices for the current user and return their employee ID.
+
+        Also ensures matrices exist for any year that already has timesheets,
+        covering the case where timesheets were entered outside the assignment
+        date range (which _get_expected_periods would otherwise miss).
+
+        Returns the employee ID (int) so the client can filter without relying
+        on the employee→user link being traversable in a domain.
+        """
         employee = self.env["hr.employee"].search([("user_id", "=", self.env.uid)], limit=1)
-        if employee:
-            assignments = self.env["tenenet.project.assignment"].search(
-                [("employee_id", "=", employee.id)]
-            )
-            assignments._sync_precreated_timesheets()
+        if not employee:
+            return False
+        assignments = self.env["tenenet.project.assignment"].search(
+            [("employee_id", "=", employee.id)]
+        )
+        assignments._sync_precreated_timesheets()
+        # Ensure matrices for any year that already has timesheet records,
+        # even if those years fall outside the stored assignment date range.
+        for assignment in assignments:
+            extra_years = {ts.period.year for ts in assignment.timesheet_ids if ts.period}
+            if extra_years:
+                self._ensure_for_assignment_years(assignment, sorted(extra_years))
+        return employee.id
 
     @api.model
     def action_open_my_matrices(self):
