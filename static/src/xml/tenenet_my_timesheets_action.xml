@@ -47,7 +47,7 @@
                                     <t t-foreach="matrix.lines" t-as="line" t-key="line.id">
                                         <tr t-att-class="{
                                             'o_tenenet_my_total_row': line.is_total,
-                                            'o_tenenet_my_leave_row': line.leave_sync_managed and not line.is_total
+                                            'o_tenenet_my_leave_row': line.leave_sync_managed
                                         }">
                                             <td class="o_tenenet_my_row_label" t-out="line.name"/>
                                             <t t-foreach="months" t-as="month" t-key="month.field">
