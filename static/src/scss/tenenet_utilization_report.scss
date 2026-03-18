@@ -1,4 +1,12 @@
 .account_report.tenenet_utilization_report {
+    #filter_date {
+        .o_datetime_input {
+            min-width: 7rem;
+            text-align: center;
+            box-shadow: none;
+        }
+    }
+
     .line_cell.numeric {
         text-align: center !important;
 

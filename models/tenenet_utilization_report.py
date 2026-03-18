@@ -1,4 +1,5 @@
 from odoo import fields, models
+from odoo.tools import format_date
 
 
 class TenenetUtilizationReportHandler(models.AbstractModel):
@@ -29,9 +30,23 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
 
     def _custom_options_initializer(self, report, options, previous_options=None):
         super()._custom_options_initializer(report, options, previous_options=previous_options)
-        options["custom_display_config"]["css_custom_class"] = (
-            options["custom_display_config"].get("css_custom_class", "") + " tenenet_utilization_report"
+        custom_display_config = options["custom_display_config"]
+        custom_display_config["css_custom_class"] = (
+            custom_display_config.get("css_custom_class", "") + " tenenet_utilization_report"
         ).strip()
+        custom_display_config.setdefault("components", {})["AccountReportFilters"] = "TenenetUtilizationReportFilters"
+
+        period = self._get_selected_month_start(report, options)
+        options["date"]["filter"] = "this_month"
+        options["date"]["period_type"] = "month"
+        options["date"]["period"] = self._get_month_offset(period)
+        options["date"]["date_from"] = fields.Date.to_string(period)
+        options["date"]["date_to"] = fields.Date.to_string(fields.Date.end_of(period, "month"))
+        options["date"]["string"] = format_date(
+            self.env,
+            options["date"]["date_to"],
+            date_format="MMM yyyy",
+        )
 
     def _dynamic_lines_generator(self, report, options, all_column_groups_expression_totals, warnings=None):
         period = self._get_selected_month_start(report, options)
@@ -48,6 +63,12 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
     def _get_selected_month_start(self, report, options):
         date_to = options.get("date", {}).get("date_to") or fields.Date.context_today(self)
         return self.env["tenenet.utilization"]._normalize_period(date_to)
+
+    def _get_month_offset(self, period):
+        period_date = fields.Date.to_date(period)
+        today = fields.Date.context_today(self)
+        today_month_start = today.replace(day=1)
+        return (period_date.year - today_month_start.year) * 12 + period_date.month - today_month_start.month
 
     def _get_utilization_records(self, period, search_term=None):
         records = self.env["tenenet.utilization"].search([("period", "=", period)])

@@ -20,7 +20,9 @@ and P&L reporting by program.
 
     'assets': {
         'web.assets_backend': [
+            'tenenet_projects/static/src/js/tenenet_utilization_report_filters.js',
             'tenenet_projects/static/src/js/timesheet_matrix_host.js',
+            'tenenet_projects/static/src/xml/tenenet_utilization_report_filters.xml',
             'tenenet_projects/static/src/scss/tenenet_utilization_report.scss',
             'tenenet_projects/static/src/scss/timesheet_matrix.scss',
         ],
