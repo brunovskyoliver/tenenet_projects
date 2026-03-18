@@ -224,11 +224,14 @@
 
 // ── Moje timesheety stacked client action ──────────────────────────────────
 .o_tenenet_my_timesheets {
-    // Take the full action frame height and scroll internally.
-    // Odoo's action container uses overflow:hidden + fixed height, so the
-    // component must own the vertical scroll or content gets clipped.
-    height: 100%;
+    // .o_action_manager is position:relative + overflow:hidden with a flex-
+    // derived height, so height:100% doesn't resolve on a normal child.
+    // Absolute positioning fills the frame precisely, letting overflow-y:auto
+    // create a real scroll container inside the clipped action area.
+    position: absolute;
+    inset: 0;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 1.5rem 1.5rem 4rem;
 
     .o_tenenet_my_header {
