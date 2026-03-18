@@ -1,0 +1,14 @@
+.tenenet_allocation_report {
+    .o_financial_report_line {
+        &.level_1 {
+            font-weight: bold;
+            background-color: #f5f5f5;
+        }
+
+        &.level_3 {
+            .o_account_report_column_subject {
+                padding-left: 2rem;
+            }
+        }
+    }
+}
