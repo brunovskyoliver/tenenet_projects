@@ -1,12 +1,5 @@
 <odoo>
     <data>
-        <record id="action_tenenet_utilization_report" model="ir.actions.client">
-            <field name="name">Vyťaženosť report</field>
-            <field name="tag">account_report</field>
-            <field name="path">tenenet-utilization-report</field>
-            <field name="context" eval="{'report_id': ref('tenenet_projects.tenenet_utilization_report')}"/>
-        </record>
-
         <menuitem id="menu_tenenet_root" name="TENENET" sequence="10" web_icon="tenenet_projects,static/description/icon.png"/>
         <menuitem id="menu_tenenet_my_timesheets_root" name="Moje timesheety" sequence="5" action="action_tenenet_my_project_assignment" web_icon="tenenet_projects,static/description/icon.png"/>
 
@@ -17,7 +10,6 @@
         <menuitem id="menu_tenenet_utilization" name="Vyťaženosť" parent="menu_tenenet_projects" action="action_tenenet_utilization" sequence="40"/>
 
         <menuitem id="menu_tenenet_reporting" name="Reporty" parent="menu_tenenet_root" sequence="15"/>
-        <menuitem id="menu_tenenet_utilization_report" name="Vyťaženosť report" parent="menu_tenenet_reporting" action="action_tenenet_utilization_report" sequence="5"/>
         <menuitem id="menu_tenenet_pl_line" name="P&amp;L podľa programu" parent="menu_tenenet_reporting" action="action_tenenet_pl_line" sequence="10"/>
         <menuitem id="menu_tenenet_company_expense" name="Náklady Tenenet (absencie)" parent="menu_tenenet_reporting" action="action_tenenet_company_expense" sequence="20"/>
         <menuitem id="menu_tenenet_company_expense_summary" name="Súhrn nákladov Tenenet" parent="menu_tenenet_reporting" action="action_tenenet_company_expense_summary" sequence="30"/>
