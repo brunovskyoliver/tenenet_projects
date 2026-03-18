@@ -63,11 +63,11 @@ class HrLeave(models.Model):
 
             # Get hour type mapping from leave type
             hour_type = self._get_hour_type_for_leave(leave_type)
-            _logger.debug("Leave %s: hour_type=%s", leave.id, hour_type)
+            _logger.warning("Leave %s: hour_type=%s", leave.id, hour_type)
 
             if not hour_type:
                 # No mapping found - route all hours to company expense
-                _logger.info(
+                _logger.warning(
                     "Leave %s: No hour_type mapping for '%s', routing to company expense",
                     leave.id, leave_type.name
                 )
@@ -75,14 +75,14 @@ class HrLeave(models.Model):
                 continue
 
             affected_months = self._months_in_range(date_from, date_to or date_from)
-            _logger.debug("Leave %s: affected_months=%s", leave.id, affected_months)
+            _logger.warning("Leave %s: affected_months=%s", leave.id, affected_months)
 
             # Get all active assignments for this employee
             assignments = Assignment.search([
                 ("employee_id", "=", employee.id),
                 ("active", "=", True),
             ])
-            _logger.debug(
+            _logger.warning(
                 "Leave %s: Found %d active assignments: %s",
                 leave.id, len(assignments),
                 [(a.id, a.project_id.name) for a in assignments]
@@ -92,13 +92,13 @@ class HrLeave(models.Model):
                 period_first = period_date.replace(day=1)
                 leave_hours_for_month = leave._hours_in_month(period_date)
                 
-                _logger.debug(
+                _logger.warning(
                     "Leave %s: Processing period=%s, hours_for_month=%s",
                     leave.id, period_first, leave_hours_for_month
                 )
                 
                 if not leave_hours_for_month:
-                    _logger.debug("Leave %s: No hours for period %s, skipping", leave.id, period_first)
+                    _logger.warning("Leave %s: No hours for period %s, skipping", leave.id, period_first)
                     continue
 
                 # Find eligible assignments (default: included, unless explicitly excluded)
@@ -110,7 +110,7 @@ class HrLeave(models.Model):
                     
                     # Check if this assignment is active for this period
                     in_scope = assignment._is_period_in_scope(period_first)
-                    _logger.debug(
+                    _logger.warning(
                         "Leave %s: Assignment %s (project=%s) in_scope=%s",
                         leave.id, assignment.id, project.name, in_scope
                     )
@@ -126,27 +126,27 @@ class HrLeave(models.Model):
                     ], limit=1)
 
                     if rule:
-                        _logger.debug(
+                        _logger.warning(
                             "Leave %s: Found rule for project=%s, leave_type=%s, included=%s",
                             leave.id, project.name, leave_type.name, rule.included
                         )
                         if not rule.included:
                             # Explicitly excluded
-                            _logger.debug(
+                            _logger.warning(
                                 "Leave %s: Project %s explicitly excludes leave type %s",
                                 leave.id, project.name, leave_type.name
                             )
                             continue
                     else:
                         # No rule = default included
-                        _logger.debug(
+                        _logger.warning(
                             "Leave %s: No rule for project=%s, leave_type=%s - default INCLUDED",
                             leave.id, project.name, leave_type.name
                         )
 
                     eligible_assignments.append(assignment)
 
-                _logger.info(
+                _logger.warning(
                     "Leave %s: Period %s - %d eligible assignments: %s",
                     leave.id, period_first, len(eligible_assignments),
                     [(a.id, a.project_id.name) for a in eligible_assignments]
@@ -155,7 +155,7 @@ class HrLeave(models.Model):
                 if eligible_assignments:
                     # Distribute hours evenly among eligible assignments
                     hours_per_assignment = leave_hours_for_month / len(eligible_assignments)
-                    _logger.debug(
+                    _logger.warning(
                         "Leave %s: Distributing %.2f hours each to %d assignments",
                         leave.id, hours_per_assignment, len(eligible_assignments)
                     )
@@ -167,7 +167,7 @@ class HrLeave(models.Model):
                         ], limit=1)
                         
                         if not timesheet:
-                            _logger.debug(
+                            _logger.warning(
                                 "Leave %s: Creating timesheet for assignment=%s, period=%s",
                                 leave.id, assignment.id, period_first
                             )
@@ -177,7 +177,7 @@ class HrLeave(models.Model):
                             })
 
                         leave_field = HOUR_FIELD_BY_TYPE.get(hour_type)
-                        _logger.debug(
+                        _logger.warning(
                             "Leave %s: hour_type=%s -> field=%s",
                             leave.id, hour_type, leave_field
                         )
@@ -185,7 +185,7 @@ class HrLeave(models.Model):
                         if leave_field:
                             current_hours = getattr(timesheet, leave_field) or 0.0
                             new_hours = current_hours + hours_per_assignment
-                            _logger.info(
+                            _logger.warning(
                                 "Leave %s: Updating timesheet %s.%s: %.2f -> %.2f (+%.2f)",
                                 leave.id, timesheet.id, leave_field,
                                 current_hours, new_hours, hours_per_assignment
@@ -203,7 +203,7 @@ class HrLeave(models.Model):
 
                 # Route remaining hours to company expense
                 unallocated_hours = leave_hours_for_month - hours_allocated_to_projects
-                _logger.debug(
+                _logger.warning(
                     "Leave %s: Period %s - allocated=%.2f, unallocated=%.2f",
                     leave.id, period_first, hours_allocated_to_projects, unallocated_hours
                 )
@@ -214,7 +214,7 @@ class HrLeave(models.Model):
                         if not eligible_assignments
                         else f"Zvyšok po rozdelení medzi {len(eligible_assignments)} projekt(y)"
                     )
-                    _logger.info(
+                    _logger.warning(
                         "Leave %s: Routing %.2f unallocated hours to company expense: %s",
                         leave.id, unallocated_hours, note
                     )
