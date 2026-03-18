@@ -30,7 +30,7 @@
             <field name="time_type">leave</field>
             <field name="request_unit">day</field>
             <field name="leave_validation_type">hr</field>
-            <field name="allocation_validation_type">no</field>
+            <field name="allocation_validation_type">no_validation</field>
             <field name="requires_allocation">False</field>
             <field name="employee_requests">True</field>
             <field name="support_document">True</field>
@@ -48,7 +48,7 @@
             <field name="time_type">leave</field>
             <field name="request_unit">day</field>
             <field name="leave_validation_type">hr</field>
-            <field name="allocation_validation_type">no</field>
+            <field name="allocation_validation_type">no_validation</field>
             <field name="requires_allocation">False</field>
             <field name="employee_requests">True</field>
             <field name="support_document">True</field>
@@ -66,7 +66,7 @@
             <field name="time_type">leave</field>
             <field name="request_unit">hour</field>
             <field name="leave_validation_type">manager</field>
-            <field name="allocation_validation_type">no</field>
+            <field name="allocation_validation_type">no_validation</field>
             <field name="requires_allocation">False</field>
             <field name="employee_requests">True</field>
             <field name="create_calendar_meeting">True</field>
@@ -83,7 +83,7 @@
             <field name="time_type">leave</field>
             <field name="request_unit">hour</field>
             <field name="leave_validation_type">manager</field>
-            <field name="allocation_validation_type">no</field>
+            <field name="allocation_validation_type">no_validation</field>
             <field name="requires_allocation">False</field>
             <field name="employee_requests">True</field>
             <field name="create_calendar_meeting">True</field>
@@ -100,7 +100,7 @@
             <field name="time_type">leave</field>
             <field name="request_unit">day</field>
             <field name="leave_validation_type">no_validation</field>
-            <field name="allocation_validation_type">no</field>
+            <field name="allocation_validation_type">no_validation</field>
             <field name="requires_allocation">False</field>
             <field name="employee_requests">False</field>
             <field name="create_calendar_meeting">False</field>
@@ -117,7 +117,7 @@
             <field name="time_type">leave</field>
             <field name="request_unit">day</field>
             <field name="leave_validation_type">both</field>
-            <field name="allocation_validation_type">no</field>
+            <field name="allocation_validation_type">no_validation</field>
             <field name="requires_allocation">False</field>
             <field name="employee_requests">True</field>
             <field name="create_calendar_meeting">True</field>
@@ -169,7 +169,7 @@
             <field name="time_type">leave</field>
             <field name="request_unit">day</field>
             <field name="leave_validation_type">manager</field>
-            <field name="allocation_validation_type">no</field>
+            <field name="allocation_validation_type">no_validation</field>
             <field name="requires_allocation">False</field>
             <field name="employee_requests">True</field>
             <field name="create_calendar_meeting">True</field>
@@ -186,7 +186,7 @@
             <field name="time_type">leave</field>
             <field name="request_unit">day</field>
             <field name="leave_validation_type">manager</field>
-            <field name="allocation_validation_type">no</field>
+            <field name="allocation_validation_type">no_validation</field>
             <field name="requires_allocation">False</field>
             <field name="employee_requests">True</field>
             <field name="create_calendar_meeting">True</field>
@@ -203,7 +203,7 @@
             <field name="time_type">leave</field>
             <field name="request_unit">day</field>
             <field name="leave_validation_type">hr</field>
-            <field name="allocation_validation_type">no</field>
+            <field name="allocation_validation_type">no_validation</field>
             <field name="requires_allocation">False</field>
             <field name="employee_requests">True</field>
             <field name="support_document">True</field>
@@ -221,7 +221,7 @@
             <field name="time_type">leave</field>
             <field name="request_unit">day</field>
             <field name="leave_validation_type">hr</field>
-            <field name="allocation_validation_type">no</field>
+            <field name="allocation_validation_type">no_validation</field>
             <field name="requires_allocation">False</field>
             <field name="employee_requests">True</field>
             <field name="support_document">True</field>
@@ -239,7 +239,7 @@
             <field name="time_type">leave</field>
             <field name="request_unit">day</field>
             <field name="leave_validation_type">hr</field>
-            <field name="allocation_validation_type">no</field>
+            <field name="allocation_validation_type">no_validation</field>
             <field name="requires_allocation">False</field>
             <field name="employee_requests">True</field>
             <field name="support_document">True</field>
@@ -257,7 +257,7 @@
             <field name="time_type">leave</field>
             <field name="request_unit">day</field>
             <field name="leave_validation_type">hr</field>
-            <field name="allocation_validation_type">no</field>
+            <field name="allocation_validation_type">no_validation</field>
             <field name="requires_allocation">False</field>
             <field name="employee_requests">False</field>
             <field name="create_calendar_meeting">True</field>
