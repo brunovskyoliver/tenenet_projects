@@ -1,5 +1,5 @@
 import logging
-from datetime import date
+from datetime import date, timedelta
 
 from odoo import api, models
 
@@ -334,11 +334,25 @@ class HrLeave(models.Model):
         return months
 
     def _hours_in_month(self, period_date):
-        """Return number of leave hours falling in the given month (approximated from number_of_days)."""
+        """Return number of leave hours falling in the given month.
+        
+        Logic:
+        - If leave type request_unit is 'hour': use number_of_hours directly
+        - If leave type request_unit is 'day' or 'half_day': calculate from 
+          number_of_days * employee's hours_per_day from resource_calendar_id
+        
+        For multi-month leaves, calculates the proportion of hours/days
+        that fall within the given month.
+        """
         if not self.date_from or not self.date_to:
-            return (self.number_of_hours or 0.0)
+            return self._get_total_leave_hours()
+        
         date_from = self.date_from.date()
         date_to = self.date_to.date()
+        
+        # For the calculation, we need date_to to be exclusive (day after last leave day)
+        date_to_exclusive = date_to + timedelta(days=1)
+        
         month_start = period_date.replace(day=1)
         if month_start.month == 12:
             month_end = date(month_start.year + 1, 1, 1)
@@ -346,14 +360,78 @@ class HrLeave(models.Model):
             month_end = date(month_start.year, month_start.month + 1, 1)
 
         overlap_start = max(date_from, month_start)
-        overlap_end = min(date_to, month_end)
+        overlap_end = min(date_to_exclusive, month_end)
+        
         if overlap_start >= overlap_end:
             return 0.0
 
-        total_days = (date_to - date_from).days or 1
+        # Total days in leave (inclusive)
+        total_days = (date_to - date_from).days + 1
+        # Days overlapping with this month
         overlap_days = (overlap_end - overlap_start).days
-        ratio = overlap_days / total_days
-        return round((self.number_of_hours or 0.0) * ratio, 2)
+        
+        ratio = overlap_days / total_days if total_days > 0 else 1.0
+        
+        total_hours = self._get_total_leave_hours()
+        hours = round(total_hours * ratio, 2)
+        
+        _logger.warning(
+            "Leave %s: _hours_in_month period=%s, date_from=%s, date_to=%s, "
+            "overlap_days=%d/%d, ratio=%.2f, total_hours=%.2f, result=%.2f",
+            self.id, period_date, date_from, date_to,
+            overlap_days, total_days, ratio, total_hours, hours
+        )
+        
+        return hours
+
+    def _get_total_leave_hours(self):
+        """Get total hours for this leave based on request_unit type.
+        
+        - For hour-based leaves: use number_of_hours
+        - For day-based leaves: use number_of_days * employee's hours_per_day
+        """
+        leave_type = self.holiday_status_id
+        request_unit = leave_type.request_unit if leave_type else 'day'
+        
+        if request_unit == 'hour':
+            # Hour-based leave - use hours directly
+            hours = self.number_of_hours or 0.0
+            _logger.warning(
+                "Leave %s: Hour-based leave, number_of_hours=%.2f",
+                self.id, hours
+            )
+            return hours
+        
+        # Day-based leave - calculate from days * hours_per_day
+        days = self.number_of_days or 0.0
+        hours_per_day = self._get_employee_hours_per_day()
+        hours = days * hours_per_day
+        
+        _logger.warning(
+            "Leave %s: Day-based leave, number_of_days=%.2f, hours_per_day=%.2f, total=%.2f",
+            self.id, days, hours_per_day, hours
+        )
+        return hours
+
+    def _get_employee_hours_per_day(self):
+        """Get the employee's standard hours per day from their resource calendar."""
+        employee = self.employee_id
+        if not employee:
+            return 8.0  # Default fallback
+        
+        calendar = employee.resource_calendar_id
+        if not calendar:
+            return 8.0  # Default fallback
+        
+        # Calculate hours per day from calendar
+        # hours_per_day is a computed field on resource.calendar
+        hours_per_day = calendar.hours_per_day or 8.0
+        
+        _logger.warning(
+            "Leave %s: Employee %s calendar=%s, hours_per_day=%.2f",
+            self.id, employee.name, calendar.name, hours_per_day
+        )
+        return hours_per_day
 
     # Keep old method for backward compatibility
     @api.model
