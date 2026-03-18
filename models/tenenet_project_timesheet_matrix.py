@@ -218,6 +218,28 @@ class TenenetProjectTimesheetMatrix(models.Model):
             return self._action_open_year(self.next_year)
         return self.action_open_form()
 
+    @api.model
+    def action_open_my_matrices(self):
+        """Sync assignments for the current user, then return the matrix list action."""
+        employee = self.env["hr.employee"].search([("user_id", "=", self.env.uid)], limit=1)
+        if employee:
+            assignments = self.env["tenenet.project.assignment"].search(
+                [("employee_id", "=", employee.id)]
+            )
+            assignments._sync_precreated_timesheets()
+        return {
+            "type": "ir.actions.act_window",
+            "name": "Moje timesheety",
+            "res_model": "tenenet.project.timesheet.matrix",
+            "view_mode": "list,form",
+            "views": [
+                (self.env.ref("tenenet_projects.view_tenenet_project_timesheet_matrix_my_list").id, "list"),
+                (self.env.ref("tenenet_projects.view_tenenet_project_timesheet_matrix_form").id, "form"),
+            ],
+            "domain": [("employee_id.user_id", "=", self.env.uid)],
+            "context": {"search_default_current_year": 1},
+        }
+
     def name_get(self):
         return [
             (
