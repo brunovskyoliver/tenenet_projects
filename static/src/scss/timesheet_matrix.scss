@@ -224,15 +224,21 @@
 
 // ── Moje timesheety stacked client action ──────────────────────────────────
 .o_tenenet_my_timesheets {
-    // Flex-child scroll pattern: .o_action_manager is a flex column.
-    // flex:1 expands to fill the column; min-height:0 prevents the flex
-    // child from growing past the viewport so overflow-y:auto works.
-    // No position:absolute — that would anchor to body and overlap o_navbar.
-    flex: 1 1 0;
-    min-height: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding: 1.5rem 1.5rem 4rem;
+    // Outer shell: fill whatever slot Odoo's action manager gives us.
+    // Odoo sets overflow:hidden on .o_action — we honour that here and
+    // let the inner scroll wrapper handle the actual scrolling.
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+
+    .o_tenenet_my_scroll_body {
+        flex: 1 1 0;
+        min-height: 0;
+        overflow-y: scroll; // always show scrollbar so user knows content continues
+        overflow-x: hidden;
+        padding: 1.5rem 1.5rem 4rem;
+    }
 
     .o_tenenet_my_header {
         display: flex;

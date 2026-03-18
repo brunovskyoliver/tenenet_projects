@@ -2,6 +2,7 @@
 <templates>
     <t t-name="tenenet_projects.TenenetMyTimesheetsAction">
         <div class="o_tenenet_my_timesheets o_action">
+        <div class="o_tenenet_my_scroll_body">
 
             <div class="o_tenenet_my_header">
                 <h2 class="o_tenenet_my_title">Moje timesheety</h2>
@@ -76,6 +77,7 @@
                 </t>
             </t>
 
+        </div>
         </div>
     </t>
 </templates>
