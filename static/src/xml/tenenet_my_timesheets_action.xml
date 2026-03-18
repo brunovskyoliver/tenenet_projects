@@ -54,11 +54,10 @@
                                                 <td class="o_tenenet_my_cell">
                                                     <t t-if="isCellEditable(line, month.field)">
                                                         <input
-                                                            type="number"
-                                                            step="0.01"
-                                                            min="0"
+                                                            type="text"
+                                                            inputmode="decimal"
                                                             class="o_tenenet_my_cell_input"
-                                                            t-att-value="line[month.field] || 0"
+                                                            t-att-value="formatValue(line[month.field])"
                                                             t-on-change="(ev) => this.onCellChange(matrix.id, line.id, month.field, ev)"
                                                             t-on-focus="(ev) => ev.target.select()"
                                                         />
