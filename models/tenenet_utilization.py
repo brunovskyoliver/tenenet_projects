@@ -127,6 +127,11 @@ class TenenetUtilization(models.Model):
         compute="_compute_utilization_rate",
         store=True,
     )
+    utilization_percentage = fields.Float(
+        string="Procento vyťaženosti (PP)",
+        digits=(5, 2),
+        compute="_compute_utilization_percentage",
+    )
     utilization_status = fields.Selection(
         [("ok", "OK"), ("warning", "!")],
         string="Stav vyťaženosti",
@@ -174,7 +179,12 @@ class TenenetUtilization(models.Model):
     def _compute_non_project_percentage(self):
         for rec in self:
             rec.non_project_percentage = (rec.non_project_rate * 100) if rec.capacity_hours > 0 else 0.0
-            
+
+    @api.depends('utilization_rate')
+    def _compute_utilization_percentage(self):
+        for rec in self:
+            rec.utilization_percentage = (rec.utilization_rate * 100) if rec.capacity_hours > 0 else 0.0
+
     @api.model
     def _sync_for_period(self, period, employee_ids=None):
         normalized_period = self._normalize_period(period)
