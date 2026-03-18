@@ -224,8 +224,12 @@
 
 // ── Moje timesheety stacked client action ──────────────────────────────────
 .o_tenenet_my_timesheets {
-    padding: 1.5rem 1.5rem 4rem;   // extra bottom padding so SPOLU is never clipped
-    // Let the Odoo action container own the vertical scroll — no fixed height here
+    // Take the full action frame height and scroll internally.
+    // Odoo's action container uses overflow:hidden + fixed height, so the
+    // component must own the vertical scroll or content gets clipped.
+    height: 100%;
+    overflow-y: auto;
+    padding: 1.5rem 1.5rem 4rem;
 
     .o_tenenet_my_header {
         display: flex;
