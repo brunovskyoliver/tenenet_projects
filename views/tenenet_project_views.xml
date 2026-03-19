@@ -178,37 +178,44 @@
             <field name="arch" type="xml">
                 <kanban default_order="year desc, name">
                     <field name="semaphore"/>
+                    <field name="code"/>
                     <field name="odborny_garant_id"/>
                     <field name="project_manager_id"/>
                     <field name="budget_total"/>
                     <field name="currency_id"/>
                     <field name="date_start"/>
                     <field name="date_end"/>
-                    <template>
+                    <templates>
                         <t t-name="card">
-                            <div class="oe_kanban_card oe_kanban_global_click p-3">
-                                <div class="d-flex justify-content-between align-items-start mb-1">
-                                    <span class="text-muted small" t-out="record.code.value"/>
-                                    <t t-if="record.semaphore.raw_value">
-                                        <span t-attf-class="badge #{{'green':'bg-success','yellow':'bg-warning','red':'bg-danger'}[record.semaphore.raw_value]}">&amp;nbsp;</span>
-                                    </t>
-                                </div>
-                                <strong class="d-block mb-2" t-out="record.name.value"/>
-                                <div class="small text-muted">
-                                    <span>Garant: </span><span t-out="record.odborny_garant_id.value or '—'"/>
-                                </div>
-                                <div class="small text-muted mb-2">
-                                    <span>PM: </span><span t-out="record.project_manager_id.value or '—'"/>
-                                </div>
-                                <div class="d-flex justify-content-between small">
-                                    <field name="budget_total" widget="monetary" options="{'currency_field': 'currency_id'}"/>
-                                    <span>
-                                        <t t-out="record.date_start.value"/> – <t t-out="record.date_end.value"/>
-                                    </span>
-                                </div>
+                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                <span class="text-muted small" t-out="record.code.value"/>
+                                <t t-if="record.semaphore.raw_value == 'green'">
+                                    <span class="badge bg-success">&amp;nbsp;</span>
+                                </t>
+                                <t t-elif="record.semaphore.raw_value == 'yellow'">
+                                    <span class="badge bg-warning">&amp;nbsp;</span>
+                                </t>
+                                <t t-elif="record.semaphore.raw_value == 'red'">
+                                    <span class="badge bg-danger">&amp;nbsp;</span>
+                                </t>
+                            </div>
+                            <strong class="d-block mb-2">
+                                <field name="name"/>
+                            </strong>
+                            <div class="small text-muted">
+                                <span>Garant: </span><field name="odborny_garant_id"/>
+                            </div>
+                            <div class="small text-muted mb-2">
+                                <span>PM: </span><field name="project_manager_id"/>
+                            </div>
+                            <div class="d-flex justify-content-between small">
+                                <field name="budget_total" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                <span>
+                                    <t t-out="record.date_start.value"/> – <t t-out="record.date_end.value"/>
+                                </span>
                             </div>
                         </t>
-                    </template>
+                    </templates>
                 </kanban>
             </field>
         </record>
