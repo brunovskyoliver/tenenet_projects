@@ -25,21 +25,29 @@
         }
     }
 
-    // Sticky employee name column so it stays visible when scrolling right
-    .o_account_reports_table {
-        // The column-name header row (2nd thead row) and data cells
-        thead tr:last-child th:first-child,
-        tbody tr td.line_name {
-            position: sticky;
-            left: 0;
-            z-index: 2;
-            // Use a solid background so content behind it is hidden
-            background-color: var(--o-view-background-color, #fff);
-        }
+    // Ensure the table can scroll horizontally (required for sticky columns to work)
+    .table-responsive {
+        overflow-x: auto !important;
+    }
 
-        // The period group header (1st thead row) stays above the sticky column
-        thead tr:first-child th.column_header {
-            z-index: 1;
-        }
+    // Sticky employee name column so it stays visible when scrolling right
+    // Target both the data cells and the matching header cell directly —
+    // no table-class wrapper needed (and avoids specificity issues).
+    td.line_name {
+        position: sticky !important;
+        left: 0;
+        z-index: 2;
+        background-color: var(--o-view-background-color, #fff);
+    }
+
+    // Match the column-name header cell above the sticky data column
+    thead tr:last-child th:first-child {
+        position: sticky !important;
+        left: 0;
+        z-index: 3; // above the data cells so header stays on top
+        background-color: var(--o-view-background-color, #fff);
+    }
+    .column_header {
+        display: none;
     }
 }
