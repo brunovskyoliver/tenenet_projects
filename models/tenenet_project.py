@@ -185,11 +185,11 @@ class TenenetProject(models.Model):
                 ("odborny_garant_id", "=", employee.id),
                 ("project_manager_id", "=", employee.id),
             ]))
-            in_group = group in user.groups_id
+            in_group = group in user.group_ids
             if still_qualifies and not in_group:
-                user.write({"groups_id": [(4, group.id)]})
+                user.write({"group_ids": [(4, group.id)]})
             elif not still_qualifies and in_group:
-                user.write({"groups_id": [(3, group.id)]})
+                user.write({"group_ids": [(3, group.id)]})
 
     @api.model_create_multi
     def create(self, vals_list):

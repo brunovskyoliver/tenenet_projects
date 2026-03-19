@@ -54,6 +54,18 @@ This file provides instructions for AI coding agents (Windsurf/Cascade, Cursor, 
 
 ---
 
+## Known Issues (Mandatory)
+
+Always read `.agents/known-issues/odoo-19.md` before making any changes.
+
+**When you discover a new Odoo 19 bug, breaking change, or gotcha during your work — document it immediately** in `/Users/oliver/odoo-dev/addons/.agents/known-issues/odoo-19.md` before finishing the task. Include:
+- The error message or symptom
+- The wrong pattern (old/broken code)
+- The correct pattern (working code)
+- Brief explanation of why
+
+---
+
 ## Before You Code: Read These First
 
 Depending on your task, read the relevant files:
