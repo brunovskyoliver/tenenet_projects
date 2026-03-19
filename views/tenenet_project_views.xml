@@ -226,11 +226,64 @@
             <field name="view_mode">kanban,list,form</field>
         </record>
 
+        <record id="view_tenenet_project_garant_kanban" model="ir.ui.view">
+            <field name="name">tenenet.project.garant.kanban</field>
+            <field name="model">tenenet.project</field>
+            <field name="arch" type="xml">
+                <kanban default_order="year desc, name">
+                    <field name="semaphore"/>
+                    <field name="code"/>
+                    <field name="odborny_garant_id"/>
+                    <field name="project_manager_id"/>
+                    <field name="budget_total"/>
+                    <field name="currency_id"/>
+                    <field name="date_start"/>
+                    <field name="date_end"/>
+                    <templates>
+                        <t t-name="card">
+                            <button type="object"
+                                    name="action_open_assignments_kanban"
+                                    class="d-block w-100 text-start border-0 bg-transparent p-0">
+                                <div class="d-flex justify-content-between align-items-start mb-1">
+                                    <span class="text-muted small" t-out="record.code.value"/>
+                                    <t t-if="record.semaphore.raw_value == 'green'">
+                                        <span class="badge bg-success">&amp;nbsp;</span>
+                                    </t>
+                                    <t t-elif="record.semaphore.raw_value == 'yellow'">
+                                        <span class="badge bg-warning">&amp;nbsp;</span>
+                                    </t>
+                                    <t t-elif="record.semaphore.raw_value == 'red'">
+                                        <span class="badge bg-danger">&amp;nbsp;</span>
+                                    </t>
+                                </div>
+                                <strong class="d-block mb-2">
+                                    <field name="name"/>
+                                </strong>
+                                <div class="small text-muted">
+                                    <span>Garant: </span><field name="odborny_garant_id"/>
+                                </div>
+                                <div class="small text-muted mb-2">
+                                    <span>PM: </span><field name="project_manager_id"/>
+                                </div>
+                                <div class="d-flex justify-content-between small">
+                                    <field name="budget_total" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    <span>
+                                        <t t-out="record.date_start.value"/> – <t t-out="record.date_end.value"/>
+                                    </span>
+                                </div>
+                            </button>
+                        </t>
+                    </templates>
+                </kanban>
+            </field>
+        </record>
+
         <record id="action_tenenet_garant_projects" model="ir.actions.act_window">
             <field name="name">Moje projekty (Garant/PM)</field>
             <field name="res_model">tenenet.project</field>
-            <field name="view_mode">kanban,list,form</field>
+            <field name="view_mode">kanban,list</field>
             <field name="domain">[('active','=',True),'|',('odborny_garant_id.user_id','=',uid),('project_manager_id.user_id','=',uid)]</field>
+            <field name="view_ids" eval="[(5,0,0),(0,0,{'sequence':1,'view_mode':'kanban','view_id':ref('view_tenenet_project_garant_kanban')})]"/>
         </record>
     </data>
 </odoo>

@@ -240,6 +240,17 @@ class TenenetProject(models.Model):
             if lines_to_remove:
                 lines_to_remove.unlink()
 
+    def action_open_assignments_kanban(self):
+        self.ensure_one()
+        return {
+            "name": self.name,
+            "type": "ir.actions.act_window",
+            "res_model": "tenenet.project.assignment",
+            "view_mode": "kanban,list",
+            "domain": [("project_id", "=", self.id)],
+            "context": {"default_project_id": self.id, "search_default_active": 1},
+        }
+
     def action_open_timesheet_month_matrix(self):
         self.ensure_one()
         self.assignment_ids._sync_precreated_timesheets()

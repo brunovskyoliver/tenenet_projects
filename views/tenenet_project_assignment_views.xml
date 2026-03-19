@@ -1,5 +1,35 @@
 <odoo>
     <data>
+        <record id="view_tenenet_project_assignment_kanban" model="ir.ui.view">
+            <field name="name">tenenet.project.assignment.kanban</field>
+            <field name="model">tenenet.project.assignment</field>
+            <field name="arch" type="xml">
+                <kanban default_order="employee_id">
+                    <field name="active"/>
+                    <field name="date_start"/>
+                    <field name="date_end"/>
+                    <templates>
+                        <t t-name="card">
+                            <strong class="d-block mb-1">
+                                <field name="employee_id"/>
+                            </strong>
+                            <div class="small text-muted mb-2">
+                                <t t-out="record.date_start.value"/> – <t t-out="record.date_end.value"/>
+                            </div>
+                            <t t-if="!record.active.raw_value">
+                                <span class="badge bg-secondary mb-2">Neaktívne</span>
+                            </t>
+                            <button type="object"
+                                    name="action_open_timesheet_matrix_current_year"
+                                    class="btn btn-sm btn-outline-primary">
+                                Otvoriť maticu
+                            </button>
+                        </t>
+                    </templates>
+                </kanban>
+            </field>
+        </record>
+
         <record id="view_tenenet_project_assignment_list" model="ir.ui.view">
             <field name="name">tenenet.project.assignment.list</field>
             <field name="model">tenenet.project.assignment</field>
