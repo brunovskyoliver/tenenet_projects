@@ -201,9 +201,6 @@ Before marking any feature as complete:
 3. **Import wizard tests** with sample data
 4. **ACL tests** (user vs. manager permissions)
 
-Run tests with:
-```bash
-./odoo-bin -d testdb -i tenenet_projects --test-enable --stop-after-init
 ```
 
 ---
