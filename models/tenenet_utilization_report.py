@@ -42,10 +42,20 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
         options["date"]["period"] = self._get_month_offset(period)
         options["date"]["date_from"] = fields.Date.to_string(period)
         options["date"]["date_to"] = fields.Date.to_string(fields.Date.end_of(period, "month"))
-        options["date"]["string"] = format_date(
-            self.env,
-            options["date"]["date_to"],
-            date_format="MMM yyyy",
+        month_str = format_date(self.env, options["date"]["date_to"], date_format="MMM yyyy")
+        options["date"]["string"] = month_str
+
+        # Fix the column group header — Odoo builds it from raw dates ("Od DD/MM/YYYY"),
+        # so we overwrite the string after the column groups are already populated.
+        for cg_data in options.get("column_groups", {}).values():
+            if isinstance(cg_data, dict):
+                cg_data["string"] = month_str
+
+        # Warning filter: persist toggle across report reloads via previous_options
+        options["tenenet_filter_warnings"] = (
+            previous_options.get("tenenet_filter_warnings", False)
+            if previous_options
+            else False
         )
 
     def _dynamic_lines_generator(self, report, options, all_column_groups_expression_totals, warnings=None):
@@ -54,6 +64,7 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
         utilization_records = self._get_utilization_records(
             period,
             search_term=options.get("filter_search_bar"),
+            only_warnings=options.get("tenenet_filter_warnings", False),
         )
         return [
             (0, self._get_report_line(report, options, utilization))
@@ -70,13 +81,17 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
         today_month_start = today.replace(day=1)
         return (period_date.year - today_month_start.year) * 12 + period_date.month - today_month_start.month
 
-    def _get_utilization_records(self, period, search_term=None):
+    def _get_utilization_records(self, period, search_term=None, only_warnings=False):
         records = self.env["tenenet.utilization"].search([("period", "=", period)])
         if search_term:
             lowered_search_term = search_term.lower()
             records = records.filtered(
                 lambda rec: lowered_search_term in (rec.employee_id.name or "").lower()
                 or lowered_search_term in (rec.manager_name or "").lower()
+            )
+        if only_warnings:
+            records = records.filtered(
+                lambda rec: rec.utilization_status == "warning" or rec.non_project_status == "warning"
             )
         return records.sorted(
             key=lambda rec: (
@@ -107,8 +122,6 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
         }
 
     def _get_column_value(self, utilization, label):
-        if label == "employee_name":
-            return utilization.employee_id.name or ""
         if label == "manager_name":
             return utilization.manager_name or ""
         return utilization[label]

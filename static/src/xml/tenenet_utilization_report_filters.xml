@@ -4,6 +4,17 @@
         <xpath expr="//div[@id='filter_date']/t[@t-call='account_reports.AccountReportFilterDate']" position="replace">
             <t t-call="tenenet_projects.TenenetUtilizationReportFilterDate"/>
         </xpath>
+        <xpath expr="//div[@id='filter_date']" position="after">
+            <div id="filter_tenenet_warnings">
+                <button
+                    class="btn btn-secondary"
+                    t-att-class="{ active: filterWarnings }"
+                    t-on-click="() => this.toggleFilterWarnings()"
+                >
+                    <i class="fa fa-exclamation-triangle me-1"/>Len varovania
+                </button>
+            </div>
+        </xpath>
     </t>
 
     <t t-name="tenenet_projects.TenenetUtilizationReportFilterDate">

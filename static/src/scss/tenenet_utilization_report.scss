@@ -7,6 +7,11 @@
         }
     }
 
+    // Hide the rounding unit filter — not relevant for this report
+    #filter_rounding_unit {
+        display: none;
+    }
+
     .line_cell.numeric {
         text-align: center !important;
 
@@ -17,6 +22,24 @@
         > .wrapper > .content {
             justify-content: center;
             width: 100%;
+        }
+    }
+
+    // Sticky employee name column so it stays visible when scrolling right
+    .o_account_reports_table {
+        // The column-name header row (2nd thead row) and data cells
+        thead tr:last-child th:first-child,
+        tbody tr td.line_name {
+            position: sticky;
+            left: 0;
+            z-index: 2;
+            // Use a solid background so content behind it is hidden
+            background-color: var(--o-view-background-color, #fff);
+        }
+
+        // The period group header (1st thead row) stays above the sticky column
+        thead tr:first-child th.column_header {
+            z-index: 1;
         }
     }
 }

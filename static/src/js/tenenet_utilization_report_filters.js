@@ -43,6 +43,15 @@ export class TenenetUtilizationReportFilters extends AccountReportFilters {
         this.controller.updateOption("date.period", offset);
         this.applyFilters("date.period");
     }
+
+    get filterWarnings() {
+        return this.controller.cachedFilterOptions?.tenenet_filter_warnings || false;
+    }
+
+    toggleFilterWarnings() {
+        this.controller.updateOption("tenenet_filter_warnings", !this.filterWarnings);
+        this.applyFilters("tenenet_filter_warnings");
+    }
 }
 
 AccountReport.registerCustomComponent(TenenetUtilizationReportFilters);
