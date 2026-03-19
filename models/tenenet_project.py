@@ -39,9 +39,8 @@ class TenenetProject(models.Model):
     program_id = fields.Many2one("tenenet.program", string="Program", ondelete="restrict")
     donor_id = fields.Many2one("tenenet.donor", string="Donor", ondelete="restrict")
 
-    program_director_id = fields.Many2one("hr.employee", string="Programový riaditeľ")
+    odborny_garant_id = fields.Many2one("hr.employee", string="Odborný garant")
     project_manager_id = fields.Many2one("hr.employee", string="Projektový manažér")
-    financial_manager_id = fields.Many2one("hr.employee", string="Finančný manažér")
     allocation_ids = fields.One2many(
         "tenenet.employee.allocation",
         "project_id",
@@ -171,10 +170,31 @@ class TenenetProject(models.Model):
         for rec in self:
             rec.budget_diff = (rec.amount_contracted or 0.0) - (rec.received_total or 0.0)
 
+    def _sync_garant_pm_group(self):
+        group = self.env.ref("tenenet_projects.group_tenenet_garant_pm", raise_if_not_found=False)
+        if not group:
+            return
+        affected = self.mapped("odborny_garant_id") | self.mapped("project_manager_id")
+        for employee in affected:
+            user = employee.user_id
+            if not user:
+                continue
+            still_qualifies = bool(self.env["tenenet.project"].search_count([
+                ("active", "=", True),
+                "|",
+                ("odborny_garant_id", "=", employee.id),
+                ("project_manager_id", "=", employee.id),
+            ]))
+            if still_qualifies and user not in group.users:
+                group.write({"users": [(4, user.id)]})
+            elif not still_qualifies and user in group.users:
+                group.write({"users": [(3, user.id)]})
+
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
         records._sync_receipt_lines()
+        records._sync_garant_pm_group()
         return records
 
     def write(self, vals):
@@ -182,6 +202,8 @@ class TenenetProject(models.Model):
         if "date_start" in vals or "date_end" in vals:
             self._sync_receipt_lines()
             self.mapped("assignment_ids")._sync_precreated_timesheets()
+        if "odborny_garant_id" in vals or "project_manager_id" in vals or "active" in vals:
+            self._sync_garant_pm_group()
         return result
 
     def _sync_receipt_lines(self):

@@ -44,9 +44,8 @@ class TestTenenetPlan02Project(TransactionCase):
                 "program_id": self.program.id,
                 "donor_id": self.donor.id,
                 "partner_id": self.project_partner.id,
-                "program_director_id": self.employee.id,
+                "odborny_garant_id": self.employee.id,
                 "project_manager_id": self.employee.id,
-                "financial_manager_id": self.employee.id,
                 "date_start": "2026-01-01",
                 "date_end": "2026-12-31",
                 "semaphore": "green",
@@ -55,7 +54,7 @@ class TestTenenetPlan02Project(TransactionCase):
 
         self.assertEqual(project.program_id, self.program)
         self.assertEqual(project.donor_id, self.donor)
-        self.assertEqual(project.program_director_id, self.employee)
+        self.assertEqual(project.odborny_garant_id, self.employee)
         self.assertEqual(project.partner_id, self.project_partner)
         self.assertEqual(project.duration, 12)
         self.assertIn("donor@test.sk", project.donor_contact)

@@ -4,6 +4,20 @@
         <menuitem id="menu_tenenet_my_timesheets_root" name="Moje timesheety" sequence="5" action="action_tenenet_my_timesheets_client" web_icon="tenenet_projects,static/description/icon.png"/>
         <menuitem id="menu_tenenet_my_timesheets_classic" name="Moje timesheety 2" sequence="6" action="action_tenenet_my_timesheet_matrices" web_icon="tenenet_projects,static/description/icon.png"/>
 
+        <menuitem id="menu_tenenet_garant_timesheets_owl"
+            name="Garant: Timesheety A"
+            parent="menu_tenenet_root"
+            sequence="7"
+            action="action_tenenet_garant_timesheets_client"
+            groups="tenenet_projects.group_tenenet_garant_pm"/>
+
+        <menuitem id="menu_tenenet_garant_projects"
+            name="Garant: Timesheety B"
+            parent="menu_tenenet_root"
+            sequence="8"
+            action="action_tenenet_garant_projects"
+            groups="tenenet_projects.group_tenenet_garant_pm"/>
+
         <menuitem id="menu_tenenet_projects" name="Projekty" parent="menu_tenenet_root" sequence="10"/>
         <menuitem id="menu_tenenet_projects_list" name="Všetky projekty" parent="menu_tenenet_projects" action="action_tenenet_project" sequence="10"/>
         <menuitem id="menu_tenenet_timesheets" name="Timesheety" parent="menu_tenenet_projects" action="action_tenenet_project_timesheet" sequence="20"/>

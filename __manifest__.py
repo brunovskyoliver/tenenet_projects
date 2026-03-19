@@ -24,11 +24,13 @@ and P&L reporting by program.
             'tenenet_projects/static/src/js/tenenet_utilization_report_filters.js',
             'tenenet_projects/static/src/js/tenenet_allocation_report_filters.js',
             'tenenet_projects/static/src/js/tenenet_my_timesheets_action.js',
+            'tenenet_projects/static/src/js/tenenet_garant_timesheets_action.js',
             'tenenet_projects/static/src/js/timesheet_matrix_host.js',
             'tenenet_projects/static/src/xml/tenenet_project_yearly_labor_report_filters.xml',
             'tenenet_projects/static/src/xml/tenenet_utilization_report_filters.xml',
             'tenenet_projects/static/src/xml/tenenet_allocation_report_filters.xml',
             'tenenet_projects/static/src/xml/tenenet_my_timesheets_action.xml',
+            'tenenet_projects/static/src/xml/tenenet_garant_timesheets_action.xml',
             'tenenet_projects/static/src/scss/tenenet_project_yearly_labor_report.scss',
             'tenenet_projects/static/src/scss/tenenet_utilization_report.scss',
             'tenenet_projects/static/src/scss/tenenet_allocation_report.scss',
@@ -63,6 +65,7 @@ and P&L reporting by program.
     'demo': [
         'demo/demo.xml',
     ],
+    'pre_init_hook': 'pre_init_hook',
     'installable': True,
     'application': True,
 }

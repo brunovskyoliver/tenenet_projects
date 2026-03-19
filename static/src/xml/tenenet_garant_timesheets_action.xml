@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates>
+    <t t-name="tenenet_projects.TenenetGarantTimesheetsAction">
+        <div class="o_tenenet_my_timesheets o_action">
+        <div class="o_tenenet_my_scroll_body">
+
+            <div class="o_tenenet_my_header">
+                <h2 class="o_tenenet_my_title">Garant: Timesheety</h2>
+                <div class="o_tenenet_my_year_nav">
+                    <button class="btn btn-secondary btn-sm" t-on-click="() => this.changeYear(-1)">
+                        <i class="fa fa-chevron-left"/>
+                    </button>
+                    <span class="o_tenenet_my_year" t-out="state.year"/>
+                    <button class="btn btn-secondary btn-sm" t-on-click="() => this.changeYear(1)">
+                        <i class="fa fa-chevron-right"/>
+                    </button>
+                </div>
+            </div>
+
+            <t t-if="state.loading">
+                <div class="o_tenenet_my_loading">
+                    <i class="fa fa-spinner fa-spin me-2"/>Načítavam...
+                </div>
+            </t>
+            <t t-elif="state.projects.length === 0">
+                <div class="o_tenenet_my_empty">
+                    Nie ste priradený ako garant ani projektový manažér na žiadnom projekte.
+                </div>
+            </t>
+            <t t-else="">
+                <div class="o_tenenet_garant_project_selector d-flex flex-wrap gap-2 mb-3">
+                    <t t-foreach="state.projects" t-as="project" t-key="project.id">
+                        <button
+                            t-attf-class="btn btn-sm #{state.selectedProjectId === project.id ? 'btn-primary' : 'btn-outline-secondary'}"
+                            t-on-click="() => this.selectProject(project.id)">
+                            <t t-if="project.code">
+                                <span class="me-1 text-muted" t-out="project.code"/>
+                            </t>
+                            <t t-out="project.name"/>
+                        </button>
+                    </t>
+                </div>
+
+                <t t-if="!state.selectedProjectId">
+                    <div class="o_tenenet_my_empty">
+                        Vyberte projekt.
+                    </div>
+                </t>
+                <t t-elif="state.matrices.length === 0">
+                    <div class="o_tenenet_my_empty">
+                        Žiadne timesheety pre rok <t t-out="state.year"/>.
+                    </div>
+                </t>
+                <t t-else="">
+                    <t t-foreach="state.matrices" t-as="matrix"
+                       t-key="matrix.id + '_' + (matrix._key || 0)">
+                        <div class="o_tenenet_my_matrix_block">
+                            <div class="o_tenenet_my_matrix_title">
+                                <t t-out="matrix.employee_id[1]"/>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered o_tenenet_my_matrix_table">
+                                    <thead>
+                                        <tr>
+                                            <th class="o_tenenet_my_row_label">Kategória</th>
+                                            <t t-foreach="months" t-as="month" t-key="month.field">
+                                                <th t-out="month.label"/>
+                                            </t>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="matrix.lines" t-as="line" t-key="line.id">
+                                            <tr t-att-class="{
+                                                'o_tenenet_my_total_row': line.is_total,
+                                                'o_tenenet_my_leave_row': line.leave_sync_managed
+                                            }">
+                                                <td class="o_tenenet_my_row_label" t-out="line.name"/>
+                                                <t t-foreach="months" t-as="month" t-key="month.field">
+                                                    <td class="o_tenenet_my_cell">
+                                                        <t t-if="isCellEditable(line, month.field)">
+                                                            <input
+                                                                type="text"
+                                                                inputmode="decimal"
+                                                                class="o_tenenet_my_cell_input"
+                                                                t-att-value="formatValue(line[month.field])"
+                                                                t-on-change="(ev) => this.onCellChange(matrix.id, line.id, month.field, ev)"
+                                                                t-on-focus="(ev) => ev.target.select()"
+                                                            />
+                                                        </t>
+                                                        <t t-else="">
+                                                            <span t-out="formatValue(line[month.field])"/>
+                                                        </t>
+                                                    </td>
+                                                </t>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </t>
+                </t>
+            </t>
+
+        </div>
+        </div>
+    </t>
+</templates>

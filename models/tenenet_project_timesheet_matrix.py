@@ -245,6 +245,20 @@ class TenenetProjectTimesheetMatrix(models.Model):
         return employee.id
 
     @api.model
+    def get_garant_projects(self):
+        """Return projects where current user is odborny_garant or project_manager."""
+        employee = self.env["hr.employee"].search([("user_id", "=", self.env.uid)], limit=1)
+        if not employee:
+            return []
+        projects = self.env["tenenet.project"].search([
+            ("active", "=", True),
+            "|",
+            ("odborny_garant_id", "=", employee.id),
+            ("project_manager_id", "=", employee.id),
+        ], order="name")
+        return [{"id": p.id, "name": p.name, "code": p.code or ""} for p in projects]
+
+    @api.model
     def action_open_my_matrices(self):
         """Sync assignments for the current user, then return the matrix list action."""
         employee = self.env["hr.employee"].search([("user_id", "=", self.env.uid)], limit=1)
