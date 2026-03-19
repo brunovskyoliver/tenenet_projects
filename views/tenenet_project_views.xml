@@ -185,7 +185,7 @@
                     <field name="date_start"/>
                     <field name="date_end"/>
                     <template>
-                        <t t-name="tenenet_project_kanban_card">
+                        <t t-name="card">
                             <div class="oe_kanban_card oe_kanban_global_click p-3">
                                 <div class="d-flex justify-content-between align-items-start mb-1">
                                     <span class="text-muted small" t-out="record.code.value"/>
