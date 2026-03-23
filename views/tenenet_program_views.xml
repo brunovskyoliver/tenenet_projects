@@ -8,7 +8,7 @@
                     <field name="name"/>
                     <field name="code"/>
                     <field name="headcount"/>
-                    <field name="allocation_pct"/>
+                    <field name="allocation_pct_percentage"/>
                     <field name="active"/>
                 </list>
             </field>
@@ -28,7 +28,7 @@
                             </group>
                             <group>
                                 <field name="headcount"/>
-                                <field name="allocation_pct" readonly="1"/>
+                                <field name="allocation_pct_percentage" readonly="1"/>
                             </group>
                         </group>
                         <group>

@@ -136,7 +136,7 @@
                 </record>
                 <record id="tenenet_utilization_report_column_non_project_rate" model="account.report.column">
                     <field name="sequence">210</field>
-                    <field name="name">Procento balastu</field>
+                    <field name="name">Percento balastu</field>
                     <field name="expression_label">non_project_percentage</field>
                     <field name="figure_type">percentage</field>
                 </record>

@@ -128,9 +128,9 @@ class TestTenenetPlan11UtilizationReport(TransactionCase):
         self.assertAlmostEqual(columns["hours_np"], utilization.hours_np, places=2)
         self.assertAlmostEqual(columns["hours_project_total"], utilization.hours_project_total, places=2)
         self.assertAlmostEqual(columns["hours_ballast"], utilization.hours_ballast, places=2)
-        self.assertAlmostEqual(columns["utilization_rate"], utilization.utilization_rate, places=4)
+        self.assertAlmostEqual(columns["utilization_percentage"], utilization.utilization_rate * 100.0, places=2)
         self.assertEqual(columns["utilization_status"], utilization.utilization_status)
-        self.assertAlmostEqual(columns["non_project_rate"], utilization.non_project_rate, places=4)
+        self.assertAlmostEqual(columns["non_project_percentage"], utilization.non_project_rate * 100.0, places=2)
         self.assertEqual(columns["non_project_status"], utilization.non_project_status)
 
     def test_report_month_switch_changes_dataset(self):
