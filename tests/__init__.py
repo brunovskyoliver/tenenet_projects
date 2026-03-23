@@ -7,3 +7,4 @@ from . import test_plan08_project_assignment
 from . import test_plan09_project_timesheet
 from . import test_plan11_utilization_report
 from . import test_plan12_project_yearly_labor_report
+from . import test_plan13_pl_report

@@ -43,6 +43,62 @@ class TenenetPLLine(models.Model):
         "Pre zamestnanca, program a obdobie môže existovať len jeden P&L riadok.",
     )
 
+    @api.model
+    def _sync_for_year(self, selected_year):
+        year_start = fields.Date.to_date(f"{selected_year}-01-01")
+        year_end = fields.Date.to_date(f"{selected_year}-12-31")
+        timesheets = self.env["tenenet.project.timesheet"].with_context(active_test=False).search([
+            ("project_id.program_id", "!=", False),
+            ("period", ">=", year_start),
+            ("period", "<=", year_end),
+        ])
+
+        wanted_keys = {}
+        for timesheet in timesheets:
+            employee = timesheet.employee_id
+            program = timesheet.project_id.program_id
+            period = timesheet.period
+            if not employee or not program or not period:
+                continue
+            key = (employee.id, program.id, period)
+            wanted_keys[key] = {
+                "employee_id": employee.id,
+                "program_id": program.id,
+                "period": period,
+            }
+
+        existing_lines = self.search([
+            ("period", ">=", year_start),
+            ("period", "<=", year_end),
+        ])
+        existing_by_key = {
+            (line.employee_id.id, line.program_id.id, line.period): line
+            for line in existing_lines
+            if line.employee_id and line.program_id and line.period
+        }
+
+        lines_to_delete = existing_lines.filtered(
+            lambda line: (line.employee_id.id, line.program_id.id, line.period) not in wanted_keys
+        )
+        if lines_to_delete:
+            lines_to_delete.unlink()
+
+        missing_vals = [
+            vals for key, vals in wanted_keys.items()
+            if key not in existing_by_key
+        ]
+        if missing_vals:
+            self.create(missing_vals)
+
+        synced_lines = self.search([
+            ("period", ">=", year_start),
+            ("period", "<=", year_end),
+        ])
+        if synced_lines:
+            synced_lines._compute_amount()
+            synced_lines._compute_annual_total()
+        return synced_lines
+
     @api.depends(
         "employee_id",
         "program_id",

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates>
+    <t t-name="tenenet_projects.TenenetPLReportFilters" t-inherit="account_reports.AccountReportFiltersCustomizable">
+        <xpath expr="//div[@id='filter_date']/t[@t-call='account_reports.AccountReportFilterDate']" position="replace">
+            <t t-call="tenenet_projects.TenenetPLReportFilterYear"/>
+        </xpath>
+    </t>
+
+    <t t-name="tenenet_projects.TenenetPLReportFilterYear">
+        <Dropdown menuClass="'account_report_filter date'" navigationOptions="dateNavigationOptions">
+            <button class="btn btn-secondary">
+                <i class="fa fa-calendar me-1"/>
+                <t t-out="yearFilterLabel"/>
+            </button>
+
+            <t t-set-slot="content">
+                <DropdownItem
+                    tag="'div'"
+                    class="{ 'd-flex justify-content-between date_filter date_filter_year selected': true }"
+                    attrs="{ 'data-period-type': 'year', 'data-mode': 'edit' }"
+                    onSelected="() => this.selectYearPeriod()"
+                    closingMode="'none'"
+                >
+                    <div class="filter_name pe-3">
+                        Rok
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <button
+                            class="btn_previous_date fa fa-caret-left"
+                            t-on-click="() => this.selectPreviousPeriod('year')"
+                        />
+                        <DateTimeInput
+                            type="'date'"
+                            class="'o-navigable text-center border-0 bg-transparent'"
+                            value="selectedYearValue"
+                            format="'yyyy'"
+                            minPrecision="'years'"
+                            maxPrecision="'years'"
+                            showWeekNumbers="false"
+                            onChange="(date) => this.selectYear(date)"
+                        />
+                        <button
+                            class="btn_next_date fa fa-caret-right"
+                            t-on-click="() => this.selectNextPeriod('year')"
+                        />
+                    </div>
+                </DropdownItem>
+            </t>
+        </Dropdown>
+    </t>
+</templates>

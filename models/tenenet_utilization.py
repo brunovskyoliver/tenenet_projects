@@ -128,7 +128,7 @@ class TenenetUtilization(models.Model):
         store=True,
     )
     utilization_percentage = fields.Float(
-        string="Procento vyťaženosti (PP)",
+        string="Percento vyťaženosti (PP)",
         digits=(5, 2),
         compute="_compute_utilization_percentage",
     )
@@ -145,7 +145,7 @@ class TenenetUtilization(models.Model):
         store=True,
     )
     non_project_percentage = fields.Float(
-        string="Procento balastu",
+        string="Percento balastu",
         digits=(5, 2),
         compute="_compute_non_project_percentage",
     )

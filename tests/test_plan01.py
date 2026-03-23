@@ -84,3 +84,31 @@ class TestTenenetPlan01(TransactionCase):
         self.assertEqual(employee.position, "Sociálny pracovník")
         self.assertAlmostEqual(employee.work_ratio, 75.0, places=2)
         self.assertAlmostEqual(employee.work_hours, 120.0, places=2)
+
+    def test_program_delete_detaches_linked_projects(self):
+        partner = self.env["res.partner"].create({"name": "Donor Partner"})
+        donor = self.env["tenenet.donor"].create(
+            {
+                "name": "Test Donor",
+                "donor_type": "eu",
+                "partner_id": partner.id,
+            }
+        )
+        program = self.env["tenenet.program"].create(
+            {
+                "name": "Program With Project",
+                "code": "PWP",
+                "headcount": 1.0,
+            }
+        )
+        project = self.env["tenenet.project"].create(
+            {
+                "name": "Linked Project",
+                "program_id": program.id,
+                "donor_id": donor.id,
+            }
+        )
+
+        program.unlink()
+
+        self.assertFalse(project.exists().program_id)
