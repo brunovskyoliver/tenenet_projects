@@ -224,6 +224,12 @@
             <field name="name">Projekty</field>
             <field name="res_model">tenenet.project</field>
             <field name="view_mode">kanban,list,form</field>
+            <field name="view_ids" eval="[
+                (5, 0, 0),
+                (0, 0, {'sequence': 1, 'view_mode': 'kanban', 'view_id': ref('view_tenenet_project_kanban')}),
+                (0, 0, {'sequence': 2, 'view_mode': 'list',   'view_id': ref('view_tenenet_project_list')}),
+                (0, 0, {'sequence': 3, 'view_mode': 'form',   'view_id': ref('view_tenenet_project_form')}),
+            ]"/>
         </record>
 
         <record id="view_tenenet_project_garant_kanban" model="ir.ui.view">
