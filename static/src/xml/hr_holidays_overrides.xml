@@ -4,8 +4,10 @@
     <t t-name="tenenet_projects.FormViewDialog.buttons"
        t-inherit="hr_holidays.FormViewDialog.buttons"
        t-inherit-mode="extension">
-        <xpath expr="//span[@t-if]" position="replace">
+        <xpath expr="//span[@t-if='this.record.isNew']" position="replace">
             <span t-if="this.record.isNew">Odoslať žiadosť</span>
+        </xpath>
+        <xpath expr="//span[@t-else='']" position="replace">
             <span t-else="">Uložiť</span>
         </xpath>
     </t>
