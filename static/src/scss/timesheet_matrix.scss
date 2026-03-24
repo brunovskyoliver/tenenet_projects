@@ -419,3 +419,17 @@
         }
     }
 }
+
+// Force all inline list column headers to show full text — scoped to tenenet project form only
+.o_tenenet_project_form .o_field_one2many {
+    table {
+        table-layout: auto !important;
+    }
+
+    th span.text-truncate {
+        overflow: visible;
+        text-overflow: unset;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+}

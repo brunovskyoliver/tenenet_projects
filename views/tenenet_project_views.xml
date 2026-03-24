@@ -23,7 +23,7 @@
             <field name="name">tenenet.project.form</field>
             <field name="model">tenenet.project</field>
             <field name="arch" type="xml">
-                <form string="Projekt">
+                <form string="Projekt" class="o_tenenet_project_form">
                     <sheet>
                         <group>
                             <group>
@@ -85,7 +85,7 @@
                                     </field>
                                 </group>
                             </page>
-                            <page string="Priradenia zamestnancov">
+                            <page string="Priradenia">
                                 <field name="assignment_ids">
                                     <list string="Priradenia zamestnancov" editable="bottom">
                                         <field name="employee_id"/>
@@ -104,31 +104,8 @@
                                             string="Otvoriť mesačnú maticu"
                                             class="oe_highlight"/>
                                 </group>
-                                <field name="timesheet_ids">
-                                    <list string="Timesheety" editable="bottom"
-                                          decoration-warning="hours_total == 0">
-                                        <field name="assignment_id"/>
-                                        <field name="employee_id" readonly="1"/>
-                                        <field name="period"/>
-                                        <field name="hours_pp"/>
-                                        <field name="hours_np"/>
-                                        <field name="hours_travel" optional="hide"/>
-                                        <field name="hours_training" optional="hide"/>
-                                        <field name="hours_ambulance" optional="hide"/>
-                                        <field name="hours_international" optional="hide"/>
-                                        <field name="hours_project_total" readonly="1"/>
-                                        <field name="hours_vacation" optional="hide"/>
-                                        <field name="hours_sick" optional="hide"/>
-                                        <field name="hours_doctor" optional="hide"/>
-                                        <field name="hours_holidays" optional="hide"/>
-                                        <field name="hours_total" readonly="1"/>
-                                        <field name="gross_salary" readonly="1" optional="show"/>
-                                        <field name="total_labor_cost" readonly="1" optional="show"/>
-                                        <field name="currency_id" column_invisible="1"/>
-                                    </list>
-                                </field>
                             </page>
-                            <page string="Pravidlá dovolenky">
+                            <page string="Dovolenky">
                                 <field name="leave_rule_ids">
                                     <list string="Pravidlá dovolenky" editable="bottom">
                                         <field name="leave_type_id"/>
@@ -136,7 +113,7 @@
                                     </list>
                                 </field>
                             </page>
-                            <page string="Kontakty a zúčtovanie">
+                            <page string="Kontakty">
                                 <group>
                                     <field name="donor_contact" readonly="1"/>
                                     <field name="partner_contact" readonly="1"/>
