@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates>
+    <!-- Change 2b: Override "Submit Request" button text in leave request dialog -->
+    <t t-name="tenenet_projects.FormViewDialog.buttons"
+       t-inherit="hr_holidays.FormViewDialog.buttons"
+       t-inherit-mode="extension">
+        <xpath expr="//span[@t-if]" position="replace">
+            <span t-if="this.record.isNew">Odoslať žiadosť</span>
+            <span t-else="">Uložiť</span>
+        </xpath>
+    </t>
+
+    <!-- Override "Submit Request" button text in allocation dialog -->
+    <t t-name="tenenet_projects.AllocationFormViewDialog.buttons"
+       t-inherit="hr_holidays.AllocationFormViewDialog.buttons"
+       t-inherit-mode="extension">
+        <xpath expr="//span[string()='Submit Request']" position="replace">
+            <span>Odoslať žiadosť</span>
+        </xpath>
+    </t>
+</templates>
