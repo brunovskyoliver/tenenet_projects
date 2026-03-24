@@ -460,6 +460,9 @@ class TenenetPLReportHandler(models.AbstractModel):
             if figure_type == "string":
                 value = ""
                 column_figure_type = "string"
+            elif expression_label == "h1_total":
+                value = sum(monthly_values.get(month_index, 0.0) for month_index in range(1, 7))
+                column_figure_type = figure_type
             elif expression_label == "year_total":
                 value = sum(monthly_values.get(month_index, 0.0) for month_index in range(1, 13))
                 column_figure_type = figure_type

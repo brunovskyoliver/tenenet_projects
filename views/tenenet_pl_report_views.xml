@@ -56,6 +56,12 @@
                     <field name="expression_label">month_06</field>
                     <field name="figure_type">monetary</field>
                 </record>
+                <record id="tenenet_pl_report_column_h1" model="account.report.column">
+                    <field name="sequence">75</field>
+                    <field name="name">Polrok</field>
+                    <field name="expression_label">h1_total</field>
+                    <field name="figure_type">monetary</field>
+                </record>
                 <record id="tenenet_pl_report_column_month_07" model="account.report.column">
                     <field name="sequence">80</field>
                     <field name="name">Júl</field>
