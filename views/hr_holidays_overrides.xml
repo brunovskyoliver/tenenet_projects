@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Change 1: Rename "My Time" top-level menu to Slovak -->
-    <menuitem id="hr_holidays.menu_hr_holidays_my_leaves" name="Moje voľno"/>
+    <!-- Change 1: Rename action title "My Time Off" to Slovak (shown as page heading) -->
+    <record id="hr_holidays.hr_leave_action_my" model="ir.actions.act_window">
+        <field name="name">Moje voľno</field>
+    </record>
 
     <!-- Change 2a: Override placeholder on description field in leave request form -->
     <record id="view_hr_leave_form_tenenet" model="ir.ui.view">
