@@ -1,8 +1,7 @@
 <odoo>
     <data>
         <menuitem id="menu_tenenet_root" name="TENENET" sequence="10" web_icon="tenenet_projects,static/description/icon.png"/>
-        <menuitem id="menu_tenenet_my_timesheets_root" name="Moje timesheety" sequence="5" action="action_tenenet_my_timesheets_client" web_icon="tenenet_projects,static/description/icon.png"/>
-        <menuitem id="menu_tenenet_my_timesheets_classic" name="Moje timesheety 2" sequence="6" action="action_tenenet_my_timesheet_matrices" web_icon="tenenet_projects,static/description/icon.png"/>
+       
 
         <menuitem id="menu_tenenet_garant_timesheets_owl"
             name="Garant: Timesheety A"
@@ -20,23 +19,15 @@
 
         <menuitem id="menu_tenenet_projects" name="Projekty" parent="menu_tenenet_root" sequence="10"/>
         <menuitem id="menu_tenenet_projects_list" name="Všetky projekty" parent="menu_tenenet_projects" action="action_tenenet_project" sequence="10"/>
-        <menuitem id="menu_tenenet_timesheets" name="Timesheety" parent="menu_tenenet_projects" action="action_tenenet_project_timesheet" sequence="20"/>
-        <menuitem id="menu_tenenet_timesheet_grid" name="Mesačná matica hodín" parent="menu_tenenet_projects" action="action_tenenet_project_timesheet_matrix" sequence="30"/>
-        <menuitem id="menu_tenenet_utilization" name="Vyťaženosť" parent="menu_tenenet_projects" action="action_tenenet_utilization" sequence="40"/>
 
         <menuitem id="menu_tenenet_reporting" name="Reporty" parent="menu_tenenet_root" sequence="15"/>
         <menuitem id="menu_tenenet_utilization_report" name="Vyťaženosť report" parent="menu_tenenet_reporting" action="action_tenenet_utilization_report" sequence="5"/>
         <menuitem id="menu_tenenet_project_yearly_labor_report" name="Ročný report projektu" parent="menu_tenenet_reporting" action="action_tenenet_project_yearly_labor_report" sequence="10"/>
         <menuitem id="menu_tenenet_allocation_report" name="Rozúčtovanie" parent="menu_tenenet_reporting" action="action_tenenet_allocation_report" sequence="15"/>
         <menuitem id="menu_tenenet_pl_line" name="P&amp;L podľa programu" parent="menu_tenenet_reporting" action="action_tenenet_pl_report" sequence="20"/>
-        <menuitem id="menu_tenenet_company_expense" name="Náklady Tenenet (absencie)" parent="menu_tenenet_reporting" action="action_tenenet_company_expense" sequence="30"/>
-        <menuitem id="menu_tenenet_company_expense_summary" name="Súhrn nákladov Tenenet" parent="menu_tenenet_reporting" action="action_tenenet_company_expense_summary" sequence="40"/>
 
         <menuitem id="menu_tenenet_configuration" name="Konfigurácia" parent="menu_tenenet_root" sequence="20" groups="tenenet_projects.group_tenenet_manager"/>
         <menuitem id="menu_tenenet_programs" name="Programy" parent="menu_tenenet_configuration" action="action_tenenet_program" sequence="10"/>
         <menuitem id="menu_tenenet_donors" name="Donori" parent="menu_tenenet_configuration" action="action_tenenet_donor" sequence="20"/>
-        <menuitem id="menu_tenenet_assignments" name="Priradenia zamestnancov" parent="menu_tenenet_configuration" action="action_tenenet_project_assignment" sequence="30"/>
-        <menuitem id="menu_tenenet_tenenet_cost" name="Tenenet náklady (rezíduum)" parent="menu_tenenet_configuration" action="action_tenenet_employee_tenenet_cost" sequence="40"/>
-        <menuitem id="menu_tenenet_utilization_sync" name="Synchronizovať vyťaženosť" parent="menu_tenenet_configuration" action="action_tenenet_utilization_sync_wizard" sequence="50" groups="tenenet_projects.group_tenenet_manager"/>
     </data>
 </odoo>

@@ -1,4 +1,8 @@
 .tenenet_allocation_report {
+    tr[data-id="column_headers_row"] {
+        display: none;
+    }
+
     .o_financial_report_line {
         &.level_1 {
             font-weight: bold;

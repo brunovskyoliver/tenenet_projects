@@ -20,6 +20,10 @@
         }
     }
 
+    tr[data-id="column_headers_row"] {
+        display: none;
+    }
+
     .line_cell.numeric {
         text-align: center !important;
 
