@@ -253,12 +253,11 @@
             </field>
         </record>
 
-        <record id="action_tenenet_garant_projects" model="ir.actions.act_window">
+        <record id="action_tenenet_garant_projects_server" model="ir.actions.server">
             <field name="name">Moje projekty (Garant/PM)</field>
-            <field name="res_model">tenenet.project</field>
-            <field name="view_mode">kanban,list</field>
-            <field name="domain">[('active','=',True),'|',('odborny_garant_id.user_id','=',uid),('project_manager_id.user_id','=',uid)]</field>
-            <field name="view_ids" eval="[(5,0,0),(0,0,{'sequence':1,'view_mode':'kanban','view_id':ref('view_tenenet_project_garant_kanban')})]"/>
+            <field name="model_id" ref="model_tenenet_project"/>
+            <field name="state">code</field>
+            <field name="code">action = model.action_open_garant_projects()</field>
         </record>
     </data>
 </odoo>

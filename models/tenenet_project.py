@@ -172,12 +172,16 @@ class TenenetProject(models.Model):
 
     def _sync_garant_pm_group(self):
         group = self.env.ref("tenenet_projects.group_tenenet_garant_pm", raise_if_not_found=False)
+        group_manager = self.env.ref("tenenet_projects.group_tenenet_manager", raise_if_not_found=False)
         if not group:
             return
         affected = self.mapped("odborny_garant_id") | self.mapped("project_manager_id")
         for employee in affected:
             user = employee.user_id
             if not user:
+                continue
+            # Managers already have broader access — leave their groups untouched
+            if group_manager and group_manager in user.group_ids:
                 continue
             still_qualifies = bool(self.env["tenenet.project"].search_count([
                 ("active", "=", True),
@@ -239,6 +243,28 @@ class TenenetProject(models.Model):
             lines_to_remove = rec.receipt_line_ids.filtered(lambda line: line.year not in valid_years)
             if lines_to_remove:
                 lines_to_remove.unlink()
+
+    @api.model
+    def action_open_garant_projects(self):
+        if self.env.user.has_group("tenenet_projects.group_tenenet_manager"):
+            domain = [("active", "=", True)]
+        else:
+            domain = [
+                ("active", "=", True), "|",
+                ("odborny_garant_id.user_id", "=", self.env.uid),
+                ("project_manager_id.user_id", "=", self.env.uid),
+            ]
+        return {
+            "name": "Moje projekty (Garant/PM)",
+            "type": "ir.actions.act_window",
+            "res_model": "tenenet.project",
+            "view_mode": "kanban,list",
+            "domain": domain,
+            "views": [
+                (self.env.ref("tenenet_projects.view_tenenet_project_garant_kanban").id, "kanban"),
+                (False, "list"),
+            ],
+        }
 
     def action_open_assignments_kanban(self):
         self.ensure_one()
