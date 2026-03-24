@@ -97,14 +97,6 @@
                                     </list>
                                 </field>
                             </page>
-                            <page string="Timesheety">
-                                <group>
-                                    <button name="action_open_timesheet_month_matrix"
-                                            type="object"
-                                            string="Otvoriť mesačnú maticu"
-                                            class="oe_highlight"/>
-                                </group>
-                            </page>
                             <page string="Dovolenky">
                                 <field name="leave_rule_ids">
                                     <list string="Pravidlá dovolenky" editable="bottom">
