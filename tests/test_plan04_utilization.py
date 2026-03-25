@@ -14,13 +14,11 @@ class TestTenenetPlan04Utilization(TransactionCase):
     def setUp(self):
         super().setUp()
         self.manager = self.env["hr.employee"].create({"name": "Manažér Vyťaženosť"})
-        self.calendar_8h = self.env["resource.calendar"].create({"name": "Kalendár 8h"})
-        self.calendar_8h.hours_per_day = 8.0
         self.employee = self.env["hr.employee"].create(
             {
                 "name": "Zamestnanec Vyťaženosť",
                 "parent_id": self.manager.id,
-                "resource_calendar_id": self.calendar_8h.id,
+                "work_hours": 8.0,
             }
         )
         self.project = self.env["tenenet.project"].create({"name": "Projekt Util Test"})
@@ -143,30 +141,21 @@ class TestTenenetPlan04Utilization(TransactionCase):
         self.assertEqual(utilization.non_project_status, "warning")
         self.assertEqual(utilization.hours_diff, 10.0)
 
-    def test_employee_workload_computed_from_calendar(self):
-        calendar_6h = self.env["resource.calendar"].create({"name": "Kalendár 6h"})
-        calendar_6h.hours_per_day = 6.0
-        calendar_4h = self.env["resource.calendar"].create({"name": "Kalendár 4h"})
-        calendar_4h.hours_per_day = 4.0
-
-        employee_6h = self.env["hr.employee"].create(
-            {"name": "Zamestnanec 6h", "resource_calendar_id": calendar_6h.id}
-        )
-        employee_4h = self.env["hr.employee"].create(
-            {"name": "Zamestnanec 4h", "resource_calendar_id": calendar_4h.id}
-        )
+    def test_employee_workload_computed_from_contract_hours(self):
+        employee_6h = self.env["hr.employee"].create({"name": "Zamestnanec 6h", "work_hours": 6.0})
+        employee_4h = self.env["hr.employee"].create({"name": "Zamestnanec 4h", "work_hours": 4.0})
 
         self.assertAlmostEqual(self.employee.work_ratio, 100.0, places=2)
-        self.assertAlmostEqual(self.employee.work_hours, 160.0, places=2)
+        self.assertAlmostEqual(self.employee.monthly_capacity_hours, 160.0, places=2)
         self.assertAlmostEqual(employee_6h.work_ratio, 75.0, places=2)
-        self.assertAlmostEqual(employee_6h.work_hours, 120.0, places=2)
+        self.assertAlmostEqual(employee_6h.monthly_capacity_hours, 120.0, places=2)
         self.assertAlmostEqual(employee_4h.work_ratio, 50.0, places=2)
-        self.assertAlmostEqual(employee_4h.work_hours, 80.0, places=2)
+        self.assertAlmostEqual(employee_4h.monthly_capacity_hours, 80.0, places=2)
 
-        self.employee.resource_calendar_id = calendar_6h
-        self.employee.invalidate_recordset(["work_ratio", "work_hours"])
+        self.employee.work_hours = 6.0
+        self.employee.invalidate_recordset(["work_ratio", "monthly_capacity_hours"])
         self.assertAlmostEqual(self.employee.work_ratio, 75.0, places=2)
-        self.assertAlmostEqual(self.employee.work_hours, 120.0, places=2)
+        self.assertAlmostEqual(self.employee.monthly_capacity_hours, 120.0, places=2)
 
     def test_sync_current_period_creates_rows_for_all_active_employees(self):
         employee_2 = self.env["hr.employee"].create({"name": "Zamestnanec 2"})

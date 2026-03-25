@@ -1,33 +1,107 @@
 <odoo>
     <data>
-        <menuitem id="menu_tenenet_root" name="TENENET" sequence="10" web_icon="tenenet_projects,static/description/icon.png"/>
-       
+        <menuitem
+            id="menu_tenenet_root"
+            name="TENENET"
+            sequence="10"
+            web_icon="tenenet_projects,static/description/icon.png"
+        />
 
-        <menuitem id="menu_tenenet_garant_timesheets_owl"
+
+        <menuitem
+            id="menu_tenenet_garant_timesheets_owl"
             name="Garant: Timesheety A"
             parent="menu_tenenet_root"
             sequence="7"
             action="action_tenenet_garant_timesheets_client"
-            groups="tenenet_projects.group_tenenet_garant_pm"/>
+            groups="tenenet_projects.group_tenenet_garant_pm"
+        />
 
-        <menuitem id="menu_tenenet_garant_projects"
+        <menuitem
+            id="menu_tenenet_garant_projects"
             name="Garant: Timesheety B"
             parent="menu_tenenet_root"
             sequence="8"
             action="action_tenenet_garant_projects"
-            groups="tenenet_projects.group_tenenet_garant_pm"/>
+            groups="tenenet_projects.group_tenenet_garant_pm"
+        />
 
-        <menuitem id="menu_tenenet_projects" name="Projekty" parent="menu_tenenet_root" sequence="10"/>
-        <menuitem id="menu_tenenet_projects_list" name="Všetky projekty" parent="menu_tenenet_projects" action="action_tenenet_project" sequence="10"/>
+        <menuitem
+            id="menu_tenenet_projects"
+            name="Projekty"
+            parent="menu_tenenet_root"
+            sequence="10"
+        />
+        <menuitem
+            id="menu_tenenet_projects_list"
+            name="Všetky projekty"
+            parent="menu_tenenet_projects"
+            action="action_tenenet_project"
+            sequence="10"
+        />
 
-        <menuitem id="menu_tenenet_reporting" name="Reporty" parent="menu_tenenet_root" sequence="15"/>
-        <menuitem id="menu_tenenet_utilization_report" name="Vyťaženosť report" parent="menu_tenenet_reporting" action="action_tenenet_utilization_report" sequence="5"/>
-        <menuitem id="menu_tenenet_project_yearly_labor_report" name="Ročný report projektu" parent="menu_tenenet_reporting" action="action_tenenet_project_yearly_labor_report" sequence="10"/>
-        <menuitem id="menu_tenenet_allocation_report" name="Rozúčtovanie" parent="menu_tenenet_reporting" action="action_tenenet_allocation_report" sequence="15"/>
-        <menuitem id="menu_tenenet_pl_line" name="P&amp;L podľa programu" parent="menu_tenenet_reporting" action="action_tenenet_pl_report" sequence="20"/>
+        <menuitem
+            id="menu_tenenet_reporting"
+            name="Reporty"
+            parent="menu_tenenet_root"
+            sequence="15"
+        />
+        <menuitem
+            id="menu_tenenet_utilization_report"
+            name="Vyťaženosť report"
+            parent="menu_tenenet_reporting"
+            action="action_tenenet_utilization_report"
+            sequence="5"
+        />
+        <menuitem
+            id="menu_tenenet_project_yearly_labor_report"
+            name="Ročný report projektu"
+            parent="menu_tenenet_reporting"
+            action="action_tenenet_project_yearly_labor_report"
+            sequence="10"
+        />
+        <menuitem
+            id="menu_tenenet_allocation_report"
+            name="Rozúčtovanie"
+            parent="menu_tenenet_reporting"
+            action="action_tenenet_allocation_report"
+            sequence="15"
+        />
+        <menuitem
+            id="menu_tenenet_pl_line"
+            name="P&amp;L podľa programu"
+            parent="menu_tenenet_reporting"
+            action="action_tenenet_pl_report"
+            sequence="20"
+        />
+        <menuitem
+            id="menu_tenenet_employee_list_report"
+            name="Zoznam zamestnancov"
+            parent="menu_tenenet_reporting"
+            action="action_tenenet_employee_list_report"
+            sequence="25"
+        />
 
-        <menuitem id="menu_tenenet_configuration" name="Konfigurácia" parent="menu_tenenet_root" sequence="20" groups="tenenet_projects.group_tenenet_manager"/>
-        <menuitem id="menu_tenenet_programs" name="Programy" parent="menu_tenenet_configuration" action="action_tenenet_program" sequence="10"/>
-        <menuitem id="menu_tenenet_donors" name="Donori" parent="menu_tenenet_configuration" action="action_tenenet_donor" sequence="20"/>
+        <menuitem
+            id="menu_tenenet_configuration"
+            name="Konfigurácia"
+            parent="menu_tenenet_root"
+            sequence="20"
+            groups="tenenet_projects.group_tenenet_manager"
+        />
+        <menuitem
+            id="menu_tenenet_programs"
+            name="Programy"
+            parent="menu_tenenet_configuration"
+            action="action_tenenet_program"
+            sequence="10"
+        />
+        <menuitem
+            id="menu_tenenet_donors"
+            name="Donori"
+            parent="menu_tenenet_configuration"
+            action="action_tenenet_donor"
+            sequence="20"
+        />
     </data>
 </odoo>

@@ -51,7 +51,7 @@ class TenenetUtilization(models.Model):
     capacity_hours = fields.Float(
         string="Pracovné hodiny (mesiac)",
         digits=(10, 2),
-        related="employee_id.work_hours",
+        related="employee_id.monthly_capacity_hours",
         store=True,
         readonly=True,
     )

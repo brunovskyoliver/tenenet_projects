@@ -3,40 +3,390 @@
         <record id="view_hr_employee_form_tenenet" model="ir.ui.view">
             <field name="name">hr.employee.form.tenenet</field>
             <field name="model">hr.employee</field>
-            <field name="inherit_id" ref="hr.view_employee_form"/>
+            <field name="inherit_id" ref="hr.view_employee_form" />
+            <field name="priority" eval="250" />
             <field name="arch" type="xml">
+                <xpath expr="//form" position="attributes">
+                    <attribute name="string">Zamestnanec</attribute>
+                </xpath>
+
+                <xpath
+                    expr="//page[@name='work_information']"
+                    position="attributes"
+                >
+                    <attribute name="string">Práca</attribute>
+                </xpath>
+                <xpath expr="//page[@name='resume']" position="attributes">
+                    <attribute name="string">Dokumenty</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']"
+                    position="attributes"
+                >
+                    <attribute name="string">Osobné údaje</attribute>
+                </xpath>
+                <xpath expr="//page[@name='hr_settings']" position="attributes">
+                    <attribute name="string">Nastavenia</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='payroll_information']"
+                    position="attributes"
+                >
+                    <attribute name="string">Mzdy</attribute>
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+
+                <xpath
+                    expr="//page[@name='work_information']/div[@id='o_hr_work_information_container']"
+                    position="replace"
+                >
+                    <group string="Pracovné údaje">
+                        <group>
+                            <field name="position" />
+                            <field
+                                name="parent_id"
+                                string="Priamy nadriadený"
+                            />
+                        </group>
+                    </group>
+                </xpath>
+
+                <xpath
+                    expr="//page[@name='resume']/div[@id='o_hr_skills_resume_container']"
+                    position="replace"
+                >
+                    <group string="Nahrané dokumenty">
+                        <field
+                            name="resume_line_ids"
+                            nolabel="1"
+                            mode="list,form"
+                            context="{'default_employee_id': id}"
+                        >
+                            <list editable="bottom">
+                                <field name="name" string="Názov dokladu" />
+                                <field name="date_start" string="Dátum od" />
+                                <field name="date_end" string="Dátum do" />
+                                <field
+                                    name="certificate_filename"
+                                    string="Súbor"
+                                />
+                            </list>
+                        </field>
+                    </group>
+                </xpath>
+                <xpath
+                    expr="//page[@name='certification']"
+                    position="attributes"
+                >
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+
+                <xpath
+                    expr="//page[@name='personal_information']/group/group[field[@name='private_email']]"
+                    position="attributes"
+                >
+                    <attribute name="string">Súkromný kontakt</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']//group[@name='hr_birth_group']"
+                    position="attributes"
+                >
+                    <attribute name="string">Osobné údaje</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']/group/group[field[@name='emergency_contact']]"
+                    position="attributes"
+                >
+                    <attribute name="string">Núdzový kontakt</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']//group[@name='citizenship']"
+                    position="attributes"
+                >
+                    <attribute name="string">Štátna príslušnosť</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']//group[@name='hr_location_group']"
+                    position="attributes"
+                >
+                    <attribute name="string">Adresa</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']//group[@name='hr_education_group']"
+                    position="attributes"
+                >
+                    <attribute name="string">Vzdelanie</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']//group[@name='hr_document_group']"
+                    position="attributes"
+                >
+                    <attribute name="string">Doklady</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']/group/group[.//field[@name='visa_no']]"
+                    position="attributes"
+                >
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']//group[@name='hr_family_group']"
+                    position="attributes"
+                >
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']//field[@name='private_email']"
+                    position="attributes"
+                >
+                    <attribute name="string">E-mail</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']//field[@name='private_phone']"
+                    position="attributes"
+                >
+                    <attribute name="string">Telefón</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']//field[@name='legal_name']"
+                    position="replace"
+                >
+                    <field name="title_academic" string="Titul" />
+                    <field name="first_name" string="Krstné meno" />
+                    <field name="last_name" string="Priezvisko" />
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']//field[@name='place_of_birth']"
+                    position="attributes"
+                >
+                    <attribute name="placeholder">Mesto</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']//field[@name='country_of_birth']"
+                    position="attributes"
+                >
+                    <attribute name="placeholder">Krajina</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']//field[@name='sex']"
+                    position="attributes"
+                >
+                    <attribute name="string">Pohlavie</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']//field[@name='emergency_contact']"
+                    position="attributes"
+                >
+                    <attribute name="string">Kontakt</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']//field[@name='emergency_phone']"
+                    position="attributes"
+                >
+                    <attribute name="string">Telefón</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']//label[@for='private_street']"
+                    position="attributes"
+                >
+                    <attribute name="string">Súkromná adresa</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']//field[@name='private_street']"
+                    position="attributes"
+                >
+                    <attribute name="placeholder">Ulica...</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']//field[@name='private_street2']"
+                    position="attributes"
+                >
+                    <attribute name="placeholder">Ulica 2...</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']//field[@name='private_city']"
+                    position="attributes"
+                >
+                    <attribute name="placeholder">Mesto</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']//field[@name='private_state_id']"
+                    position="attributes"
+                >
+                    <attribute name="placeholder">Kraj</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']//field[@name='private_zip']"
+                    position="attributes"
+                >
+                    <attribute name="placeholder">PSČ</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']//field[@name='private_country_id']"
+                    position="attributes"
+                >
+                    <attribute name="placeholder">Krajina</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']//field[@name='certificate']"
+                    position="attributes"
+                >
+                    <attribute name="string">Dosiahnuté vzdelanie</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']//field[@name='study_field']"
+                    position="attributes"
+                >
+                    <attribute name="string">Študijný odbor</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']//field[@name='id_card']"
+                    position="attributes"
+                >
+                    <attribute name="string">Občiansky preukaz</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']//field[@name='driving_license']"
+                    position="attributes"
+                >
+                    <attribute name="string">Vodičský preukaz</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='personal_information']//button[@name='action_open_allocation_wizard']"
+                    position="attributes"
+                >
+                    <attribute name="string">Rozdelenie mzdy</attribute>
+                </xpath>
+
+                <xpath
+                    expr="//page[@name='hr_settings']//group[@name='user']"
+                    position="attributes"
+                >
+                    <attribute name="string">Používateľ</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='hr_settings']//group[@name='managers']"
+                    position="attributes"
+                >
+                    <attribute name="string">Schvaľovatelia</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='hr_settings']//group[@name='identification_group']"
+                    position="attributes"
+                >
+                    <attribute name="string">Dochádzka / POS</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='hr_settings']//field[@name='user_id']"
+                    position="attributes"
+                >
+                    <attribute name="string">Používateľ</attribute>
+                    <attribute
+                        name="placeholder"
+                    >Bez prepojeného používateľa</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='hr_settings']//field[@name='hr_responsible_id']"
+                    position="attributes"
+                >
+                    <attribute name="string">HR schvaľovateľ</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='hr_settings']//field[@name='pin']"
+                    position="attributes"
+                >
+                    <attribute name="string">PIN kód</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='hr_settings']//label[@for='barcode']"
+                    position="attributes"
+                >
+                    <attribute name="string">Čiarový kód</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='hr_settings']//button[@name='generate_random_barcode']"
+                    position="attributes"
+                >
+                    <attribute name="string">Generovať</attribute>
+                </xpath>
+                <xpath
+                    expr="//page[@name='hr_settings']//button[@name='%(hr.hr_employee_print_badge)d']"
+                    position="attributes"
+                >
+                    <attribute name="string">Tlačiť kartu</attribute>
+                </xpath>
+
                 <xpath expr="//notebook" position="inside">
                     <page string="TENENET">
                         <group>
                             <group>
-                                <field name="tenenet_number"/>
-                                <field name="title_academic"/>
-                                <field name="job_id" string="Pozícia"/>
+                                <field name="tenenet_number" />
+                                <field name="work_hours" />
                             </group>
-                            <group>
-                                <field name="work_hours"/>
-                                <field name="work_ratio"/>
-                                <field name="hourly_rate"/>
-                            </group>
-                        </group>
-                        <group>
-                            <field name="education_info"/>
-                        </group>
-                        <group string="Priradenia k projektom">
-                            <field name="assignment_ids" nolabel="1">
-                                <list string="Priradenia k projektom">
-                                    <field name="project_id"/>
-                                    <field name="wage_hm"/>
-                                    <field name="wage_ccp"/>
-                                    <field name="date_start"/>
-                                    <field name="date_end"/>
-                                    <field name="active"/>
-                                </list>
-                            </field>
                         </group>
                     </page>
                 </xpath>
             </field>
         </record>
+
+        <record id="view_hr_resume_line_form_tenenet" model="ir.ui.view">
+            <field name="name">hr.resume.line.form.tenenet</field>
+            <field name="model">hr.resume.line</field>
+            <field name="inherit_id" ref="hr_skills.resume_line_view_form" />
+            <field name="priority" eval="250" />
+            <field name="arch" type="xml">
+                <xpath expr="//form" position="attributes">
+                    <attribute name="string">Doklad</attribute>
+                </xpath>
+                <xpath
+                    expr="//field[@name='line_type_id']"
+                    position="attributes"
+                >
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+                <xpath expr="//label[@for='name']" position="attributes">
+                    <attribute name="string">Názov dokladu</attribute>
+                </xpath>
+                <xpath expr="//field[@name='name']" position="attributes">
+                    <attribute
+                        name="placeholder"
+                    >napr. certifikát, osvedčenie, diplom</attribute>
+                </xpath>
+                <xpath
+                    expr="//label[@id='date_start_label']"
+                    position="attributes"
+                >
+                    <attribute name="string">Platnosť</attribute>
+                </xpath>
+                <xpath
+                    expr="//group[@id='resume_line_dates']/label[@for='date_start' and not(@id)]"
+                    position="attributes"
+                >
+                    <attribute name="string">Dátum</attribute>
+                </xpath>
+                <xpath expr="//label[@for='duration']" position="attributes">
+                    <attribute name="string">Trvanie</attribute>
+                </xpath>
+                <xpath
+                    expr="//field[@name='certificate_file']"
+                    position="attributes"
+                >
+                    <attribute name="string">Súbor</attribute>
+                </xpath>
+                <xpath
+                    expr="//field[@name='description']"
+                    position="attributes"
+                >
+                    <attribute name="placeholder">Poznámka</attribute>
+                </xpath>
+                <xpath
+                    expr="//field[@name='resume_line_properties']"
+                    position="attributes"
+                >
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+            </field>
+        </record>
+
     </data>
 </odoo>

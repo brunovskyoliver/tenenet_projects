@@ -20,3 +20,4 @@ from . import tenenet_allocation_report
 from . import tenenet_utilization_sync_wizard
 from . import tenenet_pl_line
 from . import tenenet_pl_report
+from . import tenenet_employee_list_report

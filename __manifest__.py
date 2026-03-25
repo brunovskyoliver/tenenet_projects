@@ -16,7 +16,7 @@ and P&L reporting by program.
     'version': '19.0.4.0.0',
     'license': 'LGPL-3',
 
-    'depends': ['base', 'hr', 'hr_holidays', 'account_reports'],
+    'depends': ['base', 'hr', 'hr_holidays', 'hr_skills', 'account_reports'],
 
     'assets': {
         'web.assets_backend': [
@@ -56,6 +56,7 @@ and P&L reporting by program.
         'views/tenenet_allocation_report_views.xml',
         'views/tenenet_utilization_report_views.xml',
         'views/tenenet_pl_report_views.xml',
+        'views/tenenet_employee_list_report_views.xml',
         'views/tenenet_utilization_sync_wizard_views.xml',
         'views/tenenet_pl_line_views.xml',
         'views/tenenet_project_assignment_views.xml',
