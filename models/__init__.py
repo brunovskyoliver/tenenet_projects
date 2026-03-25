@@ -22,3 +22,4 @@ from . import tenenet_pl_line
 from . import tenenet_pl_report
 from . import tenenet_sk_holidays
 from . import tenenet_employee_list_report
+from . import res_users
