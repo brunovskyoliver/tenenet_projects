@@ -14,5 +14,12 @@
     <menuitem groups="tenenet_projects.group_tenenet_manager" id="menu_tenenet_configuration" name="Konfigurácia" parent="menu_tenenet_root" sequence="20"></menuitem>
     <menuitem action="action_tenenet_program" id="menu_tenenet_programs" name="Programy" parent="menu_tenenet_configuration" sequence="10"></menuitem>
     <menuitem action="action_tenenet_donor" id="menu_tenenet_donors" name="Donori" parent="menu_tenenet_configuration" sequence="20"></menuitem>
+    <menuitem
+            id="menu_tenenet_employee_list_report"
+            name="Zoznam zamestnancov"
+            parent="menu_tenenet_reporting"
+            action="action_tenenet_employee_list_report"
+            sequence="25"
+        />
   </data>
 </odoo>
