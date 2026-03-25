@@ -40,15 +40,31 @@
                     expr="//page[@name='work_information']/div[@id='o_hr_work_information_container']"
                     position="replace"
                 >
-                    <group string="Pracovné údaje">
-                        <group>
-                            <field name="position" />
-                            <field
-                                name="parent_id"
-                                string="Priamy nadriadený"
-                            />
-                        </group>
-                    </group>
+                    <div class="row" id="o_hr_work_information_container">
+                        <div id="o_work_information" class="o_hr_column col-lg-7 d-flex flex-column">
+                            <group string="Pracovné údaje">
+                                <field name="position" string="Pracovná pozícia"/>
+                                <field name="company_id" groups="base.group_multi_company" domain="[('id', 'in', allowed_company_ids)]" string="Spoločnosť"/>
+                                <field name="department_id" string="Oddelenie"/>
+                                <field name="job_id" string="Pracovná pozícia (HR)" context="{'default_no_of_recruitment': 0, 'default_is_favorite': False}" placeholder="napr. Manažér predaja"/>
+                                <field name="job_title" string="Názov pozície"/>
+                                <field name="parent_id" string="Priamy nadriadený" widget="many2one_avatar_employee"/>
+                            </group>
+                            <group string="Miesto výkonu práce">
+                                <field name="address_id" string="Adresa pracoviska" context="{'show_address': 1}" options="{'highlight_first_line': True}"/>
+                                <field name="work_location_id" string="Miesto práce" context="{'default_address_id': address_id}" placeholder="napr. Budova 2, Home office"/>
+                            </group>
+                            <group name="departure" string="Ukončenie pracovného pomeru" invisible="active">
+                                <field name="departure_reason_id" string="Dôvod ukončenia" options="{'no_edit': True, 'no_create': True, 'no_open': True}"/>
+                                <field name="departure_description" string="Popis"/>
+                                <field name="departure_date" string="Dátum ukončenia"/>
+                            </group>
+                            <group string="Poznámka" name="note" groups="hr.group_hr_user">
+                                <field name="additional_note" placeholder="Doplňujúce informácie..." colspan="2" nolabel="1"/>
+                            </group>
+                        </div>
+                        <div id="o_employee_org_chart" class="o_hr_column col-lg-5"/>
+                    </div>
                 </xpath>
 
                 <xpath
