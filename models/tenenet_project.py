@@ -6,6 +6,7 @@ class TenenetProject(models.Model):
     _name = "tenenet.project"
     _description = "Projekt TENENET"
     _order = "year desc, name"
+    _inherit = ["mail.thread", "mail.activity.mixin"]
 
     name = fields.Char(string="Názov projektu", required=True)
     code = fields.Char(string="Kód projektu")
