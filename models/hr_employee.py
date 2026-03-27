@@ -17,6 +17,11 @@ class HrEmployee(models.Model):
     first_name = fields.Char(string="Krstné meno", translate=False)
     last_name = fields.Char(string="Priezvisko", translate=False)
     position = fields.Char(string="Pozícia", translate=False)
+    position_catalog_id = fields.Many2one(
+        "hr.job",
+        string="Katalóg pozície",
+        ondelete="set null",
+    )
     education_info = fields.Text(string="Vzdelanie")
     work_hours = fields.Float(
         string="Denný úväzok (hod.)",
@@ -64,10 +69,29 @@ class HrEmployee(models.Model):
         "employee_id",
         string="Školenia",
     )
+    service_ids = fields.One2many(
+        "tenenet.employee.service",
+        "employee_id",
+        string="Služby",
+    )
     tenenet_cost_ids = fields.One2many(
         "tenenet.employee.tenenet.cost",
         "employee_id",
         string="Tenenet náklady",
+    )
+    service_manager_user_ids = fields.Many2many(
+        "res.users",
+        string="Správcovia služieb",
+        relation="hr_employee_service_manager_rel",
+        column1="employee_id",
+        column2="user_id",
+        compute="_compute_service_manager_user_ids",
+        store=True,
+        recursive=True,
+    )
+    can_manage_services = fields.Boolean(
+        string="Môže spravovať služby",
+        compute="_compute_can_manage_services",
     )
     tenenet_allocation_ratio_total = fields.Float(
         string="Projektový úväzok spolu (%)",
@@ -133,18 +157,59 @@ class HrEmployee(models.Model):
             synced_vals["legal_name"] = legal_name
         return synced_vals
 
+    @api.model
+    def _find_or_create_job_position(self, position_name):
+        normalized_name = (position_name or "").strip()
+        if not normalized_name:
+            return self.env["hr.job"]
+
+        job = self.env["hr.job"].search([("name", "=", normalized_name)], limit=1)
+        if not job:
+            job = self.env["hr.job"].create({"name": normalized_name})
+        return job
+
+    @api.model
+    def _prepare_position_sync_vals(self, vals, record=None):
+        synced_vals = dict(vals)
+        if "position_catalog_id" in vals:
+            job = self.env["hr.job"].browse(vals["position_catalog_id"]) if vals["position_catalog_id"] else self.env["hr.job"]
+            synced_vals["position"] = job.name or False
+            synced_vals["job_id"] = job.id or False
+            return synced_vals
+
+        if "job_id" in vals:
+            job = self.env["hr.job"].browse(vals["job_id"]) if vals["job_id"] else self.env["hr.job"]
+            synced_vals["position"] = job.name or False
+            synced_vals["position_catalog_id"] = job.id or False
+            return synced_vals
+
+        if "position" not in vals:
+            return synced_vals
+
+        job = self._find_or_create_job_position(vals.get("position"))
+        synced_vals["position"] = job.name or False
+        synced_vals["position_catalog_id"] = job.id or False
+        synced_vals["job_id"] = job.id or False
+        return synced_vals
+
     @api.model_create_multi
     def create(self, vals_list):
-        synced_vals_list = [self._prepare_identity_sync_vals(vals) for vals in vals_list]
+        synced_vals_list = []
+        for vals in vals_list:
+            synced_vals = self._prepare_identity_sync_vals(vals)
+            synced_vals = self._prepare_position_sync_vals(synced_vals)
+            synced_vals_list.append(synced_vals)
         return super().create(synced_vals_list)
 
     def write(self, vals):
         if len(self) == 1:
             vals = self._prepare_identity_sync_vals(vals, self)
+            vals = self._prepare_position_sync_vals(vals, self)
             return super().write(vals)
 
         for record in self:
             record_vals = record._prepare_identity_sync_vals(vals, record)
+            record_vals = record._prepare_position_sync_vals(record_vals, record)
             super(HrEmployee, record).write(record_vals)
         return True
 
@@ -196,6 +261,24 @@ class HrEmployee(models.Model):
             ratio = (hours_per_day / 8.0) * 100.0 if hours_per_day > 0 else 0.0
             rec.work_ratio = ratio
             rec.monthly_capacity_hours = 160.0 * ratio / 100.0
+
+    @api.depends("parent_id", "parent_id.user_id", "parent_id.service_manager_user_ids")
+    def _compute_service_manager_user_ids(self):
+        for rec in self:
+            manager_users = self.env["res.users"]
+            if rec.parent_id:
+                manager_users |= rec.parent_id.user_id
+                manager_users |= rec.parent_id.service_manager_user_ids
+            rec.service_manager_user_ids = manager_users
+
+    def _compute_can_manage_services(self):
+        current_user = self.env.user
+        is_hr_manager = current_user.has_group("hr.group_hr_manager")
+        for rec in self:
+            rec.can_manage_services = bool(
+                is_hr_manager
+                or rec.service_manager_user_ids.filtered(lambda user: user == current_user)
+            )
 
     @api.depends(
         "assignment_ids.active",

@@ -13,3 +13,4 @@ from . import test_contact_classification
 from . import test_employee_availability
 from . import test_project_assignment_overlap
 from . import test_employee_training
+from . import test_employee_service

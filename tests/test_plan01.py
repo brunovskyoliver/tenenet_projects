@@ -84,6 +84,8 @@ class TestTenenetPlan01(TransactionCase):
         self.assertEqual(employee.name, "Mgr. Test Zamestnanec")
         self.assertEqual(employee.legal_name, "Test Zamestnanec")
         self.assertEqual(employee.position, "Sociálny pracovník")
+        self.assertEqual(employee.position_catalog_id.name, "Sociálny pracovník")
+        self.assertEqual(employee.job_id.name, "Sociálny pracovník")
         self.assertAlmostEqual(employee.work_ratio, 75.0, places=2)
         self.assertAlmostEqual(employee.monthly_capacity_hours, 120.0, places=2)
 
@@ -94,6 +96,12 @@ class TestTenenetPlan01(TransactionCase):
         })
         self.assertEqual(employee.name, "Bc. Novy Zamestnanec")
         self.assertEqual(employee.legal_name, "Novy Zamestnanec")
+
+        second_employee = self.env["hr.employee"].create({
+            "name": "Druhy Zamestnanec",
+            "position": "Sociálny pracovník",
+        })
+        self.assertEqual(second_employee.position_catalog_id, employee.position_catalog_id)
 
     def test_program_delete_detaches_linked_projects(self):
         partner = self.env["res.partner"].create({"name": "Donor Partner"})

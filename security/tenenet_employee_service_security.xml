@@ -1,0 +1,36 @@
+<odoo>
+    <data>
+        <record id="rule_tenenet_employee_service_hr_user_read" model="ir.rule">
+            <field name="name">Služby zamestnanca: HR používateľ číta vlastné a podriadené</field>
+            <field name="model_id" ref="model_tenenet_employee_service"/>
+            <field name="domain_force">['|', ('employee_id.user_id', '=', user.id), ('manager_user_ids', 'in', user.id)]</field>
+            <field name="groups" eval="[(4, ref('hr.group_hr_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_employee_service_hr_user_manage" model="ir.rule">
+            <field name="name">Služby zamestnanca: HR používateľ spravuje len podriadených</field>
+            <field name="model_id" ref="model_tenenet_employee_service"/>
+            <field name="domain_force">[('manager_user_ids', 'in', user.id)]</field>
+            <field name="groups" eval="[(4, ref('hr.group_hr_user'))]"/>
+            <field name="perm_read" eval="0"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_employee_service_hr_manager_all" model="ir.rule">
+            <field name="name">Služby zamestnanca: HR manažér vidí a spravuje všetko</field>
+            <field name="model_id" ref="model_tenenet_employee_service"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('hr.group_hr_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+    </data>
+</odoo>

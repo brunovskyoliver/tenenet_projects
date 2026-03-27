@@ -3,6 +3,8 @@ from . import tenenet_donor
 from . import res_partner
 from . import hr_employee
 from . import tenenet_employee_training
+from . import tenenet_service_catalog
+from . import tenenet_employee_service
 from . import tenenet_project
 from . import tenenet_project_receipt
 from . import tenenet_project_assignment
