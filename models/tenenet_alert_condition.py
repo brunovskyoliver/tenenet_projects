@@ -95,7 +95,7 @@ class TenenetAlertCondition(models.Model):
         "ir.model.fields",
         string="Pole",
         required=True,
-        ondelete="restrict",
+        ondelete="cascade",
         domain="[('model_id', '=', rule_id.model_id), ('store', '=', True), ('ttype', 'in', allowed_field_types)]",
     )
     field_name = fields.Char(string="Technický názov poľa", related="field_id.name", store=True, readonly=True)

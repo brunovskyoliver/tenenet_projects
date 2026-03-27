@@ -125,6 +125,12 @@ class TestTenenetPlan14Alerts(TransactionCase):
                 }),
             ])
 
+    def test_condition_field_metadata_relation_uses_cascade_ondelete(self):
+        self.assertEqual(
+            self.env["tenenet.alert.condition"]._fields["field_id"].ondelete,
+            "cascade",
+        )
+
     def test_rule_builds_relative_domain(self):
         rule = self._create_rule()
         domain = rule._build_domain_from_conditions()
