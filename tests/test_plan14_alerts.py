@@ -53,6 +53,22 @@ class TestTenenetPlan14Alerts(TransactionCase):
             ("model_id", "=", self.project_model.id),
             ("name", "=", "name"),
         ], limit=1)
+        self.garant_field = self.env["ir.model.fields"].search([
+            ("model_id", "=", self.project_model.id),
+            ("name", "=", "odborny_garant_id"),
+        ], limit=1)
+        self.pm_field = self.env["ir.model.fields"].search([
+            ("model_id", "=", self.project_model.id),
+            ("name", "=", "project_manager_id"),
+        ], limit=1)
+        self.garant_employee = self.env["hr.employee"].create({
+            "name": "Garant Alertu",
+            "work_email": "garant@example.com",
+        })
+        self.pm_employee = self.env["hr.employee"].create({
+            "name": "PM Alertu",
+            "work_email": "pm@example.com",
+        })
 
     def _create_rule(self, **overrides):
         vals = {
@@ -123,6 +139,25 @@ class TestTenenetPlan14Alerts(TransactionCase):
         with self.assertRaises(ValidationError):
             rule.action_run_now()
 
+    def test_run_now_accepts_dynamic_recipient_field(self):
+        rule = self.env["tenenet.alert.rule"].create({
+            "name": "Beh s dynamickym prijemcom",
+            "allowed_model_id": self.allowed_model.id,
+            "recipient_field_ids": [Command.set([self.garant_field.id])],
+            "condition_ids": [
+                Command.create({
+                    "field_id": self.date_end_field.id,
+                    "value_mode": "relative",
+                    "operator": "within_next",
+                    "relative_amount": 3,
+                    "relative_unit": "month",
+                }),
+            ],
+        })
+        with patch("odoo.addons.tenenet_projects.models.tenenet_alert_rule.TenenetAlertRule._run_rules") as run_rules:
+            rule.action_run_now()
+        self.assertEqual(run_rules.call_count, 1)
+
     def test_invalid_email_is_rejected(self):
         with self.assertRaises(ValidationError):
             self._create_rule(recipient_email_raw="neplatny-email")
@@ -131,6 +166,22 @@ class TestTenenetPlan14Alerts(TransactionCase):
         partner_without_email = self.env["res.partner"].create({"name": "Bez mailu"})
         with self.assertRaises(ValidationError):
             self._create_rule(recipient_partner_ids=[Command.set([partner_without_email.id])])
+
+    def test_dynamic_recipient_field_from_same_model_is_allowed(self):
+        rule = self._create_rule(
+            recipient_email_raw=False,
+            recipient_partner_ids=[Command.clear()],
+            recipient_field_ids=[Command.set([self.garant_field.id])],
+        )
+        self.assertEqual(rule.recipient_field_ids, self.garant_field)
+
+    def test_dynamic_recipient_field_from_wrong_model_is_rejected(self):
+        other_field = self.env["ir.model.fields"].search([
+            ("model", "=", "res.partner"),
+            ("name", "=", "parent_id"),
+        ], limit=1)
+        with self.assertRaises(ValidationError):
+            self._create_rule(recipient_field_ids=[Command.set([other_field.id])])
 
     def test_duplicate_allowed_model_is_rejected(self):
         with self.cr.savepoint():
@@ -166,6 +217,24 @@ class TestTenenetPlan14Alerts(TransactionCase):
         ])
         self.assertEqual(rule.with_context(alert_new_records=records)._get_digest_match_count(), 2)
         self.assertEqual(rule.with_context(alert_new_records=self.env["tenenet.project"])._get_digest_match_count_text(), "0")
+
+    def test_collect_recipient_emails_includes_dynamic_employee_fields(self):
+        rule = self._create_rule(
+            recipient_email_raw=False,
+            recipient_partner_ids=[Command.clear()],
+            recipient_field_ids=[Command.set([self.garant_field.id, self.pm_field.id])],
+        )
+        today = self.env["tenenet.alert.rule"]._fields["last_run_at"].context_today(rule)
+        project = self.env["tenenet.project"].create({
+            "name": "Projekt s adresatmi",
+            "date_end": today,
+            "odborny_garant_id": self.garant_employee.id,
+            "project_manager_id": self.pm_employee.id,
+        })
+        self.assertEqual(
+            sorted(rule._collect_recipient_emails(project)),
+            ["garant@example.com", "pm@example.com"],
+        )
 
     def test_condition_wizard_creates_numeric_condition(self):
         rule = self._create_rule()

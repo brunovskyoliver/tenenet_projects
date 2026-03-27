@@ -11,6 +11,8 @@ from odoo.tools import email_normalize
 
 _logger = logging.getLogger(__name__)
 
+ALERT_RECIPIENT_RELATIONS = {"hr.employee", "res.users", "res.partner"}
+
 
 class TenenetAlertRule(models.Model):
     _name = "tenenet.alert.rule"
@@ -36,6 +38,14 @@ class TenenetAlertRule(models.Model):
         "rule_id",
         "partner_id",
         string="Partneri",
+    )
+    recipient_field_ids = fields.Many2many(
+        "ir.model.fields",
+        "tenenet_alert_rule_recipient_field_rel",
+        "rule_id",
+        "field_id",
+        string="Dynamickí príjemcovia",
+        domain="[('model_id', '=', model_id), ('store', '=', True), ('ttype', '=', 'many2one'), ('relation', 'in', ['hr.employee', 'res.users', 'res.partner'])]",
     )
     condition_ids = fields.One2many("tenenet.alert.condition", "rule_id", string="Podmienky")
     match_ids = fields.One2many("tenenet.alert.match", "rule_id", string="Zhody")
@@ -65,13 +75,20 @@ class TenenetAlertRule(models.Model):
         for rec in self:
             rec.match_count = len(rec.match_ids.filtered("is_active"))
 
-    @api.constrains("condition_ids", "recipient_email_raw", "recipient_partner_ids")
+    @api.constrains("condition_ids", "recipient_email_raw", "recipient_partner_ids", "recipient_field_ids", "model_id")
     def _check_configuration(self):
         for rec in self:
             rec._parse_recipient_emails()
             partners_without_email = rec.recipient_partner_ids.filtered(lambda partner: not partner.email)
             if partners_without_email:
                 raise ValidationError("Vybraní partneri pre upozornenie musia mať vyplnený e-mail.")
+            for field in rec.recipient_field_ids:
+                if field.model_id != rec.model_id:
+                    raise ValidationError("Dynamický príjemca musí patriť do rovnakého modelu ako pravidlo.")
+                if not field.store or field.ttype != "many2one":
+                    raise ValidationError("Dynamický príjemca musí byť uložené many2one pole.")
+                if field.relation not in ALERT_RECIPIENT_RELATIONS:
+                    raise ValidationError("Dynamický príjemca musí smerovať na partnera, používateľa alebo zamestnanca.")
 
     @api.constrains("summary_field_ids", "model_id")
     def _check_summary_fields(self):
@@ -105,7 +122,7 @@ class TenenetAlertRule(models.Model):
             if not rec.condition_ids:
                 raise ValidationError("Pravidlo upozornenia musí obsahovať aspoň jednu podmienku.")
             recipients = rec._parse_recipient_emails()
-            if not recipients and not rec.recipient_partner_ids:
+            if not recipients and not rec.recipient_partner_ids and not rec.recipient_field_ids:
                 raise ValidationError("Pravidlo upozornenia musí mať aspoň jedného príjemcu.")
 
     def action_open_new_condition_wizard(self):
@@ -303,9 +320,7 @@ class TenenetAlertRule(models.Model):
 
     def _send_digest_email(self, new_match_records):
         self.ensure_one()
-        emails = self._parse_recipient_emails()
-        partner_emails = [email_normalize(partner.email) for partner in self.recipient_partner_ids if partner.email]
-        recipients = sorted({email for email in emails + partner_emails if email})
+        recipients = self._collect_recipient_emails(new_match_records)
         if not recipients:
             raise ValidationError("Pravidlo upozornenia nemá platných príjemcov.")
         template = self.env.ref("tenenet_projects.mail_template_tenenet_alert_digest")
@@ -354,6 +369,40 @@ class TenenetAlertRule(models.Model):
                 "summary_values": summary_values,
             })
         return rows
+
+    def _collect_recipient_emails(self, records):
+        self.ensure_one()
+        emails = set(self._parse_recipient_emails())
+        emails.update(email_normalize(partner.email) for partner in self.recipient_partner_ids if partner.email)
+        for field in self.recipient_field_ids:
+            for record in records:
+                emails.update(self._emails_from_dynamic_value(record[field.name]))
+        return sorted({email for email in emails if email})
+
+    def _emails_from_dynamic_value(self, value):
+        if not value:
+            return []
+        values = value if hasattr(value, "mapped") else self.env[value._name].browse(value.id)
+        emails = []
+        for rec in values:
+            emails.extend(self._emails_from_recipient_record(rec))
+        return [normalized for normalized in (email_normalize(email) for email in emails) if normalized]
+
+    def _emails_from_recipient_record(self, record):
+        if record._name == "res.partner":
+            return [record.email] if record.email else []
+        if record._name == "res.users":
+            values = [record.email, record.partner_id.email]
+            return [value for value in values if value]
+        if record._name == "hr.employee":
+            values = [
+                getattr(record, "work_email", False),
+                record.user_id.email,
+                record.user_id.partner_id.email,
+                getattr(record, "private_email", False),
+            ]
+            return [value for value in values if value]
+        return []
 
     def _parse_recipient_emails(self):
         self.ensure_one()

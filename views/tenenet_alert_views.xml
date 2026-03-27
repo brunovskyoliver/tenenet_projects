@@ -138,6 +138,7 @@
                                     </group>
                                     <group>
                                         <field name="recipient_partner_ids" widget="many2many_tags"/>
+                                        <field name="recipient_field_ids" widget="many2many_tags"/>
                                         <field name="summary_field_ids" widget="many2many_tags"/>
                                     </group>
                                 </group>
