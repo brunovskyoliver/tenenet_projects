@@ -185,10 +185,11 @@
                     <group>
                         <group>
                             <field name="rule_id" invisible="1"/>
+                            <field name="target_model_id" invisible="1"/>
                             <field name="condition_id" invisible="1"/>
                             <field name="sequence"/>
                             <field name="field_id"
-                                   domain="[('model_id', '=', rule_id.model_id), ('store', '=', True), ('ttype', 'in', ['date','datetime','char','text','integer','float','monetary','boolean','selection','many2one'])]"
+                                   domain="[('model_id', '=', target_model_id), ('store', '=', True), ('ttype', 'in', ['date','datetime','char','text','integer','float','monetary','boolean','selection','many2one'])]"
                                    options="{'no_create': True, 'no_open': True}"/>
                             <field name="operator_text" invisible="field_ttype not in ['char', 'text']"/>
                             <field name="operator_numeric" invisible="field_ttype not in ['integer', 'float', 'monetary']"/>

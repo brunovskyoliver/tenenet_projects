@@ -20,6 +20,7 @@ class TenenetAlertConditionWizard(models.TransientModel):
     _description = "Sprievodca podmienkou upozornenia"
 
     rule_id = fields.Many2one("tenenet.alert.rule", string="Pravidlo", required=True)
+    target_model_id = fields.Many2one("ir.model", string="Model upozornenia", related="rule_id.model_id", readonly=True)
     condition_id = fields.Many2one("tenenet.alert.condition", string="Upravovaná podmienka")
     sequence = fields.Integer(string="Poradie", default=10)
     field_id = fields.Many2one(
