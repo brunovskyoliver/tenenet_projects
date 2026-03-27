@@ -1,0 +1,63 @@
+<odoo>
+    <data>
+        <record id="view_tenenet_employee_training_list" model="ir.ui.view">
+            <field name="name">tenenet.employee.training.list</field>
+            <field name="model">tenenet.employee.training</field>
+            <field name="arch" type="xml">
+                <list string="Školenia">
+                    <field name="name"/>
+                    <field name="training_type"/>
+                    <field name="provider"/>
+                    <field name="date_from"/>
+                    <field name="date_to"/>
+                    <field name="certificate_date"/>
+                    <field name="active"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_tenenet_employee_training_form" model="ir.ui.view">
+            <field name="name">tenenet.employee.training.form</field>
+            <field name="model">tenenet.employee.training</field>
+            <field name="arch" type="xml">
+                <form string="Školenie">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="employee_id"/>
+                                <field name="name"/>
+                                <field name="training_type"/>
+                                <field name="provider"/>
+                            </group>
+                            <group>
+                                <field name="date_from"/>
+                                <field name="date_to"/>
+                                <field name="certificate_date"/>
+                                <field name="active"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="notes"/>
+                        </group>
+                    </sheet>
+                    <chatter open_attachments="True" reload_on_attachment="True"/>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_tenenet_employee_training_search" model="ir.ui.view">
+            <field name="name">tenenet.employee.training.search</field>
+            <field name="model">tenenet.employee.training</field>
+            <field name="arch" type="xml">
+                <search string="Školenia">
+                    <field name="employee_id"/>
+                    <field name="name"/>
+                    <field name="provider"/>
+                    <filter string="Interné" name="internal" domain="[('training_type', '=', 'internal')]"/>
+                    <filter string="Externé" name="external" domain="[('training_type', '=', 'external')]"/>
+                    <filter string="Zamestnanec" name="group_employee" context="{'group_by': 'employee_id'}"/>
+                </search>
+            </field>
+        </record>
+    </data>
+</odoo>

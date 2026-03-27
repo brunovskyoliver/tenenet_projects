@@ -64,26 +64,36 @@ class TestTenenetPlan01(TransactionCase):
         self.assertIn("donor@example.com", donor.contact_info)
 
     def test_hr_employee_tenenet_fields(self):
-        position = self.env["hr.job"].create({"name": "Sociálny pracovník"})
-        calendar = self.env["resource.calendar"].create({"name": "Kalendár 6h"})
-        calendar.hours_per_day = 6.0
         employee = self.env["hr.employee"].create(
             {
                 "name": "Test Zamestnanec",
                 "tenenet_number": 123,
                 "title_academic": "Mgr.",
-                "job_id": position.id,
-                "resource_calendar_id": calendar.id,
+                "first_name": "Test",
+                "last_name": "Zamestnanec",
+                "position": "Sociálny pracovník",
+                "work_hours": 6.0,
                 "hourly_rate": 15.5,
             }
         )
 
         self.assertEqual(employee.tenenet_number, 123)
         self.assertEqual(employee.title_academic, "Mgr.")
-        self.assertEqual(employee.job_id, position)
+        self.assertEqual(employee.first_name, "Test")
+        self.assertEqual(employee.last_name, "Zamestnanec")
+        self.assertEqual(employee.name, "Mgr. Test Zamestnanec")
+        self.assertEqual(employee.legal_name, "Test Zamestnanec")
         self.assertEqual(employee.position, "Sociálny pracovník")
         self.assertAlmostEqual(employee.work_ratio, 75.0, places=2)
-        self.assertAlmostEqual(employee.work_hours, 120.0, places=2)
+        self.assertAlmostEqual(employee.monthly_capacity_hours, 120.0, places=2)
+
+        employee.write({
+            "title_academic": "Bc.",
+            "first_name": "Novy",
+            "last_name": "Zamestnanec",
+        })
+        self.assertEqual(employee.name, "Bc. Novy Zamestnanec")
+        self.assertEqual(employee.legal_name, "Novy Zamestnanec")
 
     def test_program_delete_detaches_linked_projects(self):
         partner = self.env["res.partner"].create({"name": "Donor Partner"})

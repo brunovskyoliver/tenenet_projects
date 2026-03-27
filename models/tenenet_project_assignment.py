@@ -40,6 +40,12 @@ class TenenetProjectAssignment(models.Model):
     )
     date_start = fields.Date(string="Začiatok priradenia")
     date_end = fields.Date(string="Koniec priradenia")
+    allocation_ratio = fields.Float(
+        string="Úväzok na projekte (%)",
+        digits=(5, 2),
+        default=100.0,
+        help="Percento úväzku zamestnanca vyhradené pre tento projekt.",
+    )
     wage_hm = fields.Float(
         string="Hodinová mzda HM (brutto)",
         digits=(10, 4),
@@ -65,10 +71,20 @@ class TenenetProjectAssignment(models.Model):
         string="Počet timesheet záznamov",
         compute="_compute_timesheet_count",
     )
-
-    _unique_employee_project = models.Constraint(
-        "UNIQUE(employee_id, project_id)",
-        "Zamestnanec môže byť priradený k projektu iba raz.",
+    state = fields.Selection(
+        [
+            ("planned", "Budúce"),
+            ("active", "Aktívne"),
+            ("finished", "Ukončené"),
+        ],
+        string="Stav",
+        compute="_compute_state",
+        store=True,
+    )
+    is_current = fields.Boolean(
+        string="Aktuálne",
+        compute="_compute_state",
+        store=True,
     )
 
     @api.depends("timesheet_ids")
@@ -76,10 +92,35 @@ class TenenetProjectAssignment(models.Model):
         for rec in self:
             rec.timesheet_count = len(rec.timesheet_ids)
 
-    @api.depends("employee_id.name", "project_id.name")
+    @api.depends("employee_id.name", "project_id.name", "allocation_ratio")
     def _compute_name(self):
         for rec in self:
-            rec.name = f"{rec.employee_id.name or '-'} / {rec.project_id.name or '-'}"
+            ratio = f"{rec.allocation_ratio:.0f} %" if rec.allocation_ratio else "0 %"
+            rec.name = f"{rec.employee_id.name or '-'} / {rec.project_id.name or '-'} / {ratio}"
+
+    @api.depends(
+        "active",
+        "date_start",
+        "date_end",
+        "project_id.date_start",
+        "project_id.date_end",
+    )
+    def _compute_state(self):
+        today = fields.Date.context_today(self)
+        for rec in self:
+            start, end = rec._get_effective_date_range()
+            if not rec.active:
+                rec.state = "finished"
+                rec.is_current = False
+            elif start and start > today:
+                rec.state = "planned"
+                rec.is_current = False
+            elif end and end < today:
+                rec.state = "finished"
+                rec.is_current = False
+            else:
+                rec.state = "active"
+                rec.is_current = True
 
     def _get_expected_periods(self):
         self.ensure_one()
@@ -201,7 +242,14 @@ class TenenetProjectAssignment(models.Model):
 
     def write(self, vals):
         result = super().write(vals)
-        if {"employee_id", "project_id", "date_start", "date_end", "active"} & set(vals):
+        if {
+            "employee_id",
+            "project_id",
+            "date_start",
+            "date_end",
+            "active",
+            "allocation_ratio",
+        } & set(vals):
             self._sync_precreated_timesheets()
         return result
 
@@ -215,10 +263,45 @@ class TenenetProjectAssignment(models.Model):
         )
         return matrix.filtered(lambda rec: rec.year == year)[:1].action_open_form()
 
-    @api.constrains("date_start", "date_end")
+    def _get_effective_date_range(self):
+        self.ensure_one()
+        return (
+            self.date_start or self.project_id.date_start,
+            self.date_end or self.project_id.date_end,
+        )
+
+    @staticmethod
+    def _date_ranges_overlap(start_a, end_a, start_b, end_b):
+        if start_a and end_b and start_a > end_b:
+            return False
+        if start_b and end_a and start_b > end_a:
+            return False
+        return True
+
+    @api.constrains("date_start", "date_end", "allocation_ratio")
     def _check_dates(self):
         for rec in self:
             if rec.date_start and rec.date_end and rec.date_start > rec.date_end:
                 raise ValidationError(
                     "Dátum začiatku priradenia nemôže byť po dátume konca."
                 )
+            if rec.allocation_ratio <= 0.0 or rec.allocation_ratio > 100.0:
+                raise ValidationError("Úväzok na projekte musí byť v rozsahu 0 až 100 %.")
+
+    @api.constrains("employee_id", "project_id", "date_start", "date_end", "active")
+    def _check_overlap(self):
+        for rec in self:
+            if not rec.employee_id or not rec.project_id:
+                continue
+            current_start, current_end = rec._get_effective_date_range()
+            overlaps = self.search([
+                ("id", "!=", rec.id),
+                ("employee_id", "=", rec.employee_id.id),
+                ("project_id", "=", rec.project_id.id),
+            ])
+            for other in overlaps:
+                other_start, other_end = other._get_effective_date_range()
+                if rec._date_ranges_overlap(current_start, current_end, other_start, other_end):
+                    raise ValidationError(
+                        "Pre rovnakého zamestnanca a projekt sa obdobia priradení nesmú prekrývať."
+                    )

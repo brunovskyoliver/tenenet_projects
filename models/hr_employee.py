@@ -4,23 +4,39 @@ from odoo import api, fields, models
 class HrEmployee(models.Model):
     _inherit = "hr.employee"
 
+    _PAYROLL_CLEANUP_XMLID = "tenenet_projects.view_hr_employee_form_tenenet_payroll_cleanup_optional"
+    _PAYROLL_CLEANUP_ARCH = """
+        <data>
+            <xpath expr="//button[@icon='fa-dollar']" position="replace"/>
+            <xpath expr="//page[@name='salary_attachment']" position="replace"/>
+        </data>
+    """
+
     tenenet_number = fields.Integer(string="Interné číslo")
     title_academic = fields.Char(string="Titul")
-    position = fields.Char(string="Pozícia", related="job_id.name", store=True, readonly=True, translate=False)
+    first_name = fields.Char(string="Krstné meno", translate=False)
+    last_name = fields.Char(string="Priezvisko", translate=False)
+    position = fields.Char(string="Pozícia", translate=False)
     education_info = fields.Text(string="Vzdelanie")
     work_hours = fields.Float(
-        string="Pracovné hodiny (mesiac)",
+        string="Denný úväzok (hod.)",
         digits=(10, 2),
-        compute="_compute_workload_from_calendar",
+        default=8.0,
+        help="Denný úväzok zamestnanca v hodinách, napr. 8, 6 alebo 4.",
+    )
+    monthly_capacity_hours = fields.Float(
+        string="Mesačný fond hodín",
+        digits=(10, 2),
+        compute="_compute_workload_from_hours",
         store=True,
-        help="Mesačný baseline z kalendára: 160h pri 100% úväzku.",
+        help="Orientačný mesačný fond hodín vypočítaný z denného úväzku. Pri plnom úväzku je to 160 hodín.",
     )
     work_ratio = fields.Float(
         string="Úväzok (%)",
         digits=(5, 2),
-        compute="_compute_workload_from_calendar",
+        compute="_compute_workload_from_hours",
         store=True,
-        help="Vypočítané z resource_calendar_id.hours_per_day voči 8h plnému úväzku.",
+        help="Percento úväzku vypočítané voči plnému 8-hodinovému úväzku.",
     )
     hourly_rate = fields.Float(string="Hodinová sadzba", digits=(10, 2))
     allocation_ids = fields.One2many(
@@ -43,16 +59,168 @@ class HrEmployee(models.Model):
         "employee_id",
         string="Priradenia k projektom",
     )
+    training_ids = fields.One2many(
+        "tenenet.employee.training",
+        "employee_id",
+        string="Školenia",
+    )
     tenenet_cost_ids = fields.One2many(
         "tenenet.employee.tenenet.cost",
         "employee_id",
         string="Tenenet náklady",
     )
+    tenenet_allocation_ratio_total = fields.Float(
+        string="Projektový úväzok spolu (%)",
+        digits=(5, 2),
+        compute="_compute_tenenet_assignment_availability",
+        store=True,
+    )
+    tenenet_active_assignment_count = fields.Integer(
+        string="Počet aktívnych úväzkov",
+        compute="_compute_tenenet_assignment_availability",
+        store=True,
+    )
+    tenenet_availability_state = fields.Selection(
+        [
+            ("free", "Voľný"),
+            ("partial", "Čiastočne alokovaný"),
+            ("full", "Plne alokovaný"),
+            ("overbooked", "Preťažený"),
+        ],
+        string="Stav dostupnosti",
+        compute="_compute_tenenet_assignment_availability",
+        store=True,
+    )
+    tenenet_availability_label = fields.Char(
+        string="Dostupnosť",
+        compute="_compute_tenenet_assignment_availability",
+        store=True,
+    )
+    tenenet_free_ratio = fields.Float(
+        string="Voľná kapacita (%)",
+        digits=(5, 2),
+        compute="_compute_tenenet_assignment_availability",
+        store=True,
+    )
 
-    @api.depends("resource_calendar_id", "resource_calendar_id.hours_per_day")
-    def _compute_workload_from_calendar(self):
+    @api.model
+    def _compose_display_name(self, title_academic, first_name, last_name):
+        parts = [part.strip() for part in [title_academic, first_name, last_name] if part and part.strip()]
+        return " ".join(parts)
+
+    @api.model
+    def _compose_legal_name(self, first_name, last_name):
+        parts = [part.strip() for part in [first_name, last_name] if part and part.strip()]
+        return " ".join(parts)
+
+    @api.model
+    def _prepare_identity_sync_vals(self, vals, record=None):
+        identity_keys = {"title_academic", "first_name", "last_name"}
+        if not identity_keys.intersection(vals):
+            return vals
+
+        title_academic = vals.get("title_academic", record.title_academic if record else False)
+        first_name = vals.get("first_name", record.first_name if record else False)
+        last_name = vals.get("last_name", record.last_name if record else False)
+
+        display_name = self._compose_display_name(title_academic, first_name, last_name)
+        legal_name = self._compose_legal_name(first_name, last_name)
+
+        synced_vals = dict(vals)
+        if display_name:
+            synced_vals["name"] = display_name
+        if legal_name:
+            synced_vals["legal_name"] = legal_name
+        return synced_vals
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        synced_vals_list = [self._prepare_identity_sync_vals(vals) for vals in vals_list]
+        return super().create(synced_vals_list)
+
+    def write(self, vals):
+        if len(self) == 1:
+            vals = self._prepare_identity_sync_vals(vals, self)
+            return super().write(vals)
+
+        for record in self:
+            record_vals = record._prepare_identity_sync_vals(vals, record)
+            super(HrEmployee, record).write(record_vals)
+        return True
+
+    @api.model
+    def _sync_optional_payroll_cleanup_view(self):
+        payroll_view = self.env.ref("hr_payroll.payroll_hr_employee_view_form", raise_if_not_found=False)
+        model_data = self.env["ir.model.data"].sudo()
+        existing = model_data.search([
+            ("module", "=", "tenenet_projects"),
+            ("name", "=", "view_hr_employee_form_tenenet_payroll_cleanup_optional"),
+        ], limit=1)
+
+        if not payroll_view:
+            if existing and existing.model == "ir.ui.view":
+                self.env["ir.ui.view"].sudo().browse(existing.res_id).unlink()
+            return
+
+        vals = {
+            "name": "hr.employee.form.tenenet.payroll.cleanup.optional",
+            "type": "form",
+            "model": "hr.employee",
+            "inherit_id": payroll_view.id,
+            "priority": 260,
+            "arch_base": self._PAYROLL_CLEANUP_ARCH,
+        }
+        view_model = self.env["ir.ui.view"].sudo()
+        if existing and existing.model == "ir.ui.view":
+            view_model.browse(existing.res_id).write(vals)
+            return
+
+        created_view = view_model.create(vals)
+        model_data.create({
+            "module": "tenenet_projects",
+            "name": "view_hr_employee_form_tenenet_payroll_cleanup_optional",
+            "model": "ir.ui.view",
+            "res_id": created_view.id,
+            "noupdate": True,
+        })
+
+    def _register_hook(self):
+        result = super()._register_hook()
+        self._sync_optional_payroll_cleanup_view()
+        return result
+
+    @api.depends("work_hours")
+    def _compute_workload_from_hours(self):
         for rec in self:
-            hours_per_day = rec.resource_calendar_id.hours_per_day or 8.0
+            hours_per_day = rec.work_hours or 0.0
             ratio = (hours_per_day / 8.0) * 100.0 if hours_per_day > 0 else 0.0
             rec.work_ratio = ratio
-            rec.work_hours = 160.0 * ratio / 100.0
+            rec.monthly_capacity_hours = 160.0 * ratio / 100.0
+
+    @api.depends(
+        "assignment_ids.active",
+        "assignment_ids.allocation_ratio",
+        "assignment_ids.date_start",
+        "assignment_ids.date_end",
+        "assignment_ids.project_id.date_start",
+        "assignment_ids.project_id.date_end",
+    )
+    def _compute_tenenet_assignment_availability(self):
+        for rec in self:
+            active_assignments = rec.assignment_ids.filtered(lambda assignment: assignment.is_current)
+            total_ratio = sum(active_assignments.mapped("allocation_ratio"))
+            rec.tenenet_allocation_ratio_total = total_ratio
+            rec.tenenet_active_assignment_count = len(active_assignments)
+            rec.tenenet_free_ratio = max(0.0, 100.0 - total_ratio)
+            if total_ratio <= 0.0:
+                rec.tenenet_availability_state = "free"
+                rec.tenenet_availability_label = "Voľný"
+            elif total_ratio < 100.0:
+                rec.tenenet_availability_state = "partial"
+                rec.tenenet_availability_label = "Čiastočne alokovaný"
+            elif total_ratio == 100.0:
+                rec.tenenet_availability_state = "full"
+                rec.tenenet_availability_label = "Plne alokovaný"
+            else:
+                rec.tenenet_availability_state = "overbooked"
+                rec.tenenet_availability_label = "Preťažený"

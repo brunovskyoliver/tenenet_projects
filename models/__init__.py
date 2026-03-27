@@ -1,6 +1,8 @@
 from . import tenenet_program
 from . import tenenet_donor
+from . import res_partner
 from . import hr_employee
+from . import tenenet_employee_training
 from . import tenenet_project
 from . import tenenet_project_receipt
 from . import tenenet_project_assignment
@@ -24,3 +26,6 @@ from . import tenenet_allocation_report
 from . import tenenet_utilization_sync_wizard
 from . import tenenet_pl_line
 from . import tenenet_pl_report
+from . import tenenet_sk_holidays
+from . import tenenet_employee_list_report
+from . import res_users

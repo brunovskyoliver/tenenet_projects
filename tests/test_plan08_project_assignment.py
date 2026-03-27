@@ -43,6 +43,7 @@ class TestTenenetPlan08ProjectAssignment(TransactionCase):
         vals = {
             "employee_id": self.employee.id,
             "project_id": self.project.id,
+            "allocation_ratio": 100.0,
             "wage_hm": 10.0,
             "wage_ccp": 13.62,
         }
@@ -54,14 +55,19 @@ class TestTenenetPlan08ProjectAssignment(TransactionCase):
         self.assertTrue(assignment.active)
         self.assertEqual(assignment.employee_id, self.employee)
         self.assertEqual(assignment.project_id, self.project)
+        self.assertAlmostEqual(assignment.allocation_ratio, 100.0)
         self.assertAlmostEqual(assignment.wage_hm, 10.0)
         self.assertAlmostEqual(assignment.wage_ccp, 13.62)
 
-    def test_unique_employee_project_constraint(self):
-        self.env["tenenet.project.assignment"].create(self._assignment_vals())
-        with self.cr.savepoint():
-            with self.assertRaises(IntegrityError):
-                self.env["tenenet.project.assignment"].create(self._assignment_vals())
+    def test_non_overlapping_same_project_periods_are_allowed(self):
+        a1 = self.env["tenenet.project.assignment"].create(
+            self._assignment_vals(date_start="2026-01-01", date_end="2026-03-31")
+        )
+        a2 = self.env["tenenet.project.assignment"].create(
+            self._assignment_vals(date_start="2026-04-01", date_end="2026-12-31")
+        )
+        self.assertTrue(a1.exists())
+        self.assertTrue(a2.exists())
 
     def test_different_projects_allowed(self):
         a1 = self.env["tenenet.project.assignment"].create(self._assignment_vals())
@@ -76,6 +82,21 @@ class TestTenenetPlan08ProjectAssignment(TransactionCase):
             self.env["tenenet.project.assignment"].create(
                 self._assignment_vals(date_start="2026-06-01", date_end="2026-01-01")
             )
+
+    def test_overlapping_same_project_periods_are_rejected(self):
+        self.env["tenenet.project.assignment"].create(
+            self._assignment_vals(date_start="2026-01-01", date_end="2026-06-30")
+        )
+        with self.assertRaises(ValidationError):
+            self.env["tenenet.project.assignment"].create(
+                self._assignment_vals(date_start="2026-06-15", date_end="2026-12-31")
+            )
+
+    def test_allocation_ratio_constraint(self):
+        with self.assertRaises(ValidationError):
+            self.env["tenenet.project.assignment"].create(self._assignment_vals(allocation_ratio=0.0))
+        with self.assertRaises(ValidationError):
+            self.env["tenenet.project.assignment"].create(self._assignment_vals(allocation_ratio=101.0))
 
     def test_assignment_on_employee_one2many(self):
         self.env["tenenet.project.assignment"].create(self._assignment_vals())

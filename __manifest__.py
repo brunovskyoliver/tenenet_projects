@@ -13,10 +13,11 @@ and P&L reporting by program.
     'website': "https://www.tenenet.sk",
 
     'category': 'Project',
-    'version': '19.0.4.0.0',
+    'version': '19.0.5.0.0',
     'license': 'LGPL-3',
 
-    'depends': ['base', 'hr', 'hr_holidays', 'account_reports', 'mail'],
+    'depends': ['base', 'hr', 'hr_holidays', 'hr_skills', 'account_reports', 'mail'],
+
 
     'assets': {
         'web.assets_backend': [
@@ -33,6 +34,7 @@ and P&L reporting by program.
             'tenenet_projects/static/src/xml/tenenet_pl_report_filters.xml',
             'tenenet_projects/static/src/xml/tenenet_my_timesheets_action.xml',
             'tenenet_projects/static/src/xml/tenenet_garant_timesheets_action.xml',
+            'tenenet_projects/static/src/xml/hr_holidays_overrides.xml',
             'tenenet_projects/static/src/scss/tenenet_project_yearly_labor_report.scss',
             'tenenet_projects/static/src/scss/tenenet_utilization_report.scss',
             'tenenet_projects/static/src/scss/tenenet_allocation_report.scss',
@@ -60,6 +62,7 @@ and P&L reporting by program.
         'views/tenenet_allocation_report_views.xml',
         'views/tenenet_utilization_report_views.xml',
         'views/tenenet_pl_report_views.xml',
+        'views/tenenet_employee_list_report_views.xml',
         'views/tenenet_utilization_sync_wizard_views.xml',
         'views/tenenet_pl_line_views.xml',
         'views/tenenet_project_assignment_views.xml',
@@ -67,13 +70,18 @@ and P&L reporting by program.
         'views/tenenet_project_timesheet_matrix_views.xml',
         'views/tenenet_employee_tenenet_cost_views.xml',
         'views/tenenet_company_expense_views.xml',
+        'views/res_partner_views.xml',
+        'views/tenenet_employee_training_views.xml',
         'views/hr_employee_views.xml',
         'views/menu.xml',
+        'views/hr_holidays_overrides.xml',
+        'data/tenenet_sk_holidays_cron.xml',
     ],
     'demo': [
         'demo/demo.xml',
     ],
     'pre_init_hook': 'pre_init_hook',
+    'post_init_hook': 'post_init_hook',
     'installable': True,
     'application': True,
 }
