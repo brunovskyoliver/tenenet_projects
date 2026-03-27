@@ -77,43 +77,44 @@
                             </field>
                         </group>
                     </page>
-                    <page string="Životopis">
-                        <group string="Školenia">
-                            <field name="training_ids" nolabel="1" context="{'default_employee_id': id}">
-                                <list string="Školenia">
-                                    <field name="name"/>
-                                    <field name="training_type"/>
-                                    <field name="provider"/>
-                                    <field name="date_from"/>
-                                    <field name="date_to"/>
-                                    <field name="certificate_date"/>
-                                    <field name="active"/>
-                                </list>
-                                <form string="Školenie">
-                                    <sheet>
+                </xpath>
+
+                <xpath expr="//page[@name='resume']//div[@id='o_employee_left']" position="inside">
+                    <group string="TENENET školenia">
+                        <field name="training_ids" nolabel="1" context="{'default_employee_id': id}">
+                            <list string="Školenia">
+                                <field name="name"/>
+                                <field name="training_type"/>
+                                <field name="provider"/>
+                                <field name="date_from"/>
+                                <field name="date_to"/>
+                                <field name="certificate_date"/>
+                                <field name="active"/>
+                            </list>
+                            <form string="Školenie">
+                                <sheet>
+                                    <group>
                                         <group>
-                                            <group>
-                                                <field name="employee_id" invisible="1"/>
-                                                <field name="name"/>
-                                                <field name="training_type"/>
-                                                <field name="provider"/>
-                                            </group>
-                                            <group>
-                                                <field name="date_from"/>
-                                                <field name="date_to"/>
-                                                <field name="certificate_date"/>
-                                                <field name="active"/>
-                                            </group>
+                                            <field name="employee_id" invisible="1"/>
+                                            <field name="name"/>
+                                            <field name="training_type"/>
+                                            <field name="provider"/>
                                         </group>
                                         <group>
-                                            <field name="notes"/>
+                                            <field name="date_from"/>
+                                            <field name="date_to"/>
+                                            <field name="certificate_date"/>
+                                            <field name="active"/>
                                         </group>
-                                    </sheet>
-                                    <chatter open_attachments="True" reload_on_attachment="True"/>
-                                </form>
-                            </field>
-                        </group>
-                    </page>
+                                    </group>
+                                    <group>
+                                        <field name="notes"/>
+                                    </group>
+                                </sheet>
+                                <chatter open_attachments="True" reload_on_attachment="True"/>
+                            </form>
+                        </field>
+                    </group>
                 </xpath>
             </field>
         </record>
