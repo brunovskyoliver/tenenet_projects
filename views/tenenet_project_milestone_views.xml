@@ -1,0 +1,33 @@
+<odoo>
+    <data>
+        <record id="view_tenenet_project_milestone_list" model="ir.ui.view">
+            <field name="name">tenenet.project.milestone.list</field>
+            <field name="model">tenenet.project.milestone</field>
+            <field name="arch" type="xml">
+                <list string="Míľniky" default_order="date asc, sequence asc, id asc">
+                    <field name="sequence" optional="hide"/>
+                    <field name="date"/>
+                    <field name="name"/>
+                    <field name="note" optional="show"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_tenenet_project_milestone_form" model="ir.ui.view">
+            <field name="name">tenenet.project.milestone.form</field>
+            <field name="model">tenenet.project.milestone</field>
+            <field name="arch" type="xml">
+                <form string="Míľnik">
+                    <sheet>
+                        <group>
+                            <field name="project_id" readonly="1"/>
+                            <field name="date"/>
+                            <field name="name"/>
+                            <field name="note"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+    </data>
+</odoo>

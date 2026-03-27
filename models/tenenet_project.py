@@ -1,5 +1,5 @@
-from odoo import api, fields, models
-from odoo.exceptions import ValidationError
+from odoo import _, api, fields, models
+from odoo.exceptions import AccessError, ValidationError
 
 
 class TenenetProject(models.Model):
@@ -66,6 +66,15 @@ class TenenetProject(models.Model):
         "tenenet.project.receipt",
         "project_id",
         string="Prijaté podľa rokov",
+    )
+    milestone_ids = fields.One2many(
+        "tenenet.project.milestone",
+        "project_id",
+        string="Míľniky",
+    )
+    can_manage_milestones = fields.Boolean(
+        string="Môže spravovať míľniky",
+        compute="_compute_can_manage_milestones",
     )
 
     currency_id = fields.Many2one(
@@ -170,6 +179,17 @@ class TenenetProject(models.Model):
     def _compute_budget_diff(self):
         for rec in self:
             rec.budget_diff = (rec.amount_contracted or 0.0) - (rec.received_total or 0.0)
+
+    @api.depends("odborny_garant_id", "odborny_garant_id.user_id")
+    def _compute_can_manage_milestones(self):
+        current_user = self.env.user
+        is_manager = current_user.has_group("tenenet_projects.group_tenenet_manager")
+        employee_ids = set(current_user.employee_ids.ids)
+        for rec in self:
+            rec.can_manage_milestones = bool(
+                is_manager
+                or (rec.odborny_garant_id.id and rec.odborny_garant_id.id in employee_ids)
+            )
 
     def _sync_garant_pm_group(self):
         group = self.env.ref("tenenet_projects.group_tenenet_garant_pm", raise_if_not_found=False)
@@ -278,6 +298,18 @@ class TenenetProject(models.Model):
             "context": {"default_project_id": self.id},
         }
 
+    def action_open_milestone_wizard(self):
+        self.ensure_one()
+        self._check_milestone_manage_access()
+        return {
+            "name": "Pridať míľnik",
+            "type": "ir.actions.act_window",
+            "res_model": "tenenet.project.milestone.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {"default_project_id": self.id},
+        }
+
     def action_open_assignments_kanban(self):
         self.ensure_one()
         return {
@@ -328,6 +360,17 @@ class TenenetProject(models.Model):
             lines.append(partner.website)
 
         return "\n".join(lines) if lines else False
+
+    def _check_milestone_manage_access(self):
+        current_user = self.env.user
+        is_manager = current_user.has_group("tenenet_projects.group_tenenet_manager")
+        employee_ids = set(current_user.employee_ids.ids)
+        for rec in self:
+            is_garant = rec.odborny_garant_id.id in employee_ids
+            if not (is_manager or is_garant):
+                raise AccessError(
+                    _("Míľniky môže upravovať iba TENENET manažér alebo odborný garant projektu.")
+                )
 
     @api.constrains("is_tenenet_internal", "active")
     def _check_single_active_internal_project(self):

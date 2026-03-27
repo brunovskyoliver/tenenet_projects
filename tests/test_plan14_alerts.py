@@ -3,6 +3,7 @@ from unittest.mock import patch
 from psycopg2 import IntegrityError
 
 from odoo import Command
+from odoo import fields
 from odoo.exceptions import AccessError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
@@ -37,13 +38,21 @@ class TestTenenetPlan14Alerts(TransactionCase):
             "name": "Externý príjemca",
             "email": "partner@example.com",
         })
-        self.allowed_model = self.env["tenenet.alert.allowed.model"].create({
-            "model_id": self.env["ir.model"]._get_id("tenenet.project"),
-        })
+        self.allowed_model = self.env["tenenet.alert.allowed.model"].search([
+            ("model_id", "=", self.env["ir.model"]._get_id("tenenet.project")),
+        ], limit=1)
+        self.milestone_allowed_model = self.env["tenenet.alert.allowed.model"].search([
+            ("model_id", "=", self.env["ir.model"]._get_id("tenenet.project.milestone")),
+        ], limit=1)
         self.project_model = self.env["ir.model"].search([("model", "=", "tenenet.project")], limit=1)
+        self.milestone_model = self.env["ir.model"].search([("model", "=", "tenenet.project.milestone")], limit=1)
         self.date_end_field = self.env["ir.model.fields"].search([
             ("model_id", "=", self.project_model.id),
             ("name", "=", "date_end"),
+        ], limit=1)
+        self.milestone_date_field = self.env["ir.model.fields"].search([
+            ("model_id", "=", self.milestone_model.id),
+            ("name", "=", "date"),
         ], limit=1)
         self.active_field = self.env["ir.model.fields"].search([
             ("model_id", "=", self.project_model.id),
@@ -160,7 +169,7 @@ class TestTenenetPlan14Alerts(TransactionCase):
 
     def test_send_matching_now_always_sends_current_matches(self):
         rule = self._create_rule()
-        today = self.env["tenenet.alert.rule"]._fields["last_run_at"].context_today(rule)
+        today = fields.Date.context_today(rule)
         self.env["tenenet.project"].create({
             "name": "Projekt na test send",
             "date_end": today,
@@ -229,6 +238,16 @@ class TestTenenetPlan14Alerts(TransactionCase):
         ])
         self.assertEqual(duplicates, 1)
 
+        milestone_model = self.env["ir.model"].search([("model", "=", "tenenet.project.milestone")], limit=1)
+        milestone_allowed_model = self.env["tenenet.alert.allowed.model"].search([
+            ("model_id", "=", milestone_model.id),
+        ], limit=1)
+        self.assertTrue(milestone_allowed_model.active)
+        self.assertEqual(
+            milestone_allowed_model.notes,
+            "Míľniky projektov – monitorovanie termínov míľnikov podľa projektu",
+        )
+
     def test_field_from_other_model_is_rejected(self):
         other_field = self.env["ir.model.fields"].search([("model", "=", "res.partner"), ("name", "=", "email")], limit=1)
         with self.assertRaises(ValidationError):
@@ -249,7 +268,7 @@ class TestTenenetPlan14Alerts(TransactionCase):
 
     def test_digest_match_count_uses_context_records(self):
         rule = self._create_rule()
-        today = self.env["tenenet.alert.rule"]._fields["last_run_at"].context_today(rule)
+        today = fields.Date.context_today(rule)
         records = self.env["tenenet.project"].create([
             {"name": "Projekt A", "date_end": today},
             {"name": "Projekt B", "date_end": today},
@@ -264,7 +283,7 @@ class TestTenenetPlan14Alerts(TransactionCase):
             recipient_partner_ids=[Command.clear()],
             recipient_field_ids=[Command.set([self.garant_field.id, self.pm_field.id])],
         )
-        today = self.env["tenenet.alert.rule"]._fields["last_run_at"].context_today(rule)
+        today = fields.Date.context_today(rule)
         project = self.env["tenenet.project"].create({
             "name": "Projekt s adresatmi",
             "date_end": today,
@@ -278,7 +297,7 @@ class TestTenenetPlan14Alerts(TransactionCase):
 
     def test_prepare_mail_rows_include_human_reason_text(self):
         rule = self._create_rule()
-        today = self.env["tenenet.alert.rule"]._fields["last_run_at"].context_today(rule)
+        today = fields.Date.context_today(rule)
         project = self.env["tenenet.project"].create({
             "name": "Projekt s dôvodom",
             "date_end": today,
@@ -361,7 +380,7 @@ class TestTenenetPlan14Alerts(TransactionCase):
                 "value_char": "Aktívny",
             }),
         ])
-        today = self.env["tenenet.alert.rule"]._fields["last_run_at"].context_today(rule)
+        today = fields.Date.context_today(rule)
         matching = self.env["tenenet.project"].create({
             "name": "Aktívny projekt",
             "date_end": today,
@@ -377,7 +396,7 @@ class TestTenenetPlan14Alerts(TransactionCase):
         self.assertEqual(matches, matching)
 
     def test_rule_deduplicates_notifications_until_match_reappears(self):
-        today = self.env["tenenet.alert.rule"]._fields["last_run_at"].context_today(self.env["tenenet.alert.rule"])
+        today = fields.Date.context_today(self.env["tenenet.alert.rule"])
         project = self.env["tenenet.project"].create({
             "name": "Projekt termín",
             "date_end": today,
@@ -434,7 +453,7 @@ class TestTenenetPlan14Alerts(TransactionCase):
 
     def test_digest_rows_include_summary_fields(self):
         rule = self._create_rule(summary_field_ids=[Command.set([self.name_field.id])])
-        today = self.env["tenenet.alert.rule"]._fields["last_run_at"].context_today(rule)
+        today = fields.Date.context_today(rule)
         project = self.env["tenenet.project"].create({
             "name": "Projekt s detailom",
             "date_end": today,
@@ -443,3 +462,62 @@ class TestTenenetPlan14Alerts(TransactionCase):
         rows = rule._prepare_mail_rows(project)
         self.assertEqual(rows[0]["name"], "Projekt s detailom")
         self.assertEqual(rows[0]["summary_values"][0]["label"], self.name_field.field_description)
+
+    def test_milestone_alert_rows_include_related_project(self):
+        rule = self.env["tenenet.alert.rule"].create({
+            "name": "Míľnik čoskoro",
+            "allowed_model_id": self.milestone_allowed_model.id,
+            "recipient_email_raw": "alerts@example.com",
+            "condition_ids": [
+                Command.create({
+                    "field_id": self.milestone_date_field.id,
+                    "value_mode": "relative",
+                    "operator": "within_next",
+                    "relative_amount": 1,
+                    "relative_unit": "month",
+                }),
+            ],
+        })
+        today = fields.Date.context_today(rule)
+        project = self.env["tenenet.project"].create({
+            "name": "Projekt míľnik",
+            "date_start": today,
+            "date_end": today,
+        })
+        milestone = self.env["tenenet.project.milestone"].with_user(self.manager_user).create({
+            "project_id": project.id,
+            "name": "Odovzdanie",
+            "date": today,
+        })
+
+        rows = rule._prepare_mail_rows(milestone)
+        self.assertEqual(rows[0]["project_name"], "Projekt míľnik")
+
+    def test_milestone_match_computes_related_project(self):
+        today = fields.Date.context_today(self.env["tenenet.alert.rule"])
+        project = self.env["tenenet.project"].create({
+            "name": "Projekt pre zhodu",
+            "date_start": today,
+            "date_end": today,
+        })
+        milestone = self.env["tenenet.project.milestone"].with_user(self.manager_user).create({
+            "project_id": project.id,
+            "name": "Kontrolný míľnik",
+            "date": today,
+        })
+        rule = self.env["tenenet.alert.rule"].create({
+            "name": "Míľnik zhoda",
+            "allowed_model_id": self.milestone_allowed_model.id,
+            "recipient_email_raw": "alerts@example.com",
+            "condition_ids": [
+                Command.create({
+                    "field_id": self.milestone_date_field.id,
+                    "value_mode": "relative",
+                    "operator": "today",
+                }),
+            ],
+        })
+
+        rule._run_rules()
+        match = rule.match_ids.filtered(lambda item: item.res_id == milestone.id)
+        self.assertEqual(match.project_id, project)

@@ -18,6 +18,9 @@
                             <p style="margin: 0 0 8px 0;">
                                 <strong><t t-out="row.get('name')"/></strong>
                             </p>
+                            <p t-if="row.get('project_name')" style="margin: 0 0 8px 0;">
+                                <strong>Projekt:</strong> <t t-out="row.get('project_name')"/>
+                            </p>
                             <div style="margin: 0 0 8px 0;">
                                 <t t-foreach="row.get('match_reasons', [])" t-as="reason">
                                     <div><t t-out="reason"/></div>

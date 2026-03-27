@@ -37,13 +37,17 @@ class TenenetAlertAllowedModel(models.Model):
                 "tenenet.project",
                 "Projekty – monitorovanie termínov a stavu projektu",
             ),
+            (
+                "tenenet.project.milestone",
+                "Míľniky projektov – monitorovanie termínov míľnikov podľa projektu",
+            ),
         ]
         ir_model = self.env["ir.model"].sudo()
         for technical_name, notes in defaults:
             model = ir_model.search([("model", "=", technical_name)], limit=1)
             if not model:
                 continue
-            allowed_model = self.search([("model_id", "=", model.id)], limit=1)
+            allowed_model = self.with_context(active_test=False).search([("model_id", "=", model.id)], limit=1)
             values = {
                 "active": True,
                 "notes": notes,

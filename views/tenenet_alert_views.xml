@@ -148,6 +148,7 @@
                             <page string="Aktívne zhody">
                                 <field name="active_match_ids" readonly="1">
                                     <list string="Aktívne zhody">
+                                        <field name="project_id"/>
                                         <field name="res_model"/>
                                         <field name="res_id"/>
                                         <field name="last_display_name"/>

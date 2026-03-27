@@ -1,0 +1,32 @@
+<odoo>
+    <data>
+        <record id="view_tenenet_project_milestone_wizard_form" model="ir.ui.view">
+            <field name="name">tenenet.project.milestone.wizard.form</field>
+            <field name="model">tenenet.project.milestone.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Míľnik projektu">
+                    <sheet>
+                        <group>
+                            <field name="project_id" readonly="1"/>
+                            <field name="date"/>
+                            <field name="name"/>
+                            <field name="note"/>
+                        </group>
+                    </sheet>
+                    <footer>
+                        <button name="action_confirm"
+                                type="object"
+                                string="Uložiť"
+                                class="btn-primary"/>
+                        <button name="action_delete"
+                                type="object"
+                                string="Vymazať"
+                                class="btn-secondary"
+                                invisible="not milestone_id"/>
+                        <button string="Zrušiť" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+    </data>
+</odoo>

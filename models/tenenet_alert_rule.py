@@ -391,6 +391,17 @@ class TenenetAlertRule(models.Model):
             return "Áno" if value else "Nie"
         return value or ""
 
+    def _get_related_project(self, record):
+        if not record or not record.exists():
+            return self.env["tenenet.project"]
+        if record._name == "tenenet.project":
+            return record
+        if "project_id" in record._fields and getattr(record, "project_id", False):
+            project = record.project_id
+            if project and project._name == "tenenet.project":
+                return project
+        return self.env["tenenet.project"]
+
     def _format_relative_unit(self, amount, unit):
         labels = {
             "day": ("deň", "dni", "dní"),
@@ -448,6 +459,7 @@ class TenenetAlertRule(models.Model):
     def _prepare_mail_rows(self, records):
         rows = []
         for record in records:
+            project = self._get_related_project(record)
             summary_values = []
             for field in self.summary_field_ids:
                 value = record[field.name]
@@ -458,6 +470,7 @@ class TenenetAlertRule(models.Model):
                 })
             rows.append({
                 "name": record.display_name,
+                "project_name": project.display_name or "",
                 "url": self._get_record_url(record),
                 "match_reasons": [self._describe_match_reason(condition, record) for condition in self.condition_ids.sorted("sequence")],
                 "summary_values": summary_values,

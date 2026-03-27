@@ -54,6 +54,27 @@
                                     <field name="date_start"/>
                                     <field name="date_end"/>
                                 </group>
+                                <separator string="Míľniky"/>
+                                <div class="mb-2">
+                                    <button name="action_open_milestone_wizard"
+                                            type="object"
+                                            string="Pridať míľnik"
+                                            class="btn btn-primary"
+                                            invisible="not id or not can_manage_milestones"/>
+                                </div>
+                                <field name="milestone_ids" nolabel="1">
+                                    <list string="Míľniky" create="0" delete="0" edit="0" default_order="date asc, sequence asc, id asc">
+                                        <field name="date"/>
+                                        <field name="name"/>
+                                        <field name="note" optional="show"/>
+                                        <button name="action_open_edit_wizard"
+                                                type="object"
+                                                string="Upraviť"
+                                                icon="fa-pencil"
+                                                class="btn-link"
+                                                column_invisible="not parent.can_manage_milestones"/>
+                                    </list>
+                                </field>
                             </page>
                             <page string="Financie">
                                 <group>
