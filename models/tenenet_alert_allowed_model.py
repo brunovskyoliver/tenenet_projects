@@ -26,6 +26,36 @@ class TenenetAlertAllowedModel(models.Model):
         "Každý model môže byť v zozname povolených modelov iba raz.",
     )
 
+    @api.model
+    def _sync_default_allowed_models(self):
+        defaults = [
+            (
+                "tenenet.project.assignment",
+                "Priradenia zamestnancov k projektom – monitorovanie konca priradenia (date_end)",
+            ),
+            (
+                "tenenet.project",
+                "Projekty – monitorovanie termínov a stavu projektu",
+            ),
+        ]
+        ir_model = self.env["ir.model"].sudo()
+        for technical_name, notes in defaults:
+            model = ir_model.search([("model", "=", technical_name)], limit=1)
+            if not model:
+                continue
+            allowed_model = self.search([("model_id", "=", model.id)], limit=1)
+            values = {
+                "active": True,
+                "notes": notes,
+            }
+            if allowed_model:
+                allowed_model.write(values)
+                continue
+            self.create({
+                "model_id": model.id,
+                **values,
+            })
+
     @api.constrains("model_id")
     def _check_model_id(self):
         blocked_models = {"res.config.settings"}

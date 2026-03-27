@@ -6,8 +6,6 @@ from odoo import Command
 from odoo.exceptions import AccessError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
-from tenenet_projects import _ensure_alert_allowed_model_xmlids
-
 
 @tagged("post_install", "-at_install")
 class TestTenenetPlan14Alerts(TransactionCase):
@@ -208,29 +206,28 @@ class TestTenenetPlan14Alerts(TransactionCase):
                     "model_id": self.allowed_model.model_id.id,
                 })
 
-    def test_pre_init_hook_restores_missing_allowed_model_xmlid(self):
+    def test_sync_default_allowed_models_reuses_existing_records(self):
+        project_model = self.env["ir.model"].search([("model", "=", "tenenet.project")], limit=1)
         project_allowed_model = self.env["tenenet.alert.allowed.model"].search([
-            ("model_id.model", "=", "tenenet.project"),
+            ("model_id", "=", project_model.id),
         ], limit=1)
-        self.assertTrue(project_allowed_model)
+        project_allowed_model.write({
+            "active": False,
+            "notes": "Povodna poznamka",
+        })
 
-        xmlid = self.env["ir.model.data"].search([
-            ("module", "=", "tenenet_projects"),
-            ("name", "=", "alert_allowed_model_project"),
-            ("model", "=", "tenenet.alert.allowed.model"),
-        ], limit=1)
-        if xmlid:
-            xmlid.unlink()
+        self.env["tenenet.alert.allowed.model"]._sync_default_allowed_models()
 
-        _ensure_alert_allowed_model_xmlids(self.env)
-
-        restored_xmlid = self.env["ir.model.data"].search([
-            ("module", "=", "tenenet_projects"),
-            ("name", "=", "alert_allowed_model_project"),
-            ("model", "=", "tenenet.alert.allowed.model"),
-        ], limit=1)
-        self.assertEqual(restored_xmlid.res_id, project_allowed_model.id)
-        self.assertTrue(restored_xmlid.noupdate)
+        refreshed = self.env["tenenet.alert.allowed.model"].browse(project_allowed_model.id)
+        self.assertTrue(refreshed.active)
+        self.assertEqual(
+            refreshed.notes,
+            "Projekty – monitorovanie termínov a stavu projektu",
+        )
+        duplicates = self.env["tenenet.alert.allowed.model"].search_count([
+            ("model_id", "=", project_model.id),
+        ])
+        self.assertEqual(duplicates, 1)
 
     def test_field_from_other_model_is_rejected(self):
         other_field = self.env["ir.model.fields"].search([("model", "=", "res.partner"), ("name", "=", "email")], limit=1)
