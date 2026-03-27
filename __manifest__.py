@@ -18,6 +18,7 @@ and P&L reporting by program.
 
     'depends': ['base', 'hr', 'hr_holidays', 'hr_skills', 'account_reports', 'mail'],
 
+
     'assets': {
         'web.assets_backend': [
             'tenenet_projects/static/src/js/tenenet_project_yearly_labor_report_filters.js',
@@ -48,6 +49,10 @@ and P&L reporting by program.
         'data/tenenet_program_data.xml',
         'data/tenenet_donor_data.xml',
         'data/hr_leave_type_data.xml',
+        'data/tenenet_alert_mail_template.xml',
+        'data/tenenet_alert_cron.xml',
+        'views/tenenet_alert_allowed_model_views.xml',
+        'views/tenenet_alert_views.xml',
         'views/tenenet_program_views.xml',
         'views/tenenet_donor_views.xml',
         'views/tenenet_project_views.xml',

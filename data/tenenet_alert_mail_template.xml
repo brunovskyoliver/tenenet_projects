@@ -1,0 +1,43 @@
+<odoo>
+    <data>
+        <record id="mail_template_tenenet_alert_digest" model="mail.template">
+            <field name="name">TENENET upozornenie - digest</field>
+            <field name="model_id" ref="model_tenenet_alert_rule"/>
+            <field name="subject">[TENENET] Upozornenie: {{ object.name }} ({{ object.last_new_match_count or ctx.get('alert_new_records')|length }})</field>
+            <field name="email_from">{{ user.email_formatted or '' }}</field>
+            <field name="body_html" type="html">
+                <div>
+                    <p>Pravidlo <strong>{{ object.name }}</strong> našlo nové zhody.</p>
+                    <p>
+                        Model: {{ object.allowed_model_id.model_name }}<br/>
+                        Čas vyhodnotenia: {{ object.last_run_at or '' }}<br/>
+                        Nové zhody: {{ ctx.get('alert_new_records')|length }}
+                    </p>
+                    <table style="border-collapse: collapse; width: 100%;" border="1" cellpadding="6">
+                        <thead>
+                            <tr>
+                                <th>Názov záznamu</th>
+                                <th>Detaily</th>
+                                <th>Odkaz</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in ctx.get('alert_record_rows', []) %}
+                                <tr>
+                                    <td>{{ row.get('name') }}</td>
+                                    <td>
+                                        {% for item in row.get('summary_values', []) %}
+                                            <div><strong>{{ item.get('label') }}:</strong> {{ item.get('value') }}</div>
+                                        {% endfor %}
+                                    </td>
+                                    <td><a href="{{ row.get('url') }}">Otvoriť</a></td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+    </data>
+</odoo>
