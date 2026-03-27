@@ -6,6 +6,8 @@ from odoo import Command
 from odoo.exceptions import AccessError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
+from tenenet_projects import _ensure_alert_allowed_model_xmlids
+
 
 @tagged("post_install", "-at_install")
 class TestTenenetPlan14Alerts(TransactionCase):
@@ -205,6 +207,30 @@ class TestTenenetPlan14Alerts(TransactionCase):
                 self.env["tenenet.alert.allowed.model"].create({
                     "model_id": self.allowed_model.model_id.id,
                 })
+
+    def test_pre_init_hook_restores_missing_allowed_model_xmlid(self):
+        project_allowed_model = self.env["tenenet.alert.allowed.model"].search([
+            ("model_id.model", "=", "tenenet.project"),
+        ], limit=1)
+        self.assertTrue(project_allowed_model)
+
+        xmlid = self.env["ir.model.data"].search([
+            ("module", "=", "tenenet_projects"),
+            ("name", "=", "alert_allowed_model_project"),
+            ("model", "=", "tenenet.alert.allowed.model"),
+        ], limit=1)
+        if xmlid:
+            xmlid.unlink()
+
+        _ensure_alert_allowed_model_xmlids(self.env)
+
+        restored_xmlid = self.env["ir.model.data"].search([
+            ("module", "=", "tenenet_projects"),
+            ("name", "=", "alert_allowed_model_project"),
+            ("model", "=", "tenenet.alert.allowed.model"),
+        ], limit=1)
+        self.assertEqual(restored_xmlid.res_id, project_allowed_model.id)
+        self.assertTrue(restored_xmlid.noupdate)
 
     def test_field_from_other_model_is_rejected(self):
         other_field = self.env["ir.model.fields"].search([("model", "=", "res.partner"), ("name", "=", "email")], limit=1)
