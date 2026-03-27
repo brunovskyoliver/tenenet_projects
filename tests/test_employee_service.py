@@ -6,9 +6,11 @@ from odoo.tests import TransactionCase, tagged
 class TestTenenetEmployeeService(TransactionCase):
     def setUp(self):
         super().setUp()
+        self.base_user_group = self.env.ref("base.group_user")
         self.hr_user_group = self.env.ref("hr.group_hr_user")
         self.hr_manager_group = self.env.ref("hr.group_hr_manager")
 
+        self.regular_user = self._create_user("regular.user", [self.base_user_group.id])
         self.grand_manager_user = self._create_user("grand.manager", [self.hr_user_group.id])
         self.manager_user = self._create_user("manager.user", [self.hr_user_group.id])
         self.employee_user = self._create_user("employee.user", [self.hr_user_group.id])
@@ -32,6 +34,10 @@ class TestTenenetEmployeeService(TransactionCase):
         self.outsider = self.env["hr.employee"].create({
             "name": "Outsider Employee",
             "user_id": self.outsider_user.id,
+        })
+        self.regular_employee = self.env["hr.employee"].create({
+            "name": "Regular Employee",
+            "user_id": self.regular_user.id,
         })
         self.service_model = self.env["tenenet.employee.service"]
 
@@ -104,6 +110,23 @@ class TestTenenetEmployeeService(TransactionCase):
 
         with self.assertRaises(AccessError):
             service.with_user(self.outsider_user).unlink()
+
+    def test_regular_employee_can_read_services_in_public_profile(self):
+        service = self.service_model.create({
+            "employee_id": self.employee.id,
+            "name": "Socialne poradenstvo",
+        })
+
+        public_employee = self.env["hr.employee.public"].with_user(self.regular_user).browse(self.employee.id)
+
+        self.assertEqual(service.with_user(self.regular_user).name, "Socialne poradenstvo")
+        self.assertEqual(public_employee.service_ids.mapped("name"), ["Socialne poradenstvo"])
+
+        with self.assertRaises(AccessError):
+            self.service_model.with_user(self.regular_user).create({
+                "employee_id": self.employee.id,
+                "name": "Neopravnena zmena",
+            })
 
     def test_hr_manager_has_full_access(self):
         service = self.service_model.with_user(self.hr_manager_user).create({
