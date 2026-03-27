@@ -158,6 +158,22 @@ class TestTenenetPlan14Alerts(TransactionCase):
             rule.action_run_now()
         self.assertEqual(run_rules.call_count, 1)
 
+    def test_send_matching_now_always_sends_current_matches(self):
+        rule = self._create_rule()
+        today = self.env["tenenet.alert.rule"]._fields["last_run_at"].context_today(rule)
+        self.env["tenenet.project"].create({
+            "name": "Projekt na test send",
+            "date_end": today,
+        })
+        with patch("odoo.addons.tenenet_projects.models.tenenet_alert_rule.TenenetAlertRule._send_digest_email") as send_mail:
+            rule.action_send_matching_now()
+        self.assertEqual(send_mail.call_count, 1)
+
+    def test_send_matching_now_requires_existing_matches(self):
+        rule = self._create_rule()
+        with self.assertRaises(ValidationError):
+            rule.action_send_matching_now()
+
     def test_invalid_email_is_rejected(self):
         with self.assertRaises(ValidationError):
             self._create_rule(recipient_email_raw="neplatny-email")

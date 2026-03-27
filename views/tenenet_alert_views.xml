@@ -75,6 +75,7 @@
                     <field name="last_new_match_count"/>
                     <field name="last_mail_sent_at"/>
                     <button name="action_run_now" type="object" string="Spustiť teraz" class="btn-link"/>
+                    <button name="action_send_matching_now" type="object" string="Poslať test" class="btn-link"/>
                 </list>
             </field>
         </record>
@@ -100,6 +101,7 @@
                 <form string="Pravidlo upozornenia">
                     <header>
                         <button name="action_run_now" type="object" string="Spustiť teraz" class="btn-primary"/>
+                        <button name="action_send_matching_now" type="object" string="Poslať test" class="btn-secondary"/>
                         <field name="active" widget="boolean_toggle"/>
                     </header>
                     <sheet>

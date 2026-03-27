@@ -117,6 +117,32 @@ class TenenetAlertRule(models.Model):
             },
         }
 
+    def action_send_matching_now(self):
+        self._validate_runtime_configuration()
+        for rule in self:
+            matches = rule._search_matching_records()
+            if not matches:
+                raise ValidationError("Pravidlo momentálne nemá žiadne zhodné záznamy na testovacie odoslanie.")
+            rule._send_digest_email(matches)
+            rule.write({
+                "last_run_at": fields.Datetime.now(),
+                "last_result_count": len(matches),
+                "last_new_match_count": len(matches),
+                "last_mail_sent_at": fields.Datetime.now(),
+                "last_error": False,
+            })
+        self.invalidate_recordset(["last_run_at", "last_result_count", "last_new_match_count", "last_mail_sent_at"])
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": "Upozornenia",
+                "message": "Testovací e-mail bol odoslaný pre všetky aktuálne zhody.",
+                "type": "success",
+                "sticky": False,
+            },
+        }
+
     def _validate_runtime_configuration(self):
         for rec in self:
             if not rec.condition_ids:
