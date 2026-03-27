@@ -84,6 +84,9 @@ class TestTenenetEmployeeService(TransactionCase):
             "name": "Socialne poradenstvo",
         })
 
+        self.assertEqual(service.with_user(self.employee_user).name, "Socialne poradenstvo")
+        self.assertEqual(service.with_user(self.outsider_user).name, "Socialne poradenstvo")
+
         with self.assertRaises(AccessError):
             self.service_model.with_user(self.employee_user).create({
                 "employee_id": self.employee.id,
