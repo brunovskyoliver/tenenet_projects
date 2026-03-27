@@ -73,29 +73,55 @@ class TestTenenetPlan14Alerts(TransactionCase):
         vals.update(overrides)
         return self.env["tenenet.alert.rule"].create(vals)
 
-    def test_rule_requires_condition(self):
-        with self.assertRaises(ValidationError):
-            self.env["tenenet.alert.rule"].create({
-                "name": "Bez podmienky",
-                "allowed_model_id": self.allowed_model.id,
-                "recipient_email_raw": "alerts@example.com",
-            })
+    def test_rule_can_be_saved_without_condition(self):
+        rule = self.env["tenenet.alert.rule"].create({
+            "name": "Bez podmienky",
+            "allowed_model_id": self.allowed_model.id,
+            "recipient_email_raw": "alerts@example.com",
+        })
+        self.assertTrue(rule.exists())
 
-    def test_rule_requires_recipient(self):
+    def test_rule_can_be_saved_without_recipient(self):
+        rule = self.env["tenenet.alert.rule"].create({
+            "name": "Bez príjemcu",
+            "allowed_model_id": self.allowed_model.id,
+            "condition_ids": [
+                Command.create({
+                    "field_id": self.date_end_field.id,
+                    "value_mode": "relative",
+                    "operator": "within_next",
+                    "relative_amount": 3,
+                    "relative_unit": "month",
+                }),
+            ],
+        })
+        self.assertTrue(rule.exists())
+
+    def test_run_now_requires_condition(self):
+        rule = self.env["tenenet.alert.rule"].create({
+            "name": "Beh bez podmienky",
+            "allowed_model_id": self.allowed_model.id,
+            "recipient_email_raw": "alerts@example.com",
+        })
         with self.assertRaises(ValidationError):
-            self.env["tenenet.alert.rule"].create({
-                "name": "Bez príjemcu",
-                "allowed_model_id": self.allowed_model.id,
-                "condition_ids": [
-                    Command.create({
-                        "field_id": self.date_end_field.id,
-                        "value_mode": "relative",
-                        "operator": "within_next",
-                        "relative_amount": 3,
-                        "relative_unit": "month",
-                    }),
-                ],
-            })
+            rule.action_run_now()
+
+    def test_run_now_requires_recipient(self):
+        rule = self.env["tenenet.alert.rule"].create({
+            "name": "Beh bez príjemcu",
+            "allowed_model_id": self.allowed_model.id,
+            "condition_ids": [
+                Command.create({
+                    "field_id": self.date_end_field.id,
+                    "value_mode": "relative",
+                    "operator": "within_next",
+                    "relative_amount": 3,
+                    "relative_unit": "month",
+                }),
+            ],
+        })
+        with self.assertRaises(ValidationError):
+            rule.action_run_now()
 
     def test_invalid_email_is_rejected(self):
         with self.assertRaises(ValidationError):

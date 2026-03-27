@@ -68,14 +68,10 @@ class TenenetAlertRule(models.Model):
     @api.constrains("condition_ids", "recipient_email_raw", "recipient_partner_ids")
     def _check_configuration(self):
         for rec in self:
-            if not rec.condition_ids:
-                raise ValidationError("Pravidlo upozornenia musí obsahovať aspoň jednu podmienku.")
-            recipients = rec._parse_recipient_emails()
+            rec._parse_recipient_emails()
             partners_without_email = rec.recipient_partner_ids.filtered(lambda partner: not partner.email)
             if partners_without_email:
                 raise ValidationError("Vybraní partneri pre upozornenie musia mať vyplnený e-mail.")
-            if not recipients and not rec.recipient_partner_ids:
-                raise ValidationError("Pravidlo upozornenia musí mať aspoň jedného príjemcu.")
 
     @api.constrains("summary_field_ids", "model_id")
     def _check_summary_fields(self):
@@ -90,6 +86,7 @@ class TenenetAlertRule(models.Model):
                     raise ValidationError("Vybraný stĺpec sa ešte nedá zobraziť v e-maili.")
 
     def action_run_now(self):
+        self._validate_runtime_configuration()
         self._run_rules()
         self.invalidate_recordset(["match_count", "last_run_at", "last_new_match_count"])
         return {
@@ -102,6 +99,14 @@ class TenenetAlertRule(models.Model):
                 "sticky": False,
             },
         }
+
+    def _validate_runtime_configuration(self):
+        for rec in self:
+            if not rec.condition_ids:
+                raise ValidationError("Pravidlo upozornenia musí obsahovať aspoň jednu podmienku.")
+            recipients = rec._parse_recipient_emails()
+            if not recipients and not rec.recipient_partner_ids:
+                raise ValidationError("Pravidlo upozornenia musí mať aspoň jedného príjemcu.")
 
     def action_open_new_condition_wizard(self):
         self.ensure_one()

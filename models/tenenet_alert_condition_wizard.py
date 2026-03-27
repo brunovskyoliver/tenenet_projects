@@ -26,7 +26,6 @@ class TenenetAlertConditionWizard(models.TransientModel):
         "ir.model.fields",
         string="Pole",
         required=True,
-        domain="[('model_id', '=', rule_id.model_id), ('store', '=', True), ('ttype', 'in', ['date','datetime','char','text','integer','float','monetary','boolean','selection','many2one'])]",
     )
     field_ttype = fields.Selection(related="field_id.ttype", readonly=True)
     comodel_name = fields.Char(string="Súvisiaci model", related="field_id.relation", readonly=True)
