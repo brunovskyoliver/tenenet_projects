@@ -267,6 +267,17 @@ class TenenetProject(models.Model):
             ],
         }
 
+    def action_open_assignment_wizard(self):
+        self.ensure_one()
+        return {
+            "name": "Pridať priradenie zamestnanca",
+            "type": "ir.actions.act_window",
+            "res_model": "tenenet.project.assignment.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {"default_project_id": self.id},
+        }
+
     def action_open_assignments_kanban(self):
         self.ensure_one()
         return {

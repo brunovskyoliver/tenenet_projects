@@ -67,6 +67,7 @@ and P&L reporting by program.
         'views/tenenet_utilization_sync_wizard_views.xml',
         'views/tenenet_pl_line_views.xml',
         'views/tenenet_project_assignment_views.xml',
+        'views/tenenet_project_assignment_wizard_views.xml',
         'views/tenenet_project_timesheet_views.xml',
         'views/tenenet_project_timesheet_matrix_views.xml',
         'views/tenenet_employee_tenenet_cost_views.xml',

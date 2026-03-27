@@ -55,12 +55,6 @@
                                     <field name="date_end"/>
                                 </group>
                             </page>
-                            <page string="Riadenie">
-                                <group>
-                                    <field name="odborny_garant_id"/>
-                                    <field name="project_manager_id"/>
-                                </group>
-                            </page>
                             <page string="Financie">
                                 <group>
                                     <group>
@@ -85,17 +79,45 @@
                                     </field>
                                 </group>
                             </page>
-                            <page string="Priradenia">
-                                <field name="assignment_ids">
-                                    <list string="Priradenia zamestnancov" editable="bottom">
-                                        <field name="employee_id"/>
-                                        <field name="date_start"/>
-                                        <field name="date_end"/>
-                                        <field name="allocation_ratio"/>
-                                        <field name="wage_hm"/>
-                                        <field name="wage_ccp"/>
-                                        <field name="state" readonly="1"/>
-                                        <field name="active"/>
+                            <page string="Riadenie">
+                                <group string="Zodpovedné osoby">
+                                    <group>
+                                        <field name="odborny_garant_id"/>
+                                        <field name="project_manager_id"/>
+                                    </group>
+                                </group>
+                                <separator string="Priradení zamestnanci"/>
+                                <div class="mb-2">
+                                    <button name="action_open_assignment_wizard"
+                                            type="object"
+                                            string="Pridať priradenie"
+                                            class="btn btn-primary"
+                                            invisible="not id"/>
+                                </div>
+                                <field name="assignment_ids" nolabel="1">
+                                    <list string="Priradenia zamestnancov"
+                                          create="false"
+                                          delete="false"
+                                          edit="false"
+                                          decoration-success="state == 'active'"
+                                          decoration-warning="state == 'planned'"
+                                          decoration-muted="state == 'finished'">
+                                        <field name="employee_id" optional="show"/>
+                                        <field name="date_start" optional="show"/>
+                                        <field name="date_end" optional="show"/>
+                                        <field name="allocation_ratio" optional="show"/>
+                                        <field name="wage_hm" optional="hide"/>
+                                        <field name="wage_ccp" optional="hide"/>
+                                        <field name="state" widget="badge"
+                                               decoration-success="state == 'active'"
+                                               decoration-warning="state == 'planned'"
+                                               decoration-secondary="state == 'finished'"/>
+                                        <field name="active" optional="hide"/>
+                                        <button name="action_open_timesheet_matrix_current_year"
+                                                type="object"
+                                                string="Matica"
+                                                icon="fa-table"
+                                                class="btn-link"/>
                                     </list>
                                 </field>
                             </page>

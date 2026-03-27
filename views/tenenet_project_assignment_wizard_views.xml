@@ -1,0 +1,44 @@
+<odoo>
+    <data>
+        <record id="view_tenenet_project_assignment_wizard_form" model="ir.ui.view">
+            <field name="name">tenenet.project.assignment.wizard.form</field>
+            <field name="model">tenenet.project.assignment.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Pridať priradenie zamestnanca">
+                    <sheet>
+                        <group string="Projekt">
+                            <field name="project_id" readonly="1"/>
+                        </group>
+                        <group string="Zamestnanec">
+                            <field name="employee_id"/>
+                        </group>
+                        <group string="Obdobie priradenia">
+                            <group>
+                                <field name="date_start"/>
+                                <field name="date_end"/>
+                            </group>
+                            <group>
+                                <field name="allocation_ratio"/>
+                            </group>
+                        </group>
+                        <group string="Mzdové sadzby">
+                            <group>
+                                <field name="wage_hm"/>
+                            </group>
+                            <group>
+                                <field name="wage_ccp"/>
+                            </group>
+                        </group>
+                    </sheet>
+                    <footer>
+                        <button name="action_confirm"
+                                type="object"
+                                string="Pridať priradenie"
+                                class="btn-primary"/>
+                        <button string="Zrušiť" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+    </data>
+</odoo>

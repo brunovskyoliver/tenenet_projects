@@ -6,6 +6,7 @@ from . import tenenet_employee_training
 from . import tenenet_project
 from . import tenenet_project_receipt
 from . import tenenet_project_assignment
+from . import tenenet_project_assignment_wizard
 from . import tenenet_project_leave_rule
 from . import tenenet_alert_allowed_model
 from . import tenenet_alert_rule
