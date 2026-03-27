@@ -51,6 +51,7 @@ and P&L reporting by program.
         'data/hr_leave_type_data.xml',
         'data/tenenet_alert_mail_template.xml',
         'data/tenenet_alert_cron.xml',
+        'data/tenenet_alert_allowed_models_data.xml',
         'views/tenenet_alert_allowed_model_views.xml',
         'views/tenenet_alert_views.xml',
         'views/tenenet_program_views.xml',
