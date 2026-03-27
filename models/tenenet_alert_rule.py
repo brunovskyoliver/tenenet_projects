@@ -103,6 +103,21 @@ class TenenetAlertRule(models.Model):
             },
         }
 
+    def action_open_new_condition_wizard(self):
+        self.ensure_one()
+        view = self.env.ref("tenenet_projects.view_tenenet_alert_condition_wizard_form")
+        return {
+            "type": "ir.actions.act_window",
+            "name": "Podmienka upozornenia",
+            "res_model": "tenenet.alert.condition.wizard",
+            "view_mode": "form",
+            "view_id": view.id,
+            "target": "new",
+            "context": {
+                "default_rule_id": self.id,
+            },
+        }
+
     @api.model
     def _cron_run_daily(self, limit=300):
         rules = self.search([("active", "=", True)], order="sequence, id", limit=limit)
@@ -293,12 +308,24 @@ class TenenetAlertRule(models.Model):
             "alert_new_records": new_match_records,
             "alert_rule": self,
             "alert_record_rows": self._prepare_mail_rows(new_match_records),
+            "alert_match_count": len(new_match_records),
         }
         template.with_context(ctx).send_mail(
             self.id,
             force_send=True,
             email_values={"email_to": ",".join(recipients)},
         )
+
+    def _get_digest_match_count(self):
+        self.ensure_one()
+        records = self.env.context.get("alert_new_records")
+        if records is not None:
+            return len(records)
+        return self.env.context.get("alert_match_count", self.last_new_match_count or 0)
+
+    def _get_digest_match_count_text(self):
+        self.ensure_one()
+        return str(self._get_digest_match_count())
 
     def _prepare_mail_rows(self, records):
         rows = []

@@ -133,6 +133,7 @@ class TenenetAlertCondition(models.Model):
     allowed_field_types = fields.Char(compute="_compute_allowed_field_types")
     allowed_operator_codes = fields.Char(compute="_compute_allowed_operator_codes")
     comodel_name = fields.Char(string="Súvisiaci model", related="field_id.relation", readonly=True)
+    condition_summary = fields.Char(string="Nastavenie", compute="_compute_condition_summary")
 
     @api.depends_context("uid")
     def _compute_allowed_field_types(self):
@@ -145,6 +146,27 @@ class TenenetAlertCondition(models.Model):
         for rec in self:
             operators = rec._get_operator_codes_for_field()
             rec.allowed_operator_codes = ",".join(operators)
+
+    @api.depends(
+        "field_id",
+        "field_ttype",
+        "operator",
+        "value_mode",
+        "value_char",
+        "value_text",
+        "value_float",
+        "value_integer",
+        "value_boolean",
+        "value_date",
+        "value_datetime",
+        "value_selection_key",
+        "value_reference",
+        "relative_amount",
+        "relative_unit",
+    )
+    def _compute_condition_summary(self):
+        for rec in self:
+            rec.condition_summary = rec._get_condition_summary()
 
     @api.model
     def _selection_reference_models(self):
@@ -203,6 +225,75 @@ class TenenetAlertCondition(models.Model):
             "relative_amount": 1,
             "relative_unit": "day",
         })
+
+    def _get_operator_label(self):
+        self.ensure_one()
+        labels = dict(ALERT_OPERATOR_SELECTION)
+        return labels.get(self.operator, self.operator or "")
+
+    def _get_value_label(self):
+        self.ensure_one()
+        if self.value_mode == "relative":
+            unit_labels = {
+                "day": "dní",
+                "week": "týždňov",
+                "month": "mesiacov",
+            }
+            if self.operator in {"today", "overdue"}:
+                return ""
+            return "%s %s" % (self.relative_amount, unit_labels.get(self.relative_unit, self.relative_unit or ""))
+        if self.field_ttype == "char":
+            return self.value_char or ""
+        if self.field_ttype == "text":
+            return self.value_text or ""
+        if self.field_ttype == "integer":
+            return "" if self.value_integer is False else str(self.value_integer)
+        if self.field_ttype in {"float", "monetary"}:
+            return "" if self.value_float is False else str(self.value_float)
+        if self.field_ttype == "boolean":
+            return "Áno" if self.value_boolean else "Nie"
+        if self.field_ttype == "selection":
+            selection = self.field_id.selection_ids.filtered(lambda item: item.value == self.value_selection_key)[:1]
+            return selection.name or self.value_selection_key or ""
+        if self.field_ttype == "many2one":
+            return self.value_reference.display_name if self.value_reference else ""
+        if self.field_ttype == "date":
+            return fields.Date.to_string(self.value_date) if self.value_date else ""
+        if self.field_ttype == "datetime":
+            return fields.Datetime.to_string(self.value_datetime) if self.value_datetime else ""
+        return ""
+
+    def _get_condition_summary(self):
+        self.ensure_one()
+        operator_label = self._get_operator_label()
+        value_label = self._get_value_label()
+        if self.operator in {"is_set", "is_not_set", "is_true", "is_false", "today", "overdue"}:
+            return operator_label
+        if not operator_label:
+            return value_label
+        if not value_label:
+            return operator_label
+        return "%s %s" % (operator_label, value_label)
+
+    def action_open_condition_wizard(self):
+        self.ensure_one()
+        view = self.env.ref("tenenet_projects.view_tenenet_alert_condition_wizard_form")
+        return {
+            "type": "ir.actions.act_window",
+            "name": "Podmienka upozornenia",
+            "res_model": "tenenet.alert.condition.wizard",
+            "view_mode": "form",
+            "view_id": view.id,
+            "target": "new",
+            "context": {
+                "default_rule_id": self.rule_id.id,
+                "default_condition_id": self.id,
+            },
+        }
+
+    def action_delete_condition(self):
+        self.unlink()
+        return {"type": "ir.actions.client", "tag": "reload"}
 
     @api.constrains("field_id", "rule_id")
     def _check_field_allowed(self):

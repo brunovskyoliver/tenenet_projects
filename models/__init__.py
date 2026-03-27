@@ -10,6 +10,7 @@ from . import tenenet_project_leave_rule
 from . import tenenet_alert_allowed_model
 from . import tenenet_alert_rule
 from . import tenenet_alert_condition
+from . import tenenet_alert_condition_wizard
 from . import tenenet_alert_match
 from . import tenenet_project_timesheet
 from . import tenenet_project_timesheet_matrix

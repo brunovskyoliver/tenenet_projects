@@ -131,6 +131,62 @@ class TestTenenetPlan14Alerts(TransactionCase):
             "cascade",
         )
 
+    def test_digest_match_count_uses_context_records(self):
+        rule = self._create_rule()
+        today = self.env["tenenet.alert.rule"]._fields["last_run_at"].context_today(rule)
+        records = self.env["tenenet.project"].create([
+            {"name": "Projekt A", "date_end": today},
+            {"name": "Projekt B", "date_end": today},
+        ])
+        self.assertEqual(rule.with_context(alert_new_records=records)._get_digest_match_count(), 2)
+        self.assertEqual(rule.with_context(alert_new_records=self.env["tenenet.project"])._get_digest_match_count_text(), "0")
+
+    def test_condition_wizard_creates_numeric_condition(self):
+        rule = self._create_rule()
+        duration_field = self.env["ir.model.fields"].search([
+            ("model_id", "=", self.project_model.id),
+            ("name", "=", "duration"),
+        ], limit=1)
+        wizard = self.env["tenenet.alert.condition.wizard"].with_context(
+            default_rule_id=rule.id,
+        ).create({
+            "rule_id": rule.id,
+            "field_id": duration_field.id,
+            "operator_numeric": "lt",
+            "value_integer": 30,
+        })
+
+        wizard.action_save()
+        condition = self.env["tenenet.alert.condition"].search([
+            ("rule_id", "=", rule.id),
+            ("field_id", "=", duration_field.id),
+        ], limit=1, order="id desc")
+        self.assertEqual(condition.operator, "lt")
+        self.assertEqual(condition.value_integer, 30)
+        self.assertEqual(condition.condition_summary, "< 30")
+
+    def test_condition_wizard_updates_relative_date_condition(self):
+        rule = self._create_rule()
+        condition = rule.condition_ids[:1]
+        wizard = self.env["tenenet.alert.condition.wizard"].with_context(
+            default_rule_id=rule.id,
+            default_condition_id=condition.id,
+        ).create({
+            "rule_id": rule.id,
+            "condition_id": condition.id,
+            "field_id": self.date_end_field.id,
+            "operator_date": "within_last",
+            "relative_amount": 2,
+            "relative_unit": "week",
+        })
+
+        wizard.action_save()
+        condition.invalidate_recordset()
+        self.assertEqual(condition.operator, "within_last")
+        self.assertEqual(condition.value_mode, "relative")
+        self.assertEqual(condition.relative_amount, 2)
+        self.assertEqual(condition.relative_unit, "week")
+
     def test_rule_builds_relative_domain(self):
         rule = self._create_rule()
         domain = rule._build_domain_from_conditions()

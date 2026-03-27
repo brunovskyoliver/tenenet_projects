@@ -3,15 +3,15 @@
         <record id="mail_template_tenenet_alert_digest" model="mail.template">
             <field name="name">TENENET upozornenie - digest</field>
             <field name="model_id" ref="model_tenenet_alert_rule"/>
-            <field name="subject">[TENENET] Upozornenie: {{ object.name }} ({{ object.last_new_match_count or ctx.get('alert_new_records')|length }})</field>
+            <field name="subject">[TENENET] Upozornenie: {{ object.name }} ({{ object._get_digest_match_count_text() }})</field>
             <field name="email_from">{{ user.email_formatted or '' }}</field>
             <field name="body_html" type="html">
                 <div>
-                    <p>Pravidlo <strong>{{ object.name }}</strong> našlo nové zhody.</p>
+                    <p>Pravidlo <strong><t t-out="object.name"/></strong> našlo nové zhody.</p>
                     <p>
-                        Model: {{ object.allowed_model_id.model_name }}<br/>
-                        Čas vyhodnotenia: {{ object.last_run_at or '' }}<br/>
-                        Nové zhody: {{ ctx.get('alert_new_records')|length }}
+                        Model: <t t-out="object.allowed_model_id.model_name"/><br/>
+                        Čas vyhodnotenia: <t t-out="object.last_run_at or ''"/><br/>
+                        Nové zhody: <t t-out="object._get_digest_match_count()"/>
                     </p>
                     <table style="border-collapse: collapse; width: 100%;" border="1" cellpadding="6">
                         <thead>
@@ -22,17 +22,17 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for row in ctx.get('alert_record_rows', []) %}
+                            <t t-foreach="ctx.get('alert_record_rows', [])" t-as="row">
                                 <tr>
-                                    <td>{{ row.get('name') }}</td>
+                                    <td><t t-out="row.get('name')"/></td>
                                     <td>
-                                        {% for item in row.get('summary_values', []) %}
-                                            <div><strong>{{ item.get('label') }}:</strong> {{ item.get('value') }}</div>
-                                        {% endfor %}
+                                        <t t-foreach="row.get('summary_values', [])" t-as="item">
+                                            <div><strong><t t-out="item.get('label')"/>:</strong> <t t-out="item.get('value')"/></div>
+                                        </t>
                                     </td>
-                                    <td><a href="{{ row.get('url') }}">Otvoriť</a></td>
+                                    <td><a t-att-href="row.get('url')">Otvoriť</a></td>
                                 </tr>
-                            {% endfor %}
+                            </t>
                         </tbody>
                     </table>
                 </div>
