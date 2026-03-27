@@ -26,6 +26,11 @@
         <menuitem id="menu_tenenet_allocation_report" name="Rozúčtovanie" parent="menu_tenenet_reporting" action="action_tenenet_allocation_report" sequence="15"/>
         <menuitem id="menu_tenenet_pl_line" name="P&amp;L podľa programu" parent="menu_tenenet_reporting" action="action_tenenet_pl_report" sequence="20"/>
 
+        <menuitem id="menu_tenenet_alerts" name="Upozornenia" parent="menu_tenenet_root" sequence="18" groups="tenenet_projects.group_tenenet_manager"/>
+        <menuitem id="menu_tenenet_alert_rules" name="Pravidlá upozornení" parent="menu_tenenet_alerts" action="action_tenenet_alert_rule" sequence="10" groups="tenenet_projects.group_tenenet_manager"/>
+        <menuitem id="menu_tenenet_alert_configuration" name="Konfigurácia" parent="menu_tenenet_alerts" sequence="20" groups="tenenet_projects.group_tenenet_manager"/>
+        <menuitem id="menu_tenenet_alert_allowed_models" name="Povolené modely" parent="menu_tenenet_alert_configuration" action="action_tenenet_alert_allowed_model" sequence="10" groups="tenenet_projects.group_tenenet_manager"/>
+
         <menuitem id="menu_tenenet_configuration" name="Konfigurácia" parent="menu_tenenet_root" sequence="20" groups="tenenet_projects.group_tenenet_manager"/>
         <menuitem id="menu_tenenet_programs" name="Programy" parent="menu_tenenet_configuration" action="action_tenenet_program" sequence="10"/>
         <menuitem id="menu_tenenet_donors" name="Donori" parent="menu_tenenet_configuration" action="action_tenenet_donor" sequence="20"/>

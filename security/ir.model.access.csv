@@ -1,4 +1,8 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_tenenet_alert_rule_manager,tenenet.alert.rule.manager,model_tenenet_alert_rule,tenenet_projects.group_tenenet_manager,1,1,1,1
+access_tenenet_alert_condition_manager,tenenet.alert.condition.manager,model_tenenet_alert_condition,tenenet_projects.group_tenenet_manager,1,1,1,1
+access_tenenet_alert_allowed_model_manager,tenenet.alert.allowed.model.manager,model_tenenet_alert_allowed_model,tenenet_projects.group_tenenet_manager,1,1,1,1
+access_tenenet_alert_match_manager,tenenet.alert.match.manager,model_tenenet_alert_match,tenenet_projects.group_tenenet_manager,1,1,1,1
 access_tenenet_program_user,tenenet.program.user,model_tenenet_program,tenenet_projects.group_tenenet_user,1,0,0,0
 access_tenenet_program_manager,tenenet.program.manager,model_tenenet_program,tenenet_projects.group_tenenet_manager,1,1,1,1
 access_tenenet_donor_user,tenenet.donor.user,model_tenenet_donor,tenenet_projects.group_tenenet_user,1,0,0,0

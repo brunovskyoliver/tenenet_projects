@@ -16,7 +16,7 @@ and P&L reporting by program.
     'version': '19.0.4.0.0',
     'license': 'LGPL-3',
 
-    'depends': ['base', 'hr', 'hr_holidays', 'account_reports'],
+    'depends': ['base', 'hr', 'hr_holidays', 'account_reports', 'mail'],
 
     'assets': {
         'web.assets_backend': [
@@ -47,6 +47,10 @@ and P&L reporting by program.
         'data/tenenet_program_data.xml',
         'data/tenenet_donor_data.xml',
         'data/hr_leave_type_data.xml',
+        'data/tenenet_alert_mail_template.xml',
+        'data/tenenet_alert_cron.xml',
+        'views/tenenet_alert_allowed_model_views.xml',
+        'views/tenenet_alert_views.xml',
         'views/tenenet_program_views.xml',
         'views/tenenet_donor_views.xml',
         'views/tenenet_project_views.xml',

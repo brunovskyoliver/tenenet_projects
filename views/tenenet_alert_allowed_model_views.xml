@@ -1,0 +1,57 @@
+<odoo>
+    <data>
+        <record id="view_tenenet_alert_allowed_model_list" model="ir.ui.view">
+            <field name="name">tenenet.alert.allowed.model.list</field>
+            <field name="model">tenenet.alert.allowed.model</field>
+            <field name="arch" type="xml">
+                <list string="Povolené modely">
+                    <field name="model_name"/>
+                    <field name="model_model"/>
+                    <field name="active"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_tenenet_alert_allowed_model_form" model="ir.ui.view">
+            <field name="name">tenenet.alert.allowed.model.form</field>
+            <field name="model">tenenet.alert.allowed.model</field>
+            <field name="arch" type="xml">
+                <form string="Povolený model">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="model_id"/>
+                                <field name="active"/>
+                            </group>
+                            <group>
+                                <field name="model_name" readonly="1"/>
+                                <field name="model_model" readonly="1"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="notes"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_tenenet_alert_allowed_model_search" model="ir.ui.view">
+            <field name="name">tenenet.alert.allowed.model.search</field>
+            <field name="model">tenenet.alert.allowed.model</field>
+            <field name="arch" type="xml">
+                <search string="Povolené modely">
+                    <field name="model_name"/>
+                    <field name="model_model"/>
+                    <filter string="Aktívne" name="active" domain="[('active', '=', True)]"/>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_tenenet_alert_allowed_model" model="ir.actions.act_window">
+            <field name="name">Povolené modely</field>
+            <field name="res_model">tenenet.alert.allowed.model</field>
+            <field name="view_mode">list,form</field>
+        </record>
+    </data>
+</odoo>

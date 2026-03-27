@@ -1,0 +1,220 @@
+<odoo>
+    <data>
+        <record id="view_tenenet_alert_rule_search" model="ir.ui.view">
+            <field name="name">tenenet.alert.rule.search</field>
+            <field name="model">tenenet.alert.rule</field>
+            <field name="arch" type="xml">
+                <search string="Pravidlá upozornení">
+                    <field name="name"/>
+                    <field name="allowed_model_id"/>
+                    <filter string="Aktívne" name="active" domain="[('active', '=', True)]"/>
+                    <filter string="S chybou" name="with_error" domain="[('last_error', '!=', False)]"/>
+                    <filter string="So zhodami" name="with_matches" domain="[('match_count', '>', 0)]"/>
+                    <filter string="Spustené dnes" name="run_today" domain="[('last_run_at', '>=', context_today().strftime('%Y-%m-%d 00:00:00'))]"/>
+                    <group>
+                        <filter string="Model" name="group_model" context="{'group_by': 'allowed_model_id'}"/>
+                        <filter string="Aktívne" name="group_active" context="{'group_by': 'active'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="view_tenenet_alert_rule_kanban" model="ir.ui.view">
+            <field name="name">tenenet.alert.rule.kanban</field>
+            <field name="model">tenenet.alert.rule</field>
+            <field name="arch" type="xml">
+                <kanban default_order="sequence, name">
+                    <field name="name"/>
+                    <field name="allowed_model_id"/>
+                    <field name="active"/>
+                    <field name="match_count"/>
+                    <field name="last_run_at"/>
+                    <field name="last_error"/>
+                    <templates>
+                        <t t-name="card">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <strong t-out="record.name.value"/>
+                                <t t-if="record.active.raw_value">
+                                    <span class="badge bg-success">Aktívne</span>
+                                </t>
+                                <t t-else="">
+                                    <span class="badge bg-secondary">Neaktívne</span>
+                                </t>
+                            </div>
+                            <div class="small text-muted mb-1">
+                                <field name="allowed_model_id"/>
+                            </div>
+                            <div class="small mb-1">
+                                Zhody: <t t-out="record.match_count.value or 0"/>
+                            </div>
+                            <div class="small text-muted mb-1">
+                                Posledné spustenie: <t t-out="record.last_run_at.value or '-'"/>
+                            </div>
+                            <t t-if="record.last_error.raw_value">
+                                <div class="small text-danger">
+                                    Chyba: <t t-out="record.last_error.value"/>
+                                </div>
+                            </t>
+                        </t>
+                    </templates>
+                </kanban>
+            </field>
+        </record>
+
+        <record id="view_tenenet_alert_rule_list" model="ir.ui.view">
+            <field name="name">tenenet.alert.rule.list</field>
+            <field name="model">tenenet.alert.rule</field>
+            <field name="arch" type="xml">
+                <list string="Pravidlá upozornení">
+                    <field name="sequence" optional="hide"/>
+                    <field name="name"/>
+                    <field name="allowed_model_id"/>
+                    <field name="active"/>
+                    <field name="match_count"/>
+                    <field name="last_run_at"/>
+                    <field name="last_new_match_count"/>
+                    <field name="last_mail_sent_at"/>
+                    <button name="action_run_now" type="object" string="Spustiť teraz" class="btn-link"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_tenenet_alert_condition_list" model="ir.ui.view">
+            <field name="name">tenenet.alert.condition.list</field>
+            <field name="model">tenenet.alert.condition</field>
+            <field name="arch" type="xml">
+                <list editable="bottom" string="Podmienky">
+                    <field name="sequence" widget="handle"/>
+                    <field name="field_id" domain="[('model_id', '=', parent.model_id), ('store', '=', True), ('ttype', 'in', ['date','datetime','char','text','integer','float','monetary','boolean','selection','many2one'])]"/>
+                    <field name="value_mode" invisible="field_ttype not in ['date', 'datetime']"/>
+                    <field name="operator"/>
+                    <field name="value_char" invisible="field_ttype != 'char' or operator in ['is_set', 'is_not_set', 'is_true', 'is_false', 'today', 'overdue'] or value_mode == 'relative'"/>
+                    <field name="value_text" invisible="field_ttype != 'text' or operator in ['is_set', 'is_not_set', 'is_true', 'is_false', 'today', 'overdue'] or value_mode == 'relative'"/>
+                    <field name="value_integer" invisible="field_ttype != 'integer' or operator in ['is_set', 'is_not_set', 'is_true', 'is_false', 'today', 'overdue'] or value_mode == 'relative'"/>
+                    <field name="value_float" invisible="field_ttype not in ['float', 'monetary'] or operator in ['is_set', 'is_not_set', 'is_true', 'is_false', 'today', 'overdue'] or value_mode == 'relative'"/>
+                    <field name="value_boolean" invisible="field_ttype != 'boolean' or operator not in ['is_true', 'is_false']"/>
+                    <field name="value_selection_key" invisible="field_ttype != 'selection' or operator in ['is_set', 'is_not_set'] or value_mode == 'relative'"/>
+                    <field name="value_reference" widget="reference" invisible="field_ttype != 'many2one' or operator in ['is_set', 'is_not_set'] or value_mode == 'relative'"/>
+                    <field name="value_date" invisible="field_ttype != 'date' or value_mode != 'static' or operator in ['is_set', 'is_not_set', 'today', 'overdue']"/>
+                    <field name="value_datetime" invisible="field_ttype != 'datetime' or value_mode != 'static' or operator in ['is_set', 'is_not_set', 'today', 'overdue']"/>
+                    <field name="relative_amount" invisible="value_mode != 'relative' or operator in ['today', 'overdue']"/>
+                    <field name="relative_unit" invisible="value_mode != 'relative' or operator in ['today', 'overdue']"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_tenenet_alert_rule_form" model="ir.ui.view">
+            <field name="name">tenenet.alert.rule.form</field>
+            <field name="model">tenenet.alert.rule</field>
+            <field name="arch" type="xml">
+                <form string="Pravidlo upozornenia">
+                    <header>
+                        <button name="action_run_now" type="object" string="Spustiť teraz" class="btn-primary"/>
+                        <field name="active" widget="boolean_toggle"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name"/>
+                                <field name="allowed_model_id"/>
+                            </group>
+                            <group>
+                                <field name="last_run_at" readonly="1"/>
+                                <field name="last_mail_sent_at" readonly="1"/>
+                                <field name="last_new_match_count" readonly="1"/>
+                                <field name="match_count" readonly="1"/>
+                            </group>
+                        </group>
+                        <group invisible="not last_error">
+                            <field name="last_error" readonly="1"/>
+                        </group>
+                        <notebook>
+                            <page string="Podmienky">
+                                <field name="condition_ids" context="{'default_rule_id': id}">
+                                    <list editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="field_id" domain="[('model_id', '=', parent.model_id), ('store', '=', True), ('ttype', 'in', ['date','datetime','char','text','integer','float','monetary','boolean','selection','many2one'])]"/>
+                                        <field name="value_mode" invisible="field_ttype not in ['date', 'datetime']"/>
+                                        <field name="operator"/>
+                                        <field name="value_char" invisible="field_ttype != 'char' or operator in ['is_set', 'is_not_set', 'is_true', 'is_false', 'today', 'overdue'] or value_mode == 'relative'"/>
+                                        <field name="value_text" invisible="field_ttype != 'text' or operator in ['is_set', 'is_not_set', 'is_true', 'is_false', 'today', 'overdue'] or value_mode == 'relative'"/>
+                                        <field name="value_integer" invisible="field_ttype != 'integer' or operator in ['is_set', 'is_not_set', 'is_true', 'is_false', 'today', 'overdue'] or value_mode == 'relative'"/>
+                                        <field name="value_float" invisible="field_ttype not in ['float', 'monetary'] or operator in ['is_set', 'is_not_set', 'is_true', 'is_false', 'today', 'overdue'] or value_mode == 'relative'"/>
+                                        <field name="value_selection_key" invisible="field_ttype != 'selection' or operator in ['is_set', 'is_not_set'] or value_mode == 'relative'"/>
+                                        <field name="value_reference" widget="reference" invisible="field_ttype != 'many2one' or operator in ['is_set', 'is_not_set'] or value_mode == 'relative'"/>
+                                        <field name="value_date" invisible="field_ttype != 'date' or value_mode != 'static' or operator in ['is_set', 'is_not_set', 'today', 'overdue']"/>
+                                        <field name="value_datetime" invisible="field_ttype != 'datetime' or value_mode != 'static' or operator in ['is_set', 'is_not_set', 'today', 'overdue']"/>
+                                        <field name="relative_amount" invisible="value_mode != 'relative' or operator in ['today', 'overdue']"/>
+                                        <field name="relative_unit" invisible="value_mode != 'relative' or operator in ['today', 'overdue']"/>
+                                    </list>
+                                    <form string="Podmienka">
+                                        <group>
+                                            <group>
+                                                <field name="sequence"/>
+                                                <field name="field_id" domain="[('model_id', '=', parent.model_id), ('store', '=', True), ('ttype', 'in', ['date','datetime','char','text','integer','float','monetary','boolean','selection','many2one'])]"/>
+                                                <field name="value_mode" invisible="field_ttype not in ['date', 'datetime']"/>
+                                                <field name="operator"/>
+                                            </group>
+                                            <group>
+                                                <field name="value_char" invisible="field_ttype != 'char' or operator in ['is_set', 'is_not_set', 'is_true', 'is_false', 'today', 'overdue'] or value_mode == 'relative'"/>
+                                                <field name="value_text" invisible="field_ttype != 'text' or operator in ['is_set', 'is_not_set', 'is_true', 'is_false', 'today', 'overdue'] or value_mode == 'relative'"/>
+                                                <field name="value_integer" invisible="field_ttype != 'integer' or operator in ['is_set', 'is_not_set', 'is_true', 'is_false', 'today', 'overdue'] or value_mode == 'relative'"/>
+                                                <field name="value_float" invisible="field_ttype not in ['float', 'monetary'] or operator in ['is_set', 'is_not_set', 'is_true', 'is_false', 'today', 'overdue'] or value_mode == 'relative'"/>
+                                                <field name="value_selection_key" invisible="field_ttype != 'selection' or operator in ['is_set', 'is_not_set'] or value_mode == 'relative'"/>
+                                                <field name="value_reference" widget="reference" invisible="field_ttype != 'many2one' or operator in ['is_set', 'is_not_set'] or value_mode == 'relative'"/>
+                                                <field name="value_date" invisible="field_ttype != 'date' or value_mode != 'static' or operator in ['is_set', 'is_not_set', 'today', 'overdue']"/>
+                                                <field name="value_datetime" invisible="field_ttype != 'datetime' or value_mode != 'static' or operator in ['is_set', 'is_not_set', 'today', 'overdue']"/>
+                                                <field name="relative_amount" invisible="value_mode != 'relative' or operator in ['today', 'overdue']"/>
+                                                <field name="relative_unit" invisible="value_mode != 'relative' or operator in ['today', 'overdue']"/>
+                                            </group>
+                                        </group>
+                                    </form>
+                                </field>
+                            </page>
+                            <page string="Príjemcovia">
+                                <group>
+                                    <group>
+                                        <field name="recipient_email_raw" placeholder="meno@example.com&#10;dalsi@example.com"/>
+                                    </group>
+                                    <group>
+                                        <field name="recipient_partner_ids" widget="many2many_tags"/>
+                                        <field name="summary_field_ids" widget="many2many_tags"/>
+                                    </group>
+                                </group>
+                            </page>
+                            <page string="Aktívne zhody">
+                                <field name="active_match_ids" readonly="1">
+                                    <list string="Aktívne zhody">
+                                        <field name="res_model"/>
+                                        <field name="res_id"/>
+                                        <field name="last_display_name"/>
+                                        <field name="first_matched_at"/>
+                                        <field name="last_seen_at"/>
+                                        <field name="last_notified_at"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Popis">
+                                <field name="description"/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_tenenet_alert_rule" model="ir.actions.act_window">
+            <field name="name">Pravidlá upozornení</field>
+            <field name="res_model">tenenet.alert.rule</field>
+            <field name="view_mode">kanban,list,form</field>
+            <field name="view_ids" eval="[
+                (5, 0, 0),
+                (0, 0, {'sequence': 1, 'view_mode': 'kanban', 'view_id': ref('view_tenenet_alert_rule_kanban')}),
+                (0, 0, {'sequence': 2, 'view_mode': 'list', 'view_id': ref('view_tenenet_alert_rule_list')}),
+                (0, 0, {'sequence': 3, 'view_mode': 'form', 'view_id': ref('view_tenenet_alert_rule_form')})
+            ]"/>
+            <field name="search_view_id" ref="view_tenenet_alert_rule_search"/>
+            <field name="context">{'search_default_active': 1}</field>
+        </record>
+    </data>
+</odoo>
