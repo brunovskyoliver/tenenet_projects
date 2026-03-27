@@ -373,18 +373,85 @@ class TenenetAlertRule(models.Model):
         self.ensure_one()
         return str(self._get_digest_match_count())
 
+    def _get_digest_subject_target_text(self):
+        self.ensure_one()
+        records = self.env.context.get("alert_new_records") or self.env[self.model_model]
+        if not records:
+            return self.name
+        first = records[:1].display_name
+        extra_count = len(records) - 1
+        if extra_count > 0:
+            return "%s + %s" % (first, extra_count)
+        return first
+
+    def _format_alert_value(self, value):
+        if hasattr(value, "display_name"):
+            return value.display_name
+        if isinstance(value, bool):
+            return "Áno" if value else "Nie"
+        return value or ""
+
+    def _format_relative_unit(self, amount, unit):
+        labels = {
+            "day": ("deň", "dni", "dní"),
+            "week": ("týždeň", "týždne", "týždňov"),
+            "month": ("mesiac", "mesiace", "mesiacov"),
+        }
+        one, few, many = labels.get(unit, (unit, unit, unit))
+        if amount == 1:
+            return one
+        if 2 <= amount <= 4:
+            return few
+        return many
+
+    def _describe_match_reason(self, condition, record):
+        field_label = condition.field_id.field_description or condition.field_name
+        operator = condition.operator
+        if condition.value_mode == "relative":
+            if operator == "today":
+                return "POZOR: %s je dnes." % field_label
+            if operator == "overdue":
+                return "POZOR: %s je po termíne." % field_label
+            amount = condition.relative_amount
+            unit = self._format_relative_unit(amount, condition.relative_unit)
+            if operator == "within_next":
+                return "POZOR: %s termín je v najbližších %s %s." % (field_label, amount, unit)
+            if operator == "within_last":
+                return "POZOR: %s bol v posledných %s %s." % (field_label, amount, unit)
+            if operator == "older_than":
+                return "POZOR: %s je starší ako %s %s." % (field_label, amount, unit)
+            if operator == "younger_than":
+                return "POZOR: %s je mladší ako %s %s." % (field_label, amount, unit)
+
+        value = self._format_alert_value(record[condition.field_name])
+        target = condition._get_value_label()
+        messages = {
+            "lt": "POZOR: %s je menšie ako %s.",
+            "le": "POZOR: %s je najviac %s.",
+            "gt": "POZOR: %s je väčšie ako %s.",
+            "ge": "POZOR: %s je aspoň %s.",
+            "eq": "POZOR: %s je %s.",
+            "ne": "POZOR: %s nie je %s.",
+            "contains": "POZOR: %s obsahuje \"%s\".",
+            "not_contains": "POZOR: %s neobsahuje \"%s\".",
+            "equals": "POZOR: %s je \"%s\".",
+            "not_equals": "POZOR: %s nie je \"%s\".",
+            "is_set": "POZOR: %s je vyplnené.",
+            "is_not_set": "POZOR: %s nie je vyplnené.",
+            "is_true": "POZOR: %s je Áno.",
+            "is_false": "POZOR: %s je Nie.",
+        }
+        if operator in {"is_set", "is_not_set", "is_true", "is_false"}:
+            return messages[operator] % field_label
+        return messages.get(operator, "POZOR: %s spĺňa podmienku %s.") % (field_label, target or value or condition._get_condition_summary())
+
     def _prepare_mail_rows(self, records):
         rows = []
         for record in records:
             summary_values = []
             for field in self.summary_field_ids:
                 value = record[field.name]
-                if hasattr(value, "display_name"):
-                    display_value = value.display_name
-                elif isinstance(value, bool):
-                    display_value = "Áno" if value else "Nie"
-                else:
-                    display_value = value or ""
+                display_value = self._format_alert_value(value)
                 summary_values.append({
                     "label": field.field_description,
                     "value": display_value,
@@ -392,6 +459,7 @@ class TenenetAlertRule(models.Model):
             rows.append({
                 "name": record.display_name,
                 "url": self._get_record_url(record),
+                "match_reasons": [self._describe_match_reason(condition, record) for condition in self.condition_ids.sorted("sequence")],
                 "summary_values": summary_values,
             })
         return rows

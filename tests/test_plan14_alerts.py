@@ -233,6 +233,7 @@ class TestTenenetPlan14Alerts(TransactionCase):
         ])
         self.assertEqual(rule.with_context(alert_new_records=records)._get_digest_match_count(), 2)
         self.assertEqual(rule.with_context(alert_new_records=self.env["tenenet.project"])._get_digest_match_count_text(), "0")
+        self.assertEqual(rule.with_context(alert_new_records=records)._get_digest_subject_target_text(), "Projekt A + 1")
 
     def test_collect_recipient_emails_includes_dynamic_employee_fields(self):
         rule = self._create_rule(
@@ -251,6 +252,16 @@ class TestTenenetPlan14Alerts(TransactionCase):
             sorted(rule._collect_recipient_emails(project)),
             ["garant@example.com", "pm@example.com"],
         )
+
+    def test_prepare_mail_rows_include_human_reason_text(self):
+        rule = self._create_rule()
+        today = self.env["tenenet.alert.rule"]._fields["last_run_at"].context_today(rule)
+        project = self.env["tenenet.project"].create({
+            "name": "Projekt s dôvodom",
+            "date_end": today,
+        })
+        rows = rule._prepare_mail_rows(project)
+        self.assertTrue(rows[0]["match_reasons"][0].startswith("POZOR:"))
 
     def test_condition_wizard_creates_numeric_condition(self):
         rule = self._create_rule()

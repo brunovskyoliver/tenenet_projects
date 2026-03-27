@@ -3,38 +3,34 @@
         <record id="mail_template_tenenet_alert_digest" model="mail.template">
             <field name="name">TENENET upozornenie - digest</field>
             <field name="model_id" ref="model_tenenet_alert_rule"/>
-            <field name="subject">[TENENET] Upozornenie: {{ object.name }} ({{ object._get_digest_match_count_text() }})</field>
+            <field name="subject">[TENENET] Upozornenie: {{ object._get_digest_subject_target_text() }}</field>
             <field name="email_from">{{ user.email_formatted or '' }}</field>
             <field name="body_html" type="html">
                 <div>
-                    <p>Pravidlo <strong><t t-out="object.name"/></strong> našlo nové zhody.</p>
+                    <p>Pravidlo <strong><t t-out="object.name"/></strong> našlo zhodné záznamy.</p>
                     <p>
                         Model: <t t-out="object.allowed_model_id.model_name"/><br/>
                         Čas vyhodnotenia: <t t-out="object.last_run_at or ''"/><br/>
-                        Nové zhody: <t t-out="object._get_digest_match_count()"/>
+                        Počet záznamov: <t t-out="object._get_digest_match_count()"/>
                     </p>
-                    <table style="border-collapse: collapse; width: 100%;" border="1" cellpadding="6">
-                        <thead>
-                            <tr>
-                                <th>Názov záznamu</th>
-                                <th>Detaily</th>
-                                <th>Odkaz</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <t t-foreach="ctx.get('alert_record_rows', [])" t-as="row">
-                                <tr>
-                                    <td><t t-out="row.get('name')"/></td>
-                                    <td>
-                                        <t t-foreach="row.get('summary_values', [])" t-as="item">
-                                            <div><strong><t t-out="item.get('label')"/>:</strong> <t t-out="item.get('value')"/></div>
-                                        </t>
-                                    </td>
-                                    <td><a t-att-href="row.get('url')">Otvoriť</a></td>
-                                </tr>
-                            </t>
-                        </tbody>
-                    </table>
+                    <t t-foreach="ctx.get('alert_record_rows', [])" t-as="row">
+                        <div style="border: 1px solid #ddd; padding: 12px; margin: 0 0 12px 0;">
+                            <p style="margin: 0 0 8px 0;">
+                                <strong><t t-out="row.get('name')"/></strong>
+                            </p>
+                            <div style="margin: 0 0 8px 0;">
+                                <t t-foreach="row.get('match_reasons', [])" t-as="reason">
+                                    <div><t t-out="reason"/></div>
+                                </t>
+                            </div>
+                            <div style="margin: 0 0 8px 0;">
+                                <t t-foreach="row.get('summary_values', [])" t-as="item">
+                                    <div><strong><t t-out="item.get('label')"/>:</strong> <t t-out="item.get('value')"/></div>
+                                </t>
+                            </div>
+                            <div><a t-att-href="row.get('url')">Otvoriť záznam</a></div>
+                        </div>
+                    </t>
                 </div>
             </field>
             <field name="auto_delete" eval="True"/>
