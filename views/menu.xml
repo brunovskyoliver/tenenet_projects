@@ -1,5 +1,8 @@
 <odoo>
   <data>
+    <menuitem id="menu_tenenet_employees_root" name="Zamestnanci" sequence="4" web_icon="tenenet_projects,static/description/employees.svg" action="action_tenenet_employees" groups="tenenet_projects.group_tenenet_manager"></menuitem>
+    <menuitem id="menu_tenenet_clients_root" name="Klienti" sequence="5" web_icon="tenenet_projects,static/description/clients.svg" action="action_tenenet_clients" groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_manager"></menuitem>
+    <menuitem id="menu_tenenet_partners_root" name="Partneri" sequence="6" web_icon="tenenet_projects,static/description/partners.svg" action="action_tenenet_partners" groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_manager"></menuitem>
     <menuitem id="menu_tenenet_root" name="TENENET" sequence="10" web_icon="tenenet_projects,static/description/icon.png"></menuitem>
     <menuitem action="action_tenenet_garant_timesheets_client" groups="tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager" id="menu_tenenet_garant_timesheets_owl" name="Garant: Timesheety A" parent="menu_tenenet_root" sequence="7"></menuitem>
     <menuitem action="action_tenenet_garant_projects_server" groups="tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager" id="menu_tenenet_garant_projects" name="Garant: Timesheety B" parent="menu_tenenet_root" sequence="8"></menuitem>
@@ -14,6 +17,7 @@
     <menuitem groups="tenenet_projects.group_tenenet_manager" id="menu_tenenet_configuration" name="Konfigurácia" parent="menu_tenenet_root" sequence="20"></menuitem>
     <menuitem action="action_tenenet_program" id="menu_tenenet_programs" name="Programy" parent="menu_tenenet_configuration" sequence="10"></menuitem>
     <menuitem action="action_tenenet_donor" id="menu_tenenet_donors" name="Donori" parent="menu_tenenet_configuration" sequence="20"></menuitem>
+    <menuitem action="action_tenenet_project_assignment" id="menu_tenenet_project_assignments" name="Priradenia zamestnancov" parent="menu_tenenet_configuration" sequence="30"></menuitem>
     <menuitem
             id="menu_tenenet_employee_list_report"
             name="Zoznam zamestnancov"

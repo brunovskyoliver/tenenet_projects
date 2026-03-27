@@ -1,5 +1,42 @@
 <odoo>
     <data>
+        <record id="view_hr_employee_tenenet_list" model="ir.ui.view">
+            <field name="name">hr.employee.tenenet.list</field>
+            <field name="model">hr.employee</field>
+            <field name="arch" type="xml">
+                <list string="Zamestnanci">
+                    <field name="name"/>
+                    <field name="job_id"/>
+                    <field name="tenenet_allocation_ratio_total"/>
+                    <field name="tenenet_free_ratio"/>
+                    <field name="tenenet_availability_state" widget="badge"
+                           decoration-success="tenenet_availability_state == 'free'"
+                           decoration-info="tenenet_availability_state == 'partial'"
+                           decoration-warning="tenenet_availability_state == 'full'"
+                           decoration-danger="tenenet_availability_state == 'overbooked'"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_hr_employee_tenenet_search" model="ir.ui.view">
+            <field name="name">hr.employee.tenenet.search</field>
+            <field name="model">hr.employee</field>
+            <field name="arch" type="xml">
+                <search string="Zamestnanci">
+                    <field name="name"/>
+                    <field name="job_id"/>
+                    <filter string="Voľní" name="free" domain="[('tenenet_availability_state', '=', 'free')]"/>
+                    <filter string="V projekte" name="in_project" domain="[('tenenet_availability_state', 'in', ['partial', 'full', 'overbooked'])]"/>
+                    <filter string="Čiastočne alokovaní" name="partial" domain="[('tenenet_availability_state', '=', 'partial')]"/>
+                    <filter string="Preťažení" name="overbooked" domain="[('tenenet_availability_state', '=', 'overbooked')]"/>
+                    <group>
+                        <filter string="Profesie" name="group_job" context="{'group_by': 'job_id'}"/>
+                        <filter string="Stav dostupnosti" name="group_availability" context="{'group_by': 'tenenet_availability_state'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
         <record id="view_hr_employee_form_tenenet" model="ir.ui.view">
             <field name="name">hr.employee.form.tenenet</field>
             <field name="model">hr.employee</field>
@@ -17,6 +54,9 @@
                                 <field name="work_hours"/>
                                 <field name="work_ratio"/>
                                 <field name="hourly_rate"/>
+                                <field name="tenenet_allocation_ratio_total" readonly="1"/>
+                                <field name="tenenet_free_ratio" readonly="1"/>
+                                <field name="tenenet_availability_state" readonly="1" widget="badge"/>
                             </group>
                         </group>
                         <group>
@@ -26,17 +66,64 @@
                             <field name="assignment_ids" nolabel="1">
                                 <list string="Priradenia k projektom">
                                     <field name="project_id"/>
+                                    <field name="allocation_ratio"/>
                                     <field name="wage_hm"/>
                                     <field name="wage_ccp"/>
                                     <field name="date_start"/>
                                     <field name="date_end"/>
+                                    <field name="state"/>
                                     <field name="active"/>
                                 </list>
                             </field>
                         </group>
                     </page>
+                    <page string="Životopis">
+                        <group string="Školenia">
+                            <field name="training_ids" nolabel="1" context="{'default_employee_id': id}">
+                                <list string="Školenia">
+                                    <field name="name"/>
+                                    <field name="training_type"/>
+                                    <field name="provider"/>
+                                    <field name="date_from"/>
+                                    <field name="date_to"/>
+                                    <field name="certificate_date"/>
+                                    <field name="active"/>
+                                </list>
+                                <form string="Školenie">
+                                    <sheet>
+                                        <group>
+                                            <group>
+                                                <field name="employee_id" invisible="1"/>
+                                                <field name="name"/>
+                                                <field name="training_type"/>
+                                                <field name="provider"/>
+                                            </group>
+                                            <group>
+                                                <field name="date_from"/>
+                                                <field name="date_to"/>
+                                                <field name="certificate_date"/>
+                                                <field name="active"/>
+                                            </group>
+                                        </group>
+                                        <group>
+                                            <field name="notes"/>
+                                        </group>
+                                    </sheet>
+                                    <chatter open_attachments="True" reload_on_attachment="True"/>
+                                </form>
+                            </field>
+                        </group>
+                    </page>
                 </xpath>
             </field>
+        </record>
+
+        <record id="action_tenenet_employees" model="ir.actions.act_window">
+            <field name="name">Zamestnanci</field>
+            <field name="res_model">hr.employee</field>
+            <field name="view_mode">list,form</field>
+            <field name="view_id" ref="view_hr_employee_tenenet_list"/>
+            <field name="search_view_id" ref="view_hr_employee_tenenet_search"/>
         </record>
     </data>
 </odoo>

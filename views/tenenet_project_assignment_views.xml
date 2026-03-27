@@ -6,19 +6,22 @@
             <field name="arch" type="xml">
                 <kanban default_order="employee_id">
                     <field name="active"/>
+                    <field name="allocation_ratio"/>
                     <field name="date_start"/>
                     <field name="date_end"/>
+                    <field name="state"/>
                     <templates>
                         <t t-name="card">
                             <strong class="d-block mb-1">
                                 <field name="employee_id"/>
                             </strong>
+                            <div class="small text-muted mb-1">
+                                <field name="project_id"/> • <field name="allocation_ratio"/> %
+                            </div>
                             <div class="small text-muted mb-2">
                                 <t t-out="record.date_start.value"/> – <t t-out="record.date_end.value"/>
                             </div>
-                            <t t-if="!record.active.raw_value">
-                                <span class="badge bg-secondary mb-2">Neaktívne</span>
-                            </t>
+                            <field name="state" widget="badge"/>
                             <button type="object"
                                     name="action_open_timesheet_matrix_current_year"
                                     class="btn btn-sm btn-outline-primary">
@@ -37,10 +40,12 @@
                 <list string="Priradenia zamestnancov k projektom">
                     <field name="employee_id"/>
                     <field name="project_id"/>
+                    <field name="allocation_ratio"/>
                     <field name="date_start"/>
                     <field name="date_end"/>
                     <field name="wage_hm"/>
                     <field name="wage_ccp"/>
+                    <field name="state" widget="badge"/>
                     <field name="active"/>
                     <field name="timesheet_count" optional="hide"/>
                     <button name="action_open_timesheet_matrix_current_year"
@@ -68,10 +73,12 @@
                                 <field name="employee_id"/>
                                 <field name="project_id"/>
                                 <field name="active"/>
+                                <field name="state" readonly="1" widget="badge"/>
                             </group>
                             <group>
                                 <field name="date_start"/>
                                 <field name="date_end"/>
+                                <field name="allocation_ratio"/>
                                 <field name="wage_hm"/>
                                 <field name="wage_ccp"/>
                             </group>
@@ -102,9 +109,12 @@
                 <search string="Priradenia zamestnancov">
                     <field name="employee_id"/>
                     <field name="project_id"/>
-                    <filter string="Aktívne" name="active" domain="[('active', '=', True)]"/>
+                    <filter string="Aktívne" name="active" domain="[('state', '=', 'active')]"/>
+                    <filter string="Budúce" name="planned" domain="[('state', '=', 'planned')]"/>
+                    <filter string="Ukončené" name="finished" domain="[('state', '=', 'finished')]"/>
                     <filter string="Projekt" name="group_project" context="{'group_by': 'project_id'}"/>
                     <filter string="Zamestnanec" name="group_employee" context="{'group_by': 'employee_id'}"/>
+                    <filter string="Stav" name="group_state" context="{'group_by': 'state'}"/>
                 </search>
             </field>
         </record>
@@ -113,6 +123,7 @@
             <field name="name">Priradenia zamestnancov</field>
             <field name="res_model">tenenet.project.assignment</field>
             <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_tenenet_project_assignment_search"/>
         </record>
 
         <record id="action_tenenet_my_project_assignment" model="ir.actions.act_window">

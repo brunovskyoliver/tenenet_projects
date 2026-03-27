@@ -59,10 +59,48 @@ class HrEmployee(models.Model):
         "employee_id",
         string="Priradenia k projektom",
     )
+    training_ids = fields.One2many(
+        "tenenet.employee.training",
+        "employee_id",
+        string="Školenia",
+    )
     tenenet_cost_ids = fields.One2many(
         "tenenet.employee.tenenet.cost",
         "employee_id",
         string="Tenenet náklady",
+    )
+    tenenet_allocation_ratio_total = fields.Float(
+        string="Projektový úväzok spolu (%)",
+        digits=(5, 2),
+        compute="_compute_tenenet_assignment_availability",
+        store=True,
+    )
+    tenenet_active_assignment_count = fields.Integer(
+        string="Počet aktívnych úväzkov",
+        compute="_compute_tenenet_assignment_availability",
+        store=True,
+    )
+    tenenet_availability_state = fields.Selection(
+        [
+            ("free", "Voľný"),
+            ("partial", "Čiastočne alokovaný"),
+            ("full", "Plne alokovaný"),
+            ("overbooked", "Preťažený"),
+        ],
+        string="Stav dostupnosti",
+        compute="_compute_tenenet_assignment_availability",
+        store=True,
+    )
+    tenenet_availability_label = fields.Char(
+        string="Dostupnosť",
+        compute="_compute_tenenet_assignment_availability",
+        store=True,
+    )
+    tenenet_free_ratio = fields.Float(
+        string="Voľná kapacita (%)",
+        digits=(5, 2),
+        compute="_compute_tenenet_assignment_availability",
+        store=True,
     )
 
     @api.model
@@ -158,3 +196,31 @@ class HrEmployee(models.Model):
             ratio = (hours_per_day / 8.0) * 100.0 if hours_per_day > 0 else 0.0
             rec.work_ratio = ratio
             rec.monthly_capacity_hours = 160.0 * ratio / 100.0
+
+    @api.depends(
+        "assignment_ids.active",
+        "assignment_ids.allocation_ratio",
+        "assignment_ids.date_start",
+        "assignment_ids.date_end",
+        "assignment_ids.project_id.date_start",
+        "assignment_ids.project_id.date_end",
+    )
+    def _compute_tenenet_assignment_availability(self):
+        for rec in self:
+            active_assignments = rec.assignment_ids.filtered(lambda assignment: assignment.is_current)
+            total_ratio = sum(active_assignments.mapped("allocation_ratio"))
+            rec.tenenet_allocation_ratio_total = total_ratio
+            rec.tenenet_active_assignment_count = len(active_assignments)
+            rec.tenenet_free_ratio = max(0.0, 100.0 - total_ratio)
+            if total_ratio <= 0.0:
+                rec.tenenet_availability_state = "free"
+                rec.tenenet_availability_label = "Voľný"
+            elif total_ratio < 100.0:
+                rec.tenenet_availability_state = "partial"
+                rec.tenenet_availability_label = "Čiastočne alokovaný"
+            elif total_ratio == 100.0:
+                rec.tenenet_availability_state = "full"
+                rec.tenenet_availability_label = "Plne alokovaný"
+            else:
+                rec.tenenet_availability_state = "overbooked"
+                rec.tenenet_availability_label = "Preťažený"

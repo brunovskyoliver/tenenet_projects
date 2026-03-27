@@ -7,5 +7,33 @@ def post_init_hook(env):
 
 
 def pre_init_hook(env):
-    env.cr.execute("ALTER TABLE tenenet_project RENAME COLUMN program_director_id TO odborny_garant_id")
+    env.cr.execute(
+        """
+        SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_name = 'tenenet_project'
+        )
+        """
+    )
+    table_exists = env.cr.fetchone()[0]
+    if not table_exists:
+        return
+
+    env.cr.execute(
+        """
+        SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_name = 'tenenet_project'
+              AND column_name = 'program_director_id'
+        )
+        """
+    )
+    legacy_column_exists = env.cr.fetchone()[0]
+    if legacy_column_exists:
+        env.cr.execute(
+            "ALTER TABLE tenenet_project RENAME COLUMN program_director_id TO odborny_garant_id"
+        )
+
     env.cr.execute("ALTER TABLE tenenet_project DROP COLUMN IF EXISTS financial_manager_id")
