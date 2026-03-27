@@ -1,0 +1,35 @@
+.o_form_view .o_tenenet_employee_assignments {
+    width: 100%;
+}
+
+.o_form_view .o_tenenet_employee_assignments > .o_form_label {
+    display: block;
+    font-size: 1.05rem;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.o_form_view .o_tenenet_employee_assignments_field {
+    width: 100%;
+}
+
+.o_form_view .o_tenenet_employee_assignments_field .o_x2m_control_panel {
+    display: none;
+}
+
+.o_form_view .o_tenenet_employee_assignments_field .o_list_renderer table {
+    table-layout: auto !important;
+}
+
+.o_form_view .o_tenenet_employee_assignments_field .o_list_table thead th {
+    white-space: nowrap;
+}
+
+.o_form_view .o_tenenet_employee_assignments_field .o_list_table tbody tr td[colspan] {
+    display: none;
+}
+
+.o_form_view .o_tenenet_employee_assignments_field .o_list_table tfoot {
+    display: none;
+}

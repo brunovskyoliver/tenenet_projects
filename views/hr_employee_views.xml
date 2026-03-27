@@ -116,20 +116,20 @@
                     <page string="TENENET">
                         <group>
                             <group>
-                                <field name="tenenet_number" />
-                                <field name="title_academic" />
+                                <field name="work_hours" readonly="1" />
                                 <field
-                                    name="position_catalog_id"
-                                    string="Pozícia"
+                                    name="work_ratio"
+                                    readonly="1"
+                                    string="Celkový úväzok (%)"
                                 />
+                                <field name="tenenet_actual_work_ratio" readonly="1" />
                             </group>
                             <group>
-                                <field name="work_hours" />
-                                <field name="work_ratio" />
                                 <field name="hourly_rate" />
                                 <field
                                     name="tenenet_allocation_ratio_total"
                                     readonly="1"
+                                    string="Projektový podiel spolu (%)"
                                 />
                                 <field name="tenenet_free_ratio" readonly="1" />
                                 <field
@@ -139,23 +139,48 @@
                                 />
                             </group>
                         </group>
-                        <group>
-                            <field name="education_info" />
-                        </group>
-                        <group string="Priradenia k projektom">
-                            <field name="assignment_ids" nolabel="1">
-                                <list string="Priradenia k projektom">
+                        <div class="o_tenenet_employee_assignments mt-4">
+                            <div class="o_form_label mb-2">
+                                Priradenia k projektom
+                            </div>
+                            <field
+                                name="assignment_ids"
+                                nolabel="1"
+                                readonly="1"
+                                colspan="2"
+                                domain="[('is_current', '=', True)]"
+                                class="o_tenenet_employee_assignments_field"
+                            >
+                                <list
+                                    string="Priradenia k projektom"
+                                    class="o_tenenet_employee_assignments_list"
+                                >
                                     <field name="project_id" />
-                                    <field name="allocation_ratio" />
-                                    <field name="wage_hm" />
-                                    <field name="wage_ccp" readonly="1"/>
-                                    <field name="date_start" />
-                                    <field name="date_end" />
-                                    <field name="state" />
-                                    <field name="active" />
+                                    <field
+                                        name="allocation_ratio"
+                                        string="Úväzok (%)"
+                                    />
+                                    <field
+                                        name="date_start"
+                                        string="Začiatok"
+                                    />
+                                    <field
+                                        name="date_end"
+                                        string="Koniec"
+                                    />
+                                    <field
+                                        name="wage_hm"
+                                        string="HM / hod."
+                                    />
+                                    <button
+                                        name="action_open_timesheet_matrix_current_year"
+                                        type="object"
+                                        string="Otvoriť maticu"
+                                        class="btn-link"
+                                    />
                                 </list>
                             </field>
-                        </group>
+                        </div>
                     </page>
                 </xpath>
 

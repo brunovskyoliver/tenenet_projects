@@ -49,6 +49,12 @@ class TenenetProjectAssignment(models.Model):
         default=100.0,
         help="Percento úväzku zamestnanca vyhradené pre tento projekt.",
     )
+    effective_work_ratio = fields.Float(
+        string="Skutočný úväzok (%)",
+        digits=(5, 2),
+        compute="_compute_effective_work_ratio",
+        help="Skutočný úväzok na projekte po zohľadnení celkového úväzku zamestnanca.",
+    )
     wage_hm = fields.Float(
         string="Hodinová mzda HM (brutto)",
         digits=(10, 4),
@@ -106,6 +112,11 @@ class TenenetProjectAssignment(models.Model):
     )
 
     CCP_MULTIPLIER = 1.362
+
+    @api.depends("employee_id.work_ratio", "allocation_ratio")
+    def _compute_effective_work_ratio(self):
+        for rec in self:
+            rec.effective_work_ratio = (rec.employee_id.work_ratio or 0.0) * (rec.allocation_ratio or 0.0) / 100.0
 
     @api.depends("wage_hm", "max_monthly_wage_hm")
     def _compute_ccp_fields(self):

@@ -3,6 +3,14 @@ from odoo.tests import TransactionCase, tagged
 
 @tagged("post_install", "-at_install")
 class TestTenenetEmployeeListReport(TransactionCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.calendar_6h = cls.env["resource.calendar"].create({
+            "name": "Report 6h",
+            "hours_per_day": 6.0,
+        })
+
     def setUp(self):
         super().setUp()
         self.manager = self.env["hr.employee"].create({
@@ -16,7 +24,7 @@ class TestTenenetEmployeeListReport(TransactionCase):
             "position": "Psychológ",
             "study_field": "Psychológia",
             "parent_id": self.manager.id,
-            "work_hours": 6.0,
+            "resource_calendar_id": self.calendar_6h.id,
         })
         self.report = self.env.ref("tenenet_projects.tenenet_employee_list_report")
 
