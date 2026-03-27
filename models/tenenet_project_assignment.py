@@ -1,7 +1,10 @@
+import logging
 from datetime import date
 
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
+
+_logger = logging.getLogger(__name__)
 
 
 def _month_start(value):
@@ -54,7 +57,22 @@ class TenenetProjectAssignment(models.Model):
     wage_ccp = fields.Float(
         string="Hodinová sadzba CCP (celková cena práce)",
         digits=(10, 4),
-        help="Celková cena práce za hodinu pre tento projekt",
+        compute="_compute_ccp_fields",
+        store=True,
+        help="Celková cena práce za hodinu = mzda HM × 1.362",
+    )
+    max_monthly_wage_hm = fields.Float(
+        string="Max. mesačná mzda HM",
+        digits=(10, 4),
+        default=0.0,
+        help="Mesačný strop hrubej mzdy pre toto priradenie. 0 = bez stropu. Predvyplnené z projektu.",
+    )
+    max_monthly_wage_ccp = fields.Float(
+        string="Max. mesačná sadzba CCP",
+        digits=(10, 4),
+        compute="_compute_ccp_fields",
+        store=True,
+        help="Mesačný strop CCP = max. mzda HM × 1.362",
     )
     active = fields.Boolean(string="Aktívne", default=True)
     timesheet_ids = fields.One2many(
@@ -86,6 +104,14 @@ class TenenetProjectAssignment(models.Model):
         compute="_compute_state",
         store=True,
     )
+
+    CCP_MULTIPLIER = 1.362
+
+    @api.depends("wage_hm", "max_monthly_wage_hm")
+    def _compute_ccp_fields(self):
+        for rec in self:
+            rec.wage_ccp = (rec.wage_hm or 0.0) * self.CCP_MULTIPLIER
+            rec.max_monthly_wage_ccp = (rec.max_monthly_wage_hm or 0.0) * self.CCP_MULTIPLIER
 
     @api.depends("timesheet_ids")
     def _compute_timesheet_count(self):
@@ -215,6 +241,10 @@ class TenenetProjectAssignment(models.Model):
 
     @api.model
     def _get_or_create_internal_assignment(self, employee):
+        _logger.warning(
+            "DEPRECATED: _get_or_create_internal_assignment is deprecated. "
+            "Use tenenet.internal.expense instead of the internal project mechanism."
+        )
         internal_project = self.env["tenenet.project"]._get_or_create_internal_project()
         assignment = self.with_context(active_test=False).search([
             ("employee_id", "=", employee.id),
@@ -225,17 +255,21 @@ class TenenetProjectAssignment(models.Model):
                 assignment.active = True
             return assignment
 
-        wage_hm, wage_ccp = self._default_rates_for_employee(employee)
+        wage_hm, _wage_ccp = self._default_rates_for_employee(employee)
         return self.create({
             "employee_id": employee.id,
             "project_id": internal_project.id,
             "wage_hm": wage_hm,
-            "wage_ccp": wage_ccp,
             "active": True,
         })
 
     @api.model_create_multi
     def create(self, vals_list):
+        for vals in vals_list:
+            if "project_id" in vals:
+                project = self.env["tenenet.project"].browse(vals["project_id"])
+                if "max_monthly_wage_hm" not in vals:
+                    vals["max_monthly_wage_hm"] = project.default_max_monthly_wage_hm or 0.0
         records = super().create(vals_list)
         records._sync_precreated_timesheets()
         return records

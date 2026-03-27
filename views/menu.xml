@@ -135,5 +135,12 @@
                   parent="menu_tenenet_configuration"
                   action="action_tenenet_project_assignment"
                   sequence="30"/>
+
+        <menuitem id="menu_tenenet_internal_expenses"
+                  name="Interné náklady"
+                  parent="menu_tenenet_configuration"
+                  action="action_tenenet_internal_expense"
+                  sequence="40"
+                  groups="tenenet_projects.group_tenenet_manager"/>
     </data>
 </odoo>

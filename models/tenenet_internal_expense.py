@@ -1,0 +1,148 @@
+import logging
+from datetime import date
+
+from odoo import api, fields, models
+
+_logger = logging.getLogger(__name__)
+
+INTERNAL_EXPENSE_CATEGORY = [
+    ("leave", "Dovolenka"),
+    ("wage", "Mzda"),
+]
+
+LEAVE_HOUR_TYPE = [
+    ("vacation", "Dovolenka"),
+    ("sick", "PN/OČR"),
+    ("doctor", "Lekár"),
+    ("holidays", "Sviatky"),
+]
+
+
+class TenenetInternalExpense(models.Model):
+    _name = "tenenet.internal.expense"
+    _description = "Interný náklad TENENET"
+    _order = "period desc, employee_id, category"
+    _rec_name = "name"
+
+    name = fields.Char(
+        string="Názov",
+        compute="_compute_name",
+        store=True,
+    )
+    employee_id = fields.Many2one(
+        "hr.employee",
+        string="Zamestnanec",
+        required=True,
+        ondelete="cascade",
+    )
+    period = fields.Date(
+        string="Obdobie",
+        required=True,
+        help="Prvý deň mesiaca, ku ktorému sa náklad vzťahuje.",
+    )
+    category = fields.Selection(
+        INTERNAL_EXPENSE_CATEGORY,
+        string="Kategória",
+        required=True,
+    )
+    leave_id = fields.Many2one(
+        "hr.leave",
+        string="Dovolenka",
+        ondelete="set null",
+        help="Zdrojová žiadosť o dovolenku (len pre kategóriu Dovolenka).",
+    )
+    source_assignment_id = fields.Many2one(
+        "tenenet.project.assignment",
+        string="Zdrojové priradenie",
+        ondelete="set null",
+        help="Priradenie, ku ktorému mal byť náklad priradený, ale nemohol byť (z dôvodu limitu alebo stropu).",
+    )
+    hour_type = fields.Selection(
+        LEAVE_HOUR_TYPE,
+        string="Typ hodín",
+        help="Typ hodín dovolenky (len pre kategóriu Dovolenka).",
+    )
+    hours = fields.Float(
+        string="Hodiny",
+        digits=(10, 2),
+        default=0.0,
+        help="Počet hodín (len pre kategóriu Dovolenka).",
+    )
+    wage_hm = fields.Float(
+        string="Hodinová mzda HM",
+        digits=(10, 4),
+        help="Hodinová brutto mzda prevzatá zo zdrojového priradenia.",
+    )
+    wage_ccp = fields.Float(
+        string="Hodinová sadzba CCP",
+        digits=(10, 4),
+        compute="_compute_wage_ccp",
+        store=True,
+        help="Celková cena práce za hodinu = mzda HM × 1.362",
+    )
+    cost_hm = fields.Monetary(
+        string="Náklad HM",
+        currency_field="currency_id",
+        compute="_compute_costs",
+        store=True,
+        readonly=False,
+        help="Pre dovolenku: hodiny × mzda HM. Pre mzdu: priamy prebytok nad stropom.",
+    )
+    cost_ccp = fields.Monetary(
+        string="Náklad CCP",
+        currency_field="currency_id",
+        compute="_compute_cost_ccp",
+        store=True,
+        readonly=True,
+        help="Náklad CCP = Náklad HM × 1.362",
+    )
+    note = fields.Text(string="Poznámka")
+    currency_id = fields.Many2one(
+        "res.currency",
+        string="Mena",
+        default=lambda self: self.env.ref("base.EUR"),
+    )
+
+    # Unique constraints — PostgreSQL NULLs are not equal in UNIQUE so
+    # leave_id=NULL wage records never conflict with leave rows.
+    _unique_leave = models.Constraint(
+        "UNIQUE(leave_id, period, employee_id)",
+        "Pre dovolenku môže existovať len jeden interný náklad za zamestnanca a obdobie.",
+    )
+    _unique_wage = models.Constraint(
+        "UNIQUE(source_assignment_id, period, category)",
+        "Pre priradenie môže existovať len jeden mzdový náklad za obdobie.",
+    )
+
+    @api.depends("employee_id", "period", "category")
+    def _compute_name(self):
+        category_labels = dict(INTERNAL_EXPENSE_CATEGORY)
+        for rec in self:
+            emp = rec.employee_id.display_name or ""
+            period_str = rec.period.strftime("%m/%Y") if rec.period else ""
+            cat_str = category_labels.get(rec.category, rec.category or "")
+            rec.name = f"{emp} / {period_str} / {cat_str}"
+
+    CCP_MULTIPLIER = 1.362
+
+    @api.depends("wage_hm")
+    def _compute_wage_ccp(self):
+        for rec in self:
+            rec.wage_ccp = (rec.wage_hm or 0.0) * self.CCP_MULTIPLIER
+
+    @api.depends("hours", "wage_hm", "category")
+    def _compute_costs(self):
+        for rec in self:
+            if rec.category == "leave":
+                rec.cost_hm = (rec.hours or 0.0) * (rec.wage_hm or 0.0)
+            # For "wage" category, cost_hm is written directly by _check_wage_cap().
+
+    @api.depends("cost_hm")
+    def _compute_cost_ccp(self):
+        for rec in self:
+            rec.cost_ccp = (rec.cost_hm or 0.0) * self.CCP_MULTIPLIER
+
+    @api.onchange("source_assignment_id")
+    def _onchange_source_assignment_id(self):
+        if self.source_assignment_id:
+            self.wage_hm = self.source_assignment_id.wage_hm

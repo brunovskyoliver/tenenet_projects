@@ -270,6 +270,7 @@ class TenenetProjectTimesheet(models.Model):
         for record, (_vals, hour_vals) in zip(records, split_vals):
             record._sync_line_hours(hour_vals)
         records._sync_employee_period_costs()
+        records._check_wage_cap()
         self.env["tenenet.utilization"]._sync_current_period()
         return records
 
@@ -280,17 +281,100 @@ class TenenetProjectTimesheet(models.Model):
             self._sync_line_hours(hour_vals)
         if hour_vals or {"assignment_id", "period"} & set(clean_vals):
             self._sync_employee_period_costs()
+        if hour_vals or {"assignment_id", "period", "wage_hm", "wage_ccp"} & set(clean_vals):
+            self._check_wage_cap()
         self.env["tenenet.utilization"]._sync_current_period()
         return result
 
     def unlink(self):
+        # Collect assignment+period pairs before deletion so we can re-check caps
+        cap_keys = [
+            (rec.assignment_id, rec.period)
+            for rec in self
+            if rec.assignment_id and rec.period
+        ]
         sync_keys = [(rec.employee_id.id, rec.period) for rec in self if rec.employee_id and rec.period]
         result = super().unlink()
         Cost = self.env["tenenet.employee.tenenet.cost"]
         for employee_id, period in sync_keys:
             Cost._sync_for_employee_period(employee_id, period)
+        # Re-check caps: if all timesheets for that assignment+period were deleted
+        # the cap-excess entry should be removed.
+        InternalExpense = self.env["tenenet.internal.expense"].sudo()
+        for assignment, period in cap_keys:
+            remaining = self.search([
+                ("assignment_id", "=", assignment.id),
+                ("period", "=", period),
+            ])
+            if not remaining:
+                InternalExpense.search([
+                    ("source_assignment_id", "=", assignment.id),
+                    ("period", "=", period),
+                    ("category", "=", "wage"),
+                ]).unlink()
         self.env["tenenet.utilization"]._sync_current_period()
         return result
+
+    def _check_wage_cap(self):
+        """For each timesheet, check if monthly wage cap is exceeded.
+
+        Creates/updates/deletes tenenet.internal.expense (category=wage) records.
+        Skipped during hr.leave sync to avoid spurious wage expenses.
+        """
+        if self.env.context.get("from_hr_leave_sync"):
+            return
+
+        InternalExpense = self.env["tenenet.internal.expense"].sudo()
+
+        for rec in self:
+            assignment = rec.assignment_id
+            if not assignment:
+                continue
+
+            cap_hm = assignment.max_monthly_wage_hm or 0.0
+
+            if cap_hm <= 0.0:
+                # No cap — clean up any leftover wage expense for this assignment+period
+                InternalExpense.search([
+                    ("source_assignment_id", "=", assignment.id),
+                    ("period", "=", rec.period),
+                    ("category", "=", "wage"),
+                ]).unlink()
+                continue
+
+            # Sum all timesheets for this assignment+period (including self)
+            all_ts = self.search([
+                ("assignment_id", "=", assignment.id),
+                ("period", "=", rec.period),
+            ])
+            total_gross = sum(all_ts.mapped("gross_salary"))
+            excess_hm = max(0.0, total_gross - cap_hm)
+
+            existing = InternalExpense.search([
+                ("source_assignment_id", "=", assignment.id),
+                ("period", "=", rec.period),
+                ("category", "=", "wage"),
+            ], limit=1)
+
+            if excess_hm > 0.001:
+                vals = {
+                    "cost_hm": excess_hm,
+                    "note": f"Prekročenie mzdového stropu – priradenie {assignment.name}",
+                }
+                if existing:
+                    existing.write(vals)
+                else:
+                    InternalExpense.create({
+                        **vals,
+                        "employee_id": assignment.employee_id.id,
+                        "period": rec.period,
+                        "category": "wage",
+                        "source_assignment_id": assignment.id,
+                        "wage_hm": assignment.wage_hm,
+                    })
+            else:
+                if existing:
+                    existing.unlink()
 
     @api.depends("line_ids.hour_type", "line_ids.hours")
     def _compute_hours_from_lines(self):

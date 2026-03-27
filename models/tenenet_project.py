@@ -1,5 +1,9 @@
+import logging
+
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, ValidationError
+
+_logger = logging.getLogger(__name__)
 
 
 class TenenetProject(models.Model):
@@ -83,6 +87,19 @@ class TenenetProject(models.Model):
         default=lambda self: self.env.ref("base.EUR"),
     )
     budget_total = fields.Monetary(string="Celkový rozpočet", currency_field="currency_id")
+    default_max_monthly_wage_hm = fields.Float(
+        string="Max. mesačná mzda HM (predvolená)",
+        digits=(10, 4),
+        default=0.0,
+        help="Predvolený mesačný strop hrubej mzdy pre priradenia na tomto projekte. 0 = bez stropu.",
+    )
+    default_max_monthly_wage_ccp = fields.Float(
+        string="Max. mesačná sadzba CCP (predvolená)",
+        digits=(10, 4),
+        compute="_compute_default_max_monthly_wage_ccp",
+        store=True,
+        help="Predvolený mesačný strop CCP = max. mzda HM × 1.362",
+    )
     amount_contracted = fields.Monetary(string="Zmluvná suma", currency_field="currency_id")
     amount_contracted_with_partners = fields.Monetary(
         string="Zmluvná suma vrátane partnerov",
@@ -131,6 +148,13 @@ class TenenetProject(models.Model):
             else:
                 rec.active_year_from = False
                 rec.active_year_to = False
+
+    CCP_MULTIPLIER = 1.362
+
+    @api.depends("default_max_monthly_wage_hm")
+    def _compute_default_max_monthly_wage_ccp(self):
+        for rec in self:
+            rec.default_max_monthly_wage_ccp = (rec.default_max_monthly_wage_hm or 0.0) * self.CCP_MULTIPLIER
 
     @api.depends("date_start", "date_end")
     def _compute_duration(self):
@@ -389,6 +413,10 @@ class TenenetProject(models.Model):
 
     @api.model
     def _get_or_create_internal_project(self):
+        _logger.warning(
+            "DEPRECATED: _get_or_create_internal_project is deprecated. "
+            "Use tenenet.internal.expense instead of the internal project mechanism."
+        )
         project = self.with_context(active_test=False).search([
             ("is_tenenet_internal", "=", True),
             ("active", "=", True),

@@ -104,12 +104,10 @@ class TenenetAllocationReportHandler(models.AbstractModel):
         )))
 
         project_groups = self._group_timesheets_by_project(timesheets)
-        regular_projects = sorted(
-            [p for p in project_groups if not p.is_tenenet_internal],
+        sorted_projects = sorted(
+            project_groups.keys(),
             key=lambda p: (p.name or "").lower(),
         )
-        internal_projects = [p for p in project_groups if p.is_tenenet_internal]
-        sorted_projects = regular_projects + internal_projects
 
         for project in sorted_projects:
             proj_timesheets = project_groups[project]
@@ -144,6 +142,47 @@ class TenenetAllocationReportHandler(models.AbstractModel):
             lines.append((0, self._build_report_line(
                 report, options, f"{proj_name} - Odpracované hodiny", proj_hours, "float", 3,
                 f"alloc_{emp_id}_proj_{project.id}_hours",
+            )))
+
+        # ── Internal expenses section ────────────────────────────────────────
+        internal_expenses = self._get_employee_year_internal_expenses(employee, year)
+        leave_expenses = internal_expenses.filtered(lambda e: e.category == "leave")
+        wage_expenses = internal_expenses.filtered(lambda e: e.category == "wage")
+
+        ie_leave_hm = defaultdict(float)
+        ie_leave_ccp = defaultdict(float)
+        for exp in leave_expenses:
+            ie_leave_hm[exp.period.month] += exp.cost_hm or 0.0
+            ie_leave_ccp[exp.period.month] += exp.cost_ccp or 0.0
+
+        ie_wage_hm = defaultdict(float)
+        ie_wage_ccp = defaultdict(float)
+        for exp in wage_expenses:
+            ie_wage_hm[exp.period.month] += exp.cost_hm or 0.0
+            ie_wage_ccp[exp.period.month] += exp.cost_ccp or 0.0
+
+        if any(ie_leave_hm.values()) or any(ie_leave_ccp.values()):
+            lines.append((0, self._build_report_line(
+                report, options, "Interné náklady - dovolenka (HM)",
+                ie_leave_hm, "monetary", 2,
+                f"alloc_{emp_id}_internal_leave_hm",
+            )))
+            lines.append((0, self._build_report_line(
+                report, options, "Interné náklady - dovolenka (CCP)",
+                ie_leave_ccp, "monetary", 2,
+                f"alloc_{emp_id}_internal_leave_ccp",
+            )))
+
+        if any(ie_wage_hm.values()) or any(ie_wage_ccp.values()):
+            lines.append((0, self._build_report_line(
+                report, options, "Interné náklady - mzda (HM)",
+                ie_wage_hm, "monetary", 2,
+                f"alloc_{emp_id}_internal_wage_hm",
+            )))
+            lines.append((0, self._build_report_line(
+                report, options, "Interné náklady - mzda (CCP)",
+                ie_wage_ccp, "monetary", 2,
+                f"alloc_{emp_id}_internal_wage_ccp",
             )))
 
         empty_values = defaultdict(float)
@@ -199,9 +238,19 @@ class TenenetAllocationReportHandler(models.AbstractModel):
                 ("employee_id", "=", employee.id),
                 ("period", ">=", year_start),
                 ("period", "<=", year_end),
+                ("project_id.is_tenenet_internal", "=", False),
             ],
             order="project_id, period",
         )
+
+    def _get_employee_year_internal_expenses(self, employee, year):
+        year_start = date(year, 1, 1)
+        year_end = date(year, 12, 31)
+        return self.env["tenenet.internal.expense"].sudo().search([
+            ("employee_id", "=", employee.id),
+            ("period", ">=", year_start),
+            ("period", "<=", year_end),
+        ])
 
     def _get_employee_year_utilizations(self, employee, year):
         year_start = date(year, 1, 1)

@@ -25,9 +25,6 @@
                             <group>
                                 <field name="wage_hm"/>
                             </group>
-                            <group>
-                                <field name="wage_ccp"/>
-                            </group>
                         </group>
                     </sheet>
                     <footer>

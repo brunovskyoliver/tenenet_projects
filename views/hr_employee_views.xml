@@ -148,7 +148,7 @@
                                     <field name="project_id" />
                                     <field name="allocation_ratio" />
                                     <field name="wage_hm" />
-                                    <field name="wage_ccp" />
+                                    <field name="wage_ccp" readonly="1"/>
                                     <field name="date_start" />
                                     <field name="date_end" />
                                     <field name="state" />

@@ -27,19 +27,13 @@ class TenenetProjectAssignmentWizard(models.TransientModel):
         string="Hodinová mzda HM (brutto)",
         digits=(10, 4),
     )
-    wage_ccp = fields.Float(
-        string="Hodinová sadzba CCP (celková cena práce)",
-        digits=(10, 4),
-    )
-
     @api.onchange("employee_id")
     def _onchange_employee_id(self):
         if self.employee_id:
-            avg_hm, avg_ccp = self.env["tenenet.project.assignment"]._default_rates_for_employee(
+            avg_hm, _avg_ccp = self.env["tenenet.project.assignment"]._default_rates_for_employee(
                 self.employee_id
             )
             self.wage_hm = avg_hm
-            self.wage_ccp = avg_ccp
 
     def action_confirm(self):
         self.ensure_one()
@@ -50,6 +44,5 @@ class TenenetProjectAssignmentWizard(models.TransientModel):
             "date_end": self.date_end,
             "allocation_ratio": self.allocation_ratio,
             "wage_hm": self.wage_hm,
-            "wage_ccp": self.wage_ccp,
         })
         return {"type": "ir.actions.act_window_close"}

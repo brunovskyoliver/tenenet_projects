@@ -9,6 +9,15 @@
             <xpath expr="//field[@name='name'][@widget='text']" position="attributes">
                 <attribute name="placeholder">Popis (nepovinné)</attribute>
             </xpath>
+            <!-- TENENET manager override: manually set project or force internal expense -->
+            <xpath expr="//chatter" position="before">
+                <group string="Tenenet: Manuálne nastavenie projektu"
+                       groups="tenenet_projects.group_tenenet_manager">
+                    <field name="tenenet_override_is_internal"/>
+                    <field name="tenenet_override_assignment_id"
+                           invisible="tenenet_override_is_internal"/>
+                </group>
+            </xpath>
         </field>
     </record>
 </odoo>

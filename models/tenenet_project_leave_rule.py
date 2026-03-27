@@ -24,6 +24,13 @@ class TenenetProjectLeaveRule(models.Model):
         help="Ak áno, hodiny tohto typu absencie sa fakturujú projektu. "
              "Ak nie, idú do súhrnu Tenenet.",
     )
+    max_leaves_per_year_days = fields.Float(
+        string="Max. dní za rok",
+        digits=(10, 2),
+        default=0.0,
+        help="Maximálny počet dní tohto typu dovolenky za rok pre jedného zamestnanca na projekte. "
+             "0 = bez limitu.",
+    )
 
     _unique_project_leave_type = models.Constraint(
         "UNIQUE(project_id, leave_type_id)",

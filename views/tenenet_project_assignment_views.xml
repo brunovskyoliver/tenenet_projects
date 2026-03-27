@@ -44,7 +44,9 @@
                     <field name="date_start"/>
                     <field name="date_end"/>
                     <field name="wage_hm"/>
-                    <field name="wage_ccp"/>
+                    <field name="wage_ccp" readonly="1" optional="hide"/>
+                    <field name="max_monthly_wage_hm" optional="hide"/>
+                    <field name="max_monthly_wage_ccp" readonly="1" optional="hide"/>
                     <field name="state" widget="badge"/>
                     <field name="active"/>
                     <field name="timesheet_count" optional="hide"/>
@@ -80,7 +82,9 @@
                                 <field name="date_end"/>
                                 <field name="allocation_ratio"/>
                                 <field name="wage_hm"/>
-                                <field name="wage_ccp"/>
+                                <field name="wage_ccp" readonly="1"/>
+                                <field name="max_monthly_wage_hm"/>
+                                <field name="max_monthly_wage_ccp" readonly="1"/>
                             </group>
                         </group>
                         <notebook>

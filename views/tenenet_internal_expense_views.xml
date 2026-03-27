@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- List view -->
+    <record id="view_tenenet_internal_expense_list" model="ir.ui.view">
+        <field name="name">tenenet.internal.expense.list</field>
+        <field name="model">tenenet.internal.expense</field>
+        <field name="arch" type="xml">
+            <list string="Interné náklady" default_order="period desc">
+                <field name="period"/>
+                <field name="employee_id"/>
+                <field name="category"/>
+                <field name="hour_type" optional="show"/>
+                <field name="hours" optional="show"/>
+                <field name="wage_hm" optional="hide"/>
+                <field name="wage_ccp" optional="hide" readonly="1"/>
+                <field name="cost_hm" sum="Spolu HM"/>
+                <field name="cost_ccp" sum="Spolu CCP"/>
+                <field name="source_assignment_id" optional="show"/>
+                <field name="leave_id" optional="show"/>
+                <field name="currency_id" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form view -->
+    <record id="view_tenenet_internal_expense_form" model="ir.ui.view">
+        <field name="name">tenenet.internal.expense.form</field>
+        <field name="model">tenenet.internal.expense</field>
+        <field name="arch" type="xml">
+            <form string="Interný náklad">
+                <sheet>
+                    <group>
+                        <group string="Základné informácie">
+                            <field name="employee_id"/>
+                            <field name="period"/>
+                            <field name="category"/>
+                            <field name="hour_type" invisible="category != 'leave'"/>
+                            <field name="leave_id" invisible="category != 'leave'"/>
+                            <field name="source_assignment_id"/>
+                        </group>
+                        <group string="Mzdové sadzby a náklady">
+                            <field name="hours" invisible="category != 'leave'"/>
+                            <field name="wage_hm"/>
+                            <field name="wage_ccp" readonly="1"/>
+                            <field name="cost_hm"/>
+                            <field name="cost_ccp"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="note" placeholder="Dôvod, prečo náklad nebol priradený k projektu..."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search view -->
+    <record id="view_tenenet_internal_expense_search" model="ir.ui.view">
+        <field name="name">tenenet.internal.expense.search</field>
+        <field name="model">tenenet.internal.expense</field>
+        <field name="arch" type="xml">
+            <search string="Interné náklady">
+                <field name="employee_id"/>
+                <field name="source_assignment_id"/>
+                <filter string="Dovolenka" name="filter_leave" domain="[('category','=','leave')]"/>
+                <filter string="Mzda" name="filter_wage" domain="[('category','=','wage')]"/>
+                <group>
+                    <filter string="Zamestnanec" name="group_employee" context="{'group_by': 'employee_id'}"/>
+                    <filter string="Kategória" name="group_category" context="{'group_by': 'category'}"/>
+                    <filter string="Obdobie" name="group_period" context="{'group_by': 'period:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_tenenet_internal_expense" model="ir.actions.act_window">
+        <field name="name">Interné náklady</field>
+        <field name="res_model">tenenet.internal.expense</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_group_period': 1}</field>
+    </record>
+</odoo>
