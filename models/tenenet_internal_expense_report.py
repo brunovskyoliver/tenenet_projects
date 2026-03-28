@@ -38,17 +38,20 @@ class TenenetInternalExpenseReportHandler(models.AbstractModel):
 
         employee_buckets = self._group_by_employee(expenses)
         lines = []
-        grand_total = defaultdict(float)
+        grand_total_hours = defaultdict(float)
+        grand_total_costs = defaultdict(float)
 
         for bucket in sorted(
             employee_buckets.values(),
             key=lambda b: (b["employee"].name or "").lower(),
         ):
             employee = bucket["employee"]
-            total_hours = bucket["total"]
+            total_hours = bucket["total_hours"]
+            total_costs = bucket["total_costs"]
 
             for m in range(1, 13):
-                grand_total[m] += total_hours[m]
+                grand_total_hours[m] += total_hours[m]
+                grand_total_costs[m] += total_costs[m]
 
             employee_line_id = report._get_generic_line_id(
                 "hr.employee",
@@ -69,9 +72,15 @@ class TenenetInternalExpenseReportHandler(models.AbstractModel):
             }))
 
         lines.append((0, {
-            "id": report._get_generic_line_id(None, None, markup="int_exp_grand_total"),
+            "id": report._get_generic_line_id(None, None, markup="int_exp_grand_total_hours"),
             "name": "Hodiny interných nákladov spolu",
-            "columns": self._build_columns(report, options, grand_total),
+            "columns": self._build_columns(report, options, grand_total_hours),
+            "level": 1,
+        }))
+        lines.append((0, {
+            "id": report._get_generic_line_id(None, None, markup="int_exp_grand_total_costs"),
+            "name": "Náklady interných výdavkov spolu (€)",
+            "columns": self._build_columns(report, options, grand_total_costs),
             "level": 1,
         }))
         return lines
@@ -97,17 +106,31 @@ class TenenetInternalExpenseReportHandler(models.AbstractModel):
 
         project_rows = self._group_by_project(expenses)
         lines = []
-        for seq, (project, hours) in enumerate(project_rows, start=1):
+        for seq, (project, hours, costs) in enumerate(project_rows, start=1):
             project_id = project.id if project else 0
+            project_name = project.name if project else "(Bez projektu)"
+
             lines.append({
                 "id": report._get_generic_line_id(
                     "tenenet.project" if project_id else None,
                     project_id or None,
                     parent_line_id=line_dict_id,
-                    markup=f"int_exp_project_{project_id}_{seq}",
+                    markup=f"int_exp_project_h_{project_id}_{seq}",
                 ),
-                "name": project.name if project else "(Bez projektu)",
+                "name": project_name,
                 "columns": self._build_columns(report, options, hours),
+                "level": 2,
+                "parent_id": line_dict_id,
+            })
+            lines.append({
+                "id": report._get_generic_line_id(
+                    None,
+                    None,
+                    parent_line_id=line_dict_id,
+                    markup=f"int_exp_project_eur_{project_id}_{seq}",
+                ),
+                "name": f"{project_name} – náklady (€)",
+                "columns": self._build_columns(report, options, costs),
                 "level": 2,
                 "parent_id": line_dict_id,
             })
@@ -164,25 +187,30 @@ class TenenetInternalExpenseReportHandler(models.AbstractModel):
             if emp_id not in buckets:
                 buckets[emp_id] = {
                     "employee": exp.employee_id,
-                    "total": defaultdict(float),
+                    "total_hours": defaultdict(float),
+                    "total_costs": defaultdict(float),
                 }
-            buckets[emp_id]["total"][exp.period.month] += exp.hours or 0.0
+            buckets[emp_id]["total_hours"][exp.period.month] += exp.hours or 0.0
+            buckets[emp_id]["total_costs"][exp.period.month] += exp.cost_hm or 0.0
         return buckets
 
     def _group_by_project(self, expenses):
-        """Return list of (project|None, hours_by_month) sorted by project name."""
-        project_hours = {}  # proj_key → defaultdict(float)
-        project_obj = {}   # proj_key → project record or None
+        """Return list of (project|None, hours_by_month, costs_by_month) sorted by project name."""
+        project_hours = {}
+        project_costs = {}
+        project_obj = {}
 
         for exp in expenses:
             project = exp.source_assignment_id.project_id if exp.source_assignment_id else None
             proj_key = project.id if project else 0
             if proj_key not in project_hours:
                 project_hours[proj_key] = defaultdict(float)
+                project_costs[proj_key] = defaultdict(float)
                 project_obj[proj_key] = project if project else None
             project_hours[proj_key][exp.period.month] += exp.hours or 0.0
+            project_costs[proj_key][exp.period.month] += exp.cost_hm or 0.0
 
-        rows = [(project_obj[k], project_hours[k]) for k in project_hours]
+        rows = [(project_obj[k], project_hours[k], project_costs[k]) for k in project_hours]
         return sorted(
             rows,
             key=lambda x: (x[0].name or "").lower() if x[0] else "\xff",
