@@ -10,11 +10,11 @@
                 <attribute name="placeholder">Popis (nepovinné)</attribute>
             </xpath>
             <!-- TENENET manager override: manually set project or force internal expense -->
-            <xpath expr="//chatter" position="before">
-                <group string="Tenenet: Manuálne nastavenie projektu"
-                       groups="tenenet_projects.group_tenenet_manager">
-                    <field name="tenenet_override_is_internal"/>
-                    <field name="tenenet_override_assignment_id"
+            <xpath expr="//sheet" position="inside">
+                <group groups="tenenet_projects.group_tenenet_manager"
+                       invisible="not id">
+                    <field name="tenenet_override_is_internal" string="Interné náklady"/>
+                    <field name="tenenet_override_assignment_id" string="Projekt"
                            invisible="tenenet_override_is_internal"/>
                 </group>
             </xpath>

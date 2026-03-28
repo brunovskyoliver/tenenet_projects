@@ -12,6 +12,27 @@
                             <field name="name"/>
                             <field name="note"/>
                         </group>
+                        <separator string="Prílohy"/>
+                        <field name="attachment_ids"
+                               widget="many2many_binary"
+                               string="Prílohy"
+                               nolabel="1"/>
+                        <separator string="Upozornenie"/>
+                        <group>
+                            <group>
+                                <label for="alert_lead_amount" string="Upozorniť pred"/>
+                                <div class="o_field_widget d-flex gap-2">
+                                    <field name="alert_lead_amount" class="o_field_integer"/>
+                                    <field name="alert_lead_unit" class="o_field_select"/>
+                                </div>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="alert_partner_ids"
+                                   widget="many2many_tags"
+                                   string="Príjemcovia"
+                                   options="{'no_create': True}"/>
+                        </group>
                     </sheet>
                     <footer>
                         <button name="action_confirm"

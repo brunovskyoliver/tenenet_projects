@@ -56,10 +56,11 @@
                                             invisible="not id or not can_manage_milestones"/>
                                 </div>
                                 <field name="milestone_ids" nolabel="1">
-                                    <list string="Míľniky" create="0" delete="0" edit="0" default_order="date asc, sequence asc, id asc">
+                                    <list string="Míľniky" create="0" delete="0" edit="0" no_open="1" default_order="date asc, sequence asc, id asc">
                                         <field name="date"/>
                                         <field name="name"/>
                                         <field name="note" optional="show"/>
+                                        <field name="message_attachment_count" string="Prílohy" optional="show"/>
                                         <button name="action_open_edit_wizard"
                                                 type="object"
                                                 string="Upraviť"

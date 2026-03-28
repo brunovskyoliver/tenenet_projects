@@ -9,6 +9,7 @@
                     <field name="date"/>
                     <field name="name"/>
                     <field name="note" optional="show"/>
+                    <field name="message_attachment_count" string="Prílohy"/>
                 </list>
             </field>
         </record>
@@ -20,11 +21,12 @@
                 <form string="Míľnik">
                     <sheet>
                         <group>
-                            <field name="project_id" readonly="1"/>
+                            <field name="project_id"/>
                             <field name="date"/>
                             <field name="name"/>
                             <field name="note"/>
                         </group>
+                        <field name="attachment_ids" widget="many2many_binary" string="Prílohy" nolabel="1"/>
                     </sheet>
                 </form>
             </field>
