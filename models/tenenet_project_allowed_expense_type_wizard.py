@@ -17,6 +17,16 @@ class TenenetProjectAllowedExpenseTypeWizard(models.TransientModel):
     )
     name = fields.Char(string="Názov", required=True)
     description = fields.Text(string="Popis")
+    currency_id = fields.Many2one(
+        "res.currency",
+        related="project_id.currency_id",
+    )
+    max_amount = fields.Monetary(
+        string="Max. povolená suma",
+        currency_field="currency_id",
+        default=0.0,
+        help="0 = bez limitu",
+    )
 
     @api.onchange("config_id")
     def _onchange_config_id(self):
@@ -30,5 +40,6 @@ class TenenetProjectAllowedExpenseTypeWizard(models.TransientModel):
             "project_id": self.project_id.id,
             "name": self.name,
             "description": self.description or False,
+            "max_amount": self.max_amount,
         })
         return {"type": "ir.actions.act_window_close"}

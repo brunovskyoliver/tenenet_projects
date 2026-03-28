@@ -1,0 +1,68 @@
+<odoo>
+    <data>
+        <record id="view_tenenet_project_expense_list" model="ir.ui.view">
+            <field name="name">tenenet.project.expense.list</field>
+            <field name="model">tenenet.project.expense</field>
+            <field name="arch" type="xml">
+                <list string="Výdavky projektov" default_order="date desc">
+                    <field name="date"/>
+                    <field name="project_id"/>
+                    <field name="allowed_type_id"/>
+                    <field name="description"/>
+                    <field name="currency_id" column_invisible="1"/>
+                    <field name="amount"/>
+                    <field name="charged_to"/>
+                    <field name="note" optional="hide"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_tenenet_project_expense_form" model="ir.ui.view">
+            <field name="name">tenenet.project.expense.form</field>
+            <field name="model">tenenet.project.expense</field>
+            <field name="arch" type="xml">
+                <form string="Výdavok projektu">
+                    <sheet>
+                        <group>
+                            <field name="project_id"/>
+                            <field name="allowed_type_id"
+                                   domain="[('project_id', '=', project_id)]"/>
+                            <field name="date"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="amount"/>
+                            <field name="charged_to"/>
+                            <field name="description"/>
+                        </group>
+                        <group>
+                            <field name="note"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_tenenet_project_expense_search" model="ir.ui.view">
+            <field name="name">tenenet.project.expense.search</field>
+            <field name="model">tenenet.project.expense</field>
+            <field name="arch" type="xml">
+                <search string="Výdavky projektov">
+                    <field name="project_id"/>
+                    <field name="allowed_type_id"/>
+                    <field name="description"/>
+                    <filter string="Projektové" name="project" domain="[('charged_to','=','project')]"/>
+                    <filter string="Interné" name="internal" domain="[('charged_to','=','internal')]"/>
+                    <separator/>
+                    <filter string="Projekt" name="group_project" context="{'group_by': 'project_id'}"/>
+                    <filter string="Typ výdavku" name="group_type" context="{'group_by': 'allowed_type_id'}"/>
+                    <filter string="Účtované na" name="group_charged" context="{'group_by': 'charged_to'}"/>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_tenenet_project_expense" model="ir.actions.act_window">
+            <field name="name">Výdavky projektov</field>
+            <field name="res_model">tenenet.project.expense</field>
+            <field name="view_mode">list,form</field>
+        </record>
+    </data>
+</odoo>

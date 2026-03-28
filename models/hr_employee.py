@@ -259,7 +259,12 @@ class HrEmployee(models.Model):
 
     def _register_hook(self):
         result = super()._register_hook()
-        self._sync_optional_payroll_cleanup_view()
+        try:
+            with self.env.cr.savepoint():
+                self._sync_optional_payroll_cleanup_view()
+        except Exception:
+            # Another worker already updated the view; safe to skip.
+            pass
         return result
 
     @api.depends(

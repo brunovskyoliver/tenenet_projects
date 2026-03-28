@@ -7,10 +7,12 @@
                 <form string="Pridať povolený typ výdavku">
                     <group>
                         <field name="project_id" invisible="1"/>
+                        <field name="currency_id" invisible="1"/>
                         <field name="config_id"
                                placeholder="Vyberte z katalógu (voliteľné)…"/>
                         <field name="name"/>
                         <field name="description"/>
+                        <field name="max_amount"/>
                     </group>
                     <footer>
                         <button name="action_add"

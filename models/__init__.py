@@ -14,6 +14,7 @@ from . import tenenet_project_assignment_wizard
 from . import tenenet_project_milestone_wizard
 from . import tenenet_project_leave_rule
 from . import tenenet_project_allowed_expense_type
+from . import tenenet_project_expense
 from . import tenenet_project_allowed_expense_type_wizard
 from . import tenenet_project_receipt_wizard
 from . import tenenet_expense_type_config

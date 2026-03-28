@@ -13,7 +13,7 @@ and P&L reporting by program.
     'website': "https://www.tenenet.sk",
 
     'category': 'Project',
-    'version': '19.0.5.4.0',
+    'version': '19.0.5.5.0',
     'license': 'LGPL-3',
 
     'depends': ['base', 'hr', 'hr_holidays', 'hr_skills', 'account_reports', 'mail'],
@@ -77,6 +77,7 @@ and P&L reporting by program.
         'views/tenenet_project_assignment_wizard_views.xml',
         'views/tenenet_project_milestone_wizard_views.xml',
         'views/tenenet_project_allowed_expense_type_wizard_views.xml',
+        'views/tenenet_project_expense_views.xml',
         'views/tenenet_project_receipt_wizard_views.xml',
         'views/tenenet_expense_type_config_views.xml',
         'views/tenenet_project_timesheet_views.xml',

@@ -148,6 +148,13 @@
                   action="action_tenenet_project_assignment"
                   sequence="30"/>
 
+        <menuitem id="menu_tenenet_project_expenses"
+                  name="Výdavky projektov"
+                  parent="menu_tenenet_projects"
+                  action="action_tenenet_project_expense"
+                  sequence="20"
+                  groups="tenenet_projects.group_tenenet_manager"/>
+
         <menuitem id="menu_tenenet_internal_expenses"
                   name="Interné náklady"
                   parent="menu_tenenet_configuration"

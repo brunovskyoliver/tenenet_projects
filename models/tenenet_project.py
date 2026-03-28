@@ -124,6 +124,11 @@ class TenenetProject(models.Model):
         "project_id",
         string="Povolené typy výdavkov",
     )
+    expense_ids = fields.One2many(
+        "tenenet.project.expense",
+        "project_id",
+        string="Výdavky projektu",
+    )
     active_year_from = fields.Integer(
         string="Rok od",
         compute="_compute_active_year_range",

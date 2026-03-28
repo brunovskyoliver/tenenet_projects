@@ -168,6 +168,24 @@
                                     <list string="Povolené typy výdavkov" editable="bottom">
                                         <field name="name"/>
                                         <field name="description"/>
+                                        <field name="currency_id" column_invisible="1"/>
+                                        <field name="max_amount" optional="show"/>
+                                        <field name="total_project_spent" optional="show"/>
+                                        <field name="remaining" optional="show"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Výdavky projektu">
+                                <field name="expense_ids" nolabel="1">
+                                    <list string="Výdavky projektu" editable="bottom">
+                                        <field name="date"/>
+                                        <field name="allowed_type_id"
+                                               domain="[('project_id', '=', parent.id)]"/>
+                                        <field name="description"/>
+                                        <field name="currency_id" column_invisible="1"/>
+                                        <field name="amount"/>
+                                        <field name="charged_to"/>
+                                        <field name="note" optional="hide"/>
                                     </list>
                                 </field>
                             </page>
