@@ -38,6 +38,7 @@ from . import tenenet_allocation_report
 from . import tenenet_utilization_sync_wizard
 from . import tenenet_pl_line
 from . import tenenet_pl_report
+from . import tenenet_internal_expense_report
 from . import tenenet_sk_holidays
 from . import tenenet_employee_list_report
 from . import res_users

@@ -1,0 +1,22 @@
+.account_report.tenenet_internal_expense_report {
+    #filter_date {
+        .o_datetime_input {
+            box-shadow: none;
+            min-width: 5rem;
+            text-align: center;
+        }
+    }
+
+    .line_cell.numeric {
+        text-align: center !important;
+
+        > .wrapper {
+            justify-content: center;
+        }
+
+        > .wrapper > .content {
+            justify-content: center;
+            width: 100%;
+        }
+    }
+}

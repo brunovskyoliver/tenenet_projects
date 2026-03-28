@@ -1,0 +1,111 @@
+<odoo>
+    <data>
+        <record id="tenenet_internal_expense_report" model="account.report">
+            <field name="name">Interné náklady – Ročný report</field>
+            <field name="load_more_limit">200</field>
+            <field name="search_bar" eval="False"/>
+            <field name="filter_date_range" eval="False"/>
+            <field name="filter_show_draft" eval="False"/>
+            <field name="filter_unreconciled" eval="False"/>
+            <field name="filter_unfold_all" eval="True"/>
+            <field name="filter_hide_0_lines">never</field>
+            <field name="filter_period_comparison" eval="False"/>
+            <field name="filter_growth_comparison" eval="False"/>
+            <field name="filter_journals" eval="False"/>
+            <field name="filter_analytic" eval="False"/>
+            <field name="filter_hierarchy">never</field>
+            <field name="filter_account_type">disabled</field>
+            <field name="filter_partner" eval="False"/>
+            <field name="filter_aml_ir_filters" eval="False"/>
+            <field name="default_opening_date_filter">this_year</field>
+            <field name="custom_handler_model_id" ref="model_tenenet_internal_expense_report_handler"/>
+            <field name="column_ids">
+                <record id="int_exp_report_col_month_01" model="account.report.column">
+                    <field name="sequence">10</field>
+                    <field name="name">Jan</field>
+                    <field name="expression_label">month_01</field>
+                    <field name="figure_type">float</field>
+                </record>
+                <record id="int_exp_report_col_month_02" model="account.report.column">
+                    <field name="sequence">20</field>
+                    <field name="name">Feb</field>
+                    <field name="expression_label">month_02</field>
+                    <field name="figure_type">float</field>
+                </record>
+                <record id="int_exp_report_col_month_03" model="account.report.column">
+                    <field name="sequence">30</field>
+                    <field name="name">Mar</field>
+                    <field name="expression_label">month_03</field>
+                    <field name="figure_type">float</field>
+                </record>
+                <record id="int_exp_report_col_month_04" model="account.report.column">
+                    <field name="sequence">40</field>
+                    <field name="name">Apr</field>
+                    <field name="expression_label">month_04</field>
+                    <field name="figure_type">float</field>
+                </record>
+                <record id="int_exp_report_col_month_05" model="account.report.column">
+                    <field name="sequence">50</field>
+                    <field name="name">Máj</field>
+                    <field name="expression_label">month_05</field>
+                    <field name="figure_type">float</field>
+                </record>
+                <record id="int_exp_report_col_month_06" model="account.report.column">
+                    <field name="sequence">60</field>
+                    <field name="name">Jún</field>
+                    <field name="expression_label">month_06</field>
+                    <field name="figure_type">float</field>
+                </record>
+                <record id="int_exp_report_col_month_07" model="account.report.column">
+                    <field name="sequence">70</field>
+                    <field name="name">Júl</field>
+                    <field name="expression_label">month_07</field>
+                    <field name="figure_type">float</field>
+                </record>
+                <record id="int_exp_report_col_month_08" model="account.report.column">
+                    <field name="sequence">80</field>
+                    <field name="name">Aug</field>
+                    <field name="expression_label">month_08</field>
+                    <field name="figure_type">float</field>
+                </record>
+                <record id="int_exp_report_col_month_09" model="account.report.column">
+                    <field name="sequence">90</field>
+                    <field name="name">Sep</field>
+                    <field name="expression_label">month_09</field>
+                    <field name="figure_type">float</field>
+                </record>
+                <record id="int_exp_report_col_month_10" model="account.report.column">
+                    <field name="sequence">100</field>
+                    <field name="name">Okt</field>
+                    <field name="expression_label">month_10</field>
+                    <field name="figure_type">float</field>
+                </record>
+                <record id="int_exp_report_col_month_11" model="account.report.column">
+                    <field name="sequence">110</field>
+                    <field name="name">Nov</field>
+                    <field name="expression_label">month_11</field>
+                    <field name="figure_type">float</field>
+                </record>
+                <record id="int_exp_report_col_month_12" model="account.report.column">
+                    <field name="sequence">120</field>
+                    <field name="name">Dec</field>
+                    <field name="expression_label">month_12</field>
+                    <field name="figure_type">float</field>
+                </record>
+                <record id="int_exp_report_col_year_total" model="account.report.column">
+                    <field name="sequence">130</field>
+                    <field name="name">Spolu</field>
+                    <field name="expression_label">year_total</field>
+                    <field name="figure_type">float</field>
+                </record>
+            </field>
+        </record>
+
+        <record id="action_tenenet_internal_expense_report" model="ir.actions.client">
+            <field name="name">Interné náklady – Ročný report</field>
+            <field name="tag">account_report</field>
+            <field name="path">tenenet-internal-expense-report</field>
+            <field name="context" eval="{'report_id': ref('tenenet_projects.tenenet_internal_expense_report')}"/>
+        </record>
+    </data>
+</odoo>
