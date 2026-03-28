@@ -131,11 +131,11 @@ class TestTenenetPlan01(TransactionCase):
         project = self.env["tenenet.project"].create(
             {
                 "name": "Linked Project",
-                "program_id": program.id,
+                "program_ids": [(4, program.id)],
                 "donor_id": donor.id,
             }
         )
 
         program.unlink()
 
-        self.assertFalse(project.exists().program_id)
+        self.assertFalse(project.exists().program_ids)

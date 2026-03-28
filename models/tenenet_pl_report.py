@@ -170,7 +170,7 @@ class TenenetPLReportHandler(models.AbstractModel):
         year_end = date(selected_year, 12, 31)
         return self.env["tenenet.project.timesheet"].with_context(active_test=False).search(
             [
-                ("project_id.program_id", "!=", False),
+                ("project_id.program_ids", "!=", False),
                 ("period", ">=", year_start),
                 ("period", "<=", year_end),
             ],
@@ -194,19 +194,19 @@ class TenenetPLReportHandler(models.AbstractModel):
 
         timesheets = self._get_year_program_timesheets(selected_year)
         for timesheet in timesheets:
-            program = timesheet.project_id.program_id
-            if not program:
-                continue
-            if program.id not in grouped_data:
-                grouped_data[program.id] = {
-                    "program": program,
-                    "timesheet_amount": defaultdict(float),
-                    "timesheet_count": 0,
-                    "pl_line_amount": defaultdict(float),
-                    "pl_line_count": 0,
-                }
-            grouped_data[program.id]["timesheet_amount"][timesheet.period.month] += timesheet.total_labor_cost or 0.0
-            grouped_data[program.id]["timesheet_count"] += 1
+            for program in timesheet.project_id.program_ids:
+                if not program:
+                    continue
+                if program.id not in grouped_data:
+                    grouped_data[program.id] = {
+                        "program": program,
+                        "timesheet_amount": defaultdict(float),
+                        "timesheet_count": 0,
+                        "pl_line_amount": defaultdict(float),
+                        "pl_line_count": 0,
+                    }
+                grouped_data[program.id]["timesheet_amount"][timesheet.period.month] += timesheet.total_labor_cost or 0.0
+                grouped_data[program.id]["timesheet_count"] += 1
 
         pl_lines = self._get_year_pl_lines(selected_year)
         for pl_line in pl_lines:
@@ -318,18 +318,12 @@ class TenenetPLReportHandler(models.AbstractModel):
 
     def _get_program_projects(self, program):
         return self.env["tenenet.project"].with_context(active_test=False).search(
-            [("program_id", "=", program.id)],
-            order="code, name",
+            [("program_ids", "in", [program.id])],
+            order="name",
         )
 
     def _get_project_line_name(self, project):
-        code = (project.code or "").strip()
-        name = (project.name or "").strip()
-        if code and name:
-            if name.upper().startswith(code.upper()):
-                return name
-            return f"{code} {name}"
-        return code or name or project.display_name or ""
+        return (project.name or "").strip() or project.display_name or ""
 
     def _extract_detail_row_values(self, detail_rows, row_name):
         for detail_row in detail_rows:
@@ -349,7 +343,7 @@ class TenenetPLReportHandler(models.AbstractModel):
         year_end = date(selected_year, 12, 31)
         timesheets = self.env["tenenet.project.timesheet"].with_context(active_test=False).search(
             [
-                ("project_id.program_id", "=", program.id),
+                ("project_id.program_ids", "in", [program.id]),
                 ("period", ">=", year_start),
                 ("period", "<=", year_end),
             ]
@@ -362,7 +356,7 @@ class TenenetPLReportHandler(models.AbstractModel):
             ]
         )
         receipts = self.env["tenenet.project.receipt"].search([
-            ("project_id.program_id", "=", program.id),
+            ("project_id.program_ids", "in", [program.id]),
             ("year", "=", selected_year),
         ])
 

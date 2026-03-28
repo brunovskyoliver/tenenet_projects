@@ -23,7 +23,13 @@ class TenenetProgram(models.Model):
         compute="_compute_allocation_pct_percentage",
         store=True,
     )
-    project_ids = fields.One2many("tenenet.project", "program_id", string="Projekty")
+    project_ids = fields.Many2many(
+        "tenenet.project",
+        "tenenet_project_program_rel",
+        "program_id",
+        "project_id",
+        string="Projekty",
+    )
     pl_line_ids = fields.One2many("tenenet.pl.line", "program_id", string="P&L riadky")
 
     _unique_code = models.Constraint("UNIQUE(code)", "Kód programu musí byť jedinečný.")
@@ -62,11 +68,6 @@ class TenenetProgram(models.Model):
         return result
 
     def unlink(self):
-        linked_projects = self.env["tenenet.project"].with_context(active_test=False).search(
-            [("program_id", "in", self.ids)]
-        )
-        if linked_projects:
-            linked_projects.write({"program_id": False})
         result = super().unlink()
         self.env["tenenet.program"]._recompute_allocation_pct_all()
         return result

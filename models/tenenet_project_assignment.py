@@ -164,15 +164,6 @@ class TenenetProjectAssignment(models.Model):
         start = self.date_start or self.project_id.date_start
         end = self.date_end or self.project_id.date_end
 
-        if not start and not end and self.project_id.year:
-            start = date(self.project_id.year, 1, 1)
-            current_date = fields.Date.today()
-            end = date(
-                self.project_id.year,
-                min(current_date.month, 12) if self.project_id.year == current_date.year else 12,
-                1,
-            )
-
         if not start and not end:
             return []
 

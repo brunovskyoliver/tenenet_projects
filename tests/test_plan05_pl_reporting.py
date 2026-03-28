@@ -26,7 +26,7 @@ class TestTenenetPlan05PLReporting(TransactionCase):
         self.employee = self.env["hr.employee"].create({"name": "Zamestnanec P&L"})
         self.project_a = self.env["tenenet.project"].create({
             "name": "Projekt PL A",
-            "program_id": self.program_a.id,
+            "program_ids": [(4, self.program_a.id)],
         })
         self.assignment = self.env["tenenet.project.assignment"].create({
             "employee_id": self.employee.id,

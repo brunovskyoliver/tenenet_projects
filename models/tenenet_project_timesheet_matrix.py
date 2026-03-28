@@ -262,7 +262,7 @@ class TenenetProjectTimesheetMatrix(models.Model):
                 ("odborny_garant_id", "=", employee.id),
                 ("project_manager_id", "=", employee.id),
             ], order="name")
-        return [{"id": p.id, "name": p.name, "code": p.code or ""} for p in projects]
+        return [{"id": p.id, "name": p.name, "code": ""} for p in projects]
 
     @api.model
     def action_open_my_matrices(self):

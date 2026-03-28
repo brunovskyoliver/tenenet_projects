@@ -9,8 +9,8 @@ class TestTenenetPlan13PLReport(TransactionCase):
         self.program_b = self.env["tenenet.program"].create({"name": "Program B", "code": "PGB"})
         self.employee_a = self.env["hr.employee"].create({"name": "Adam Zamestnanec"})
         self.employee_b = self.env["hr.employee"].create({"name": "Beata Zamestnanec"})
-        self.project_a = self.env["tenenet.project"].create({"name": "Projekt A", "program_id": self.program_a.id})
-        self.project_b = self.env["tenenet.project"].create({"name": "Projekt B", "program_id": self.program_b.id})
+        self.project_a = self.env["tenenet.project"].create({"name": "Projekt A", "program_ids": [(4, self.program_a.id)]})
+        self.project_b = self.env["tenenet.project"].create({"name": "Projekt B", "program_ids": [(4, self.program_b.id)]})
         self.assignment_a_program_a = self.env["tenenet.project.assignment"].create({
             "employee_id": self.employee_a.id,
             "project_id": self.project_a.id,
@@ -39,7 +39,7 @@ class TestTenenetPlan13PLReport(TransactionCase):
         })
         return self.env["tenenet.pl.line"].create({
             "employee_id": assignment.employee_id.id,
-            "program_id": assignment.project_id.program_id.id,
+            "program_id": assignment.project_id.program_ids[:1].id,
             "period": period,
         })
 
@@ -258,7 +258,7 @@ class TestTenenetPlan13PLReport(TransactionCase):
         self.assertFalse(
             self.env["tenenet.pl.line"].search([
                 ("employee_id", "=", self.assignment_b_program_b.employee_id.id),
-                ("program_id", "=", self.assignment_b_program_b.project_id.program_id.id),
+                ("program_id", "=", self.assignment_b_program_b.project_id.program_ids[:1].id),
                 ("period", "=", "2026-05-01"),
             ])
         )
@@ -267,7 +267,7 @@ class TestTenenetPlan13PLReport(TransactionCase):
 
         synced_line = self.env["tenenet.pl.line"].search([
             ("employee_id", "=", self.assignment_b_program_b.employee_id.id),
-            ("program_id", "=", self.assignment_b_program_b.project_id.program_id.id),
+            ("program_id", "=", self.assignment_b_program_b.project_id.program_ids[:1].id),
             ("period", "=", "2026-05-01"),
         ])
         self.assertTrue(synced_line)

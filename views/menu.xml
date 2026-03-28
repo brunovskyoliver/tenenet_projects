@@ -130,6 +130,12 @@
                   action="action_tenenet_donor"
                   sequence="20"/>
 
+        <menuitem id="menu_tenenet_expense_type_config"
+                  name="Typy projektových nákladov"
+                  parent="menu_tenenet_configuration"
+                  action="action_tenenet_expense_type_config"
+                  sequence="25"/>
+
         <menuitem id="menu_tenenet_project_assignments"
                   name="Priradenia zamestnancov"
                   parent="menu_tenenet_configuration"

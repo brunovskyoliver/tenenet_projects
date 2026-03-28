@@ -33,9 +33,6 @@
                         <button
                             t-attf-class="btn btn-sm #{state.selectedProjectId === project.id ? 'btn-primary' : 'btn-outline-secondary'}"
                             t-on-click="() => this.selectProject(project.id)">
-                            <t t-if="project.code">
-                                <span class="me-1 text-muted" t-out="project.code"/>
-                            </t>
                             <t t-out="project.name"/>
                         </button>
                     </t>

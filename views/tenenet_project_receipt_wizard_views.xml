@@ -1,0 +1,28 @@
+<odoo>
+    <data>
+        <record id="view_tenenet_project_receipt_wizard_form" model="ir.ui.view">
+            <field name="name">tenenet.project.receipt.wizard.form</field>
+            <field name="model">tenenet.project.receipt.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Pridať príjem projektu">
+                    <group>
+                        <field name="project_id" invisible="1"/>
+                        <field name="currency_id" invisible="1"/>
+                        <field name="date_received"/>
+                        <field name="amount"/>
+                        <field name="note"/>
+                    </group>
+                    <footer>
+                        <button name="action_add"
+                                type="object"
+                                string="Pridať"
+                                class="btn btn-primary"/>
+                        <button string="Zrušiť"
+                                class="btn btn-secondary"
+                                special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+    </data>
+</odoo>

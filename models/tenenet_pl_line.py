@@ -48,7 +48,7 @@ class TenenetPLLine(models.Model):
         year_start = fields.Date.to_date(f"{selected_year}-01-01")
         year_end = fields.Date.to_date(f"{selected_year}-12-31")
         timesheets = self.env["tenenet.project.timesheet"].with_context(active_test=False).search([
-            ("project_id.program_id", "!=", False),
+            ("project_id.program_ids", "!=", False),
             ("period", ">=", year_start),
             ("period", "<=", year_end),
         ])
@@ -56,16 +56,18 @@ class TenenetPLLine(models.Model):
         wanted_keys = {}
         for timesheet in timesheets:
             employee = timesheet.employee_id
-            program = timesheet.project_id.program_id
             period = timesheet.period
-            if not employee or not program or not period:
+            if not employee or not period:
                 continue
-            key = (employee.id, program.id, period)
-            wanted_keys[key] = {
-                "employee_id": employee.id,
-                "program_id": program.id,
-                "period": period,
-            }
+            for program in timesheet.project_id.program_ids:
+                if not program:
+                    continue
+                key = (employee.id, program.id, period)
+                wanted_keys[key] = {
+                    "employee_id": employee.id,
+                    "program_id": program.id,
+                    "period": period,
+                }
 
         existing_lines = self.search([
             ("period", ">=", year_start),
@@ -103,7 +105,7 @@ class TenenetPLLine(models.Model):
         "employee_id",
         "program_id",
         "period",
-        "employee_id.assignment_ids.project_id.program_id",
+        "employee_id.assignment_ids.project_id.program_ids",
         "employee_id.assignment_ids.timesheet_ids.period",
         "employee_id.assignment_ids.timesheet_ids.total_labor_cost",
     )
@@ -115,7 +117,7 @@ class TenenetPLLine(models.Model):
                 continue
             lines = Timesheet.search([
                 ("employee_id", "=", rec.employee_id.id),
-                ("project_id.program_id", "=", rec.program_id.id),
+                ("project_id.program_ids", "in", [rec.program_id.id]),
                 ("period", "=", rec.period),
             ])
             rec.amount = sum(lines.mapped("total_labor_cost"))

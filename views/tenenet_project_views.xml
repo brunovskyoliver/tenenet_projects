@@ -5,15 +5,16 @@
             <field name="model">tenenet.project</field>
             <field name="arch" type="xml">
                 <list string="Projekty">
-                    <field name="year"/>
-                    <field name="code"/>
                     <field name="name"/>
-                    <field name="program_id"/>
+                    <field name="program_ids" widget="many2many_tags"/>
                     <field name="donor_id"/>
                     <field name="budget_total"/>
                     <field name="date_start"/>
                     <field name="date_end"/>
-                    <field name="semaphore" widget="badge"/>
+                    <field name="semaphore" widget="badge"
+                           decoration-success="semaphore == 'green'"
+                           decoration-warning="semaphore == 'yellow'"
+                           decoration-danger="semaphore == 'red'"/>
                     <field name="active"/>
                 </list>
             </field>
@@ -28,24 +29,15 @@
                         <group>
                             <group>
                                 <field name="name"/>
-                                <field name="code"/>
                                 <field name="description"/>
-                                <field name="year"/>
                                 <field name="active"/>
                                 <field name="semaphore"/>
                             </group>
                             <group>
-                                <field name="program_id"/>
+                                <field name="program_ids" widget="many2many_tags"/>
                                 <field name="donor_id"/>
                                 <field name="recipient_partner_id"/>
-                                <field name="contract_number"/>
-                                <field name="duration" readonly="1"/>
-                                <field name="date_contract"/>
-                                <field name="call_info"/>
                                 <field name="partner_id"/>
-                                <field name="submission_info"/>
-                                <field name="portal"/>
-                                <field name="sustainability"/>
                             </group>
                         </group>
                         <notebook>
@@ -53,6 +45,7 @@
                                 <group>
                                     <field name="date_start"/>
                                     <field name="date_end"/>
+                                    <field name="duration" readonly="1"/>
                                 </group>
                                 <separator string="Míľniky"/>
                                 <div class="mb-2">
@@ -79,26 +72,32 @@
                             <page string="Financie">
                                 <group>
                                     <group>
-                                        <field name="currency_id"/>
-                                        <field name="budget_total"/>
-                                        <field name="amount_contracted"/>
-                                        <field name="amount_contracted_with_partners"/>
+                                        <field name="contract_number"/>
+                                        <field name="date_contract"/>
                                     </group>
                                     <group>
                                         <field name="active_year_from" readonly="1"/>
                                         <field name="active_year_to" readonly="1"/>
-                                        <field name="received_total" readonly="1"/>
-                                        <field name="budget_diff" readonly="1"/>
+                                        <field name="budget_total" readonly="1"/>
                                     </group>
                                 </group>
-                                <group string="Prijaté podľa rokov">
-                                    <field name="receipt_line_ids">
-                                        <list string="Prijaté podľa rokov" create="0" delete="0">
-                                            <field name="year" readonly="1"/>
-                                            <field name="amount"/>
-                                        </list>
-                                    </field>
-                                </group>
+                                <separator string="Prijaté prostriedky"/>
+                                <div class="mb-2">
+                                    <button name="action_open_receipt_wizard"
+                                            type="object"
+                                            string="Pridať príjem"
+                                            class="btn btn-primary"
+                                            invisible="not id"/>
+                                </div>
+                                <field name="receipt_line_ids" nolabel="1">
+                                    <list string="Prijaté prostriedky" create="0" delete="1"
+                                          default_order="date_received desc">
+                                        <field name="date_received"/>
+                                        <field name="year" readonly="1"/>
+                                        <field name="amount"/>
+                                        <field name="note"/>
+                                    </list>
+                                </field>
                             </page>
                             <page string="Riadenie">
                                 <group string="Zodpovedné osoby">
@@ -156,13 +155,26 @@
                                         <field name="max_leaves_per_year_days"/>
                                     </list>
                                 </field>
+                                <separator string="Povolené typy výdavkov"/>
+                                <div class="mb-2">
+                                    <button name="action_open_allowed_expense_type_wizard"
+                                            type="object"
+                                            string="Pridať typ výdavku"
+                                            class="btn btn-secondary"
+                                            invisible="not id"/>
+                                </div>
+                                <field name="allowed_expense_type_ids" nolabel="1">
+                                    <list string="Povolené typy výdavkov" editable="bottom">
+                                        <field name="name"/>
+                                        <field name="description"/>
+                                    </list>
+                                </field>
                             </page>
                             <page string="Kontakty">
                                 <group>
+                                    <field name="portal"/>
                                     <field name="donor_contact" readonly="1"/>
                                     <field name="partner_contact" readonly="1"/>
-                                    <field name="settlement_info"/>
-                                    <field name="application_notes"/>
                                 </group>
                             </page>
                             <page string="Poznámky">
@@ -183,12 +195,9 @@
             <field name="arch" type="xml">
                 <search string="Projekty">
                     <field name="name"/>
-                    <field name="code"/>
-                    <field name="program_id"/>
+                    <field name="program_ids"/>
                     <field name="donor_id"/>
                     <filter string="Aktívne" name="active" domain="[('active', '=', True)]"/>
-                    <filter string="Program" name="group_program" context="{'group_by': 'program_id'}"/>
-                    <filter string="Rok" name="group_year" context="{'group_by': 'year'}"/>
                     <filter string="Donor" name="group_donor" context="{'group_by': 'donor_id'}"/>
                 </search>
             </field>
@@ -198,9 +207,9 @@
             <field name="name">tenenet.project.kanban</field>
             <field name="model">tenenet.project</field>
             <field name="arch" type="xml">
-                <kanban default_order="year desc, name">
+                <kanban default_order="name" color="kanban_color">
+                    <field name="kanban_color"/>
                     <field name="semaphore"/>
-                    <field name="code"/>
                     <field name="odborny_garant_id"/>
                     <field name="project_manager_id"/>
                     <field name="budget_total"/>
@@ -209,18 +218,6 @@
                     <field name="date_end"/>
                     <templates>
                         <t t-name="card">
-                            <div class="d-flex justify-content-between align-items-start mb-1">
-                                <span class="text-muted small" t-out="record.code.value"/>
-                                <t t-if="record.semaphore.raw_value == 'green'">
-                                    <span class="badge bg-success">&amp;nbsp;</span>
-                                </t>
-                                <t t-elif="record.semaphore.raw_value == 'yellow'">
-                                    <span class="badge bg-warning">&amp;nbsp;</span>
-                                </t>
-                                <t t-elif="record.semaphore.raw_value == 'red'">
-                                    <span class="badge bg-danger">&amp;nbsp;</span>
-                                </t>
-                            </div>
                             <strong class="d-block mb-2">
                                 <field name="name"/>
                             </strong>
@@ -258,9 +255,9 @@
             <field name="name">tenenet.project.garant.kanban</field>
             <field name="model">tenenet.project</field>
             <field name="arch" type="xml">
-                <kanban default_order="year desc, name">
+                <kanban default_order="name" color="kanban_color">
+                    <field name="kanban_color"/>
                     <field name="semaphore"/>
-                    <field name="code"/>
                     <field name="odborny_garant_id"/>
                     <field name="project_manager_id"/>
                     <field name="budget_total"/>
@@ -272,18 +269,6 @@
                             <button type="object"
                                     name="action_open_assignments_kanban"
                                     class="d-block w-100 text-start border-0 bg-transparent p-0">
-                                <div class="d-flex justify-content-between align-items-start mb-1">
-                                    <span class="text-muted small" t-out="record.code.value"/>
-                                    <t t-if="record.semaphore.raw_value == 'green'">
-                                        <span class="badge bg-success">&amp;nbsp;</span>
-                                    </t>
-                                    <t t-elif="record.semaphore.raw_value == 'yellow'">
-                                        <span class="badge bg-warning">&amp;nbsp;</span>
-                                    </t>
-                                    <t t-elif="record.semaphore.raw_value == 'red'">
-                                        <span class="badge bg-danger">&amp;nbsp;</span>
-                                    </t>
-                                </div>
                                 <strong class="d-block mb-2">
                                     <field name="name"/>
                                 </strong>
