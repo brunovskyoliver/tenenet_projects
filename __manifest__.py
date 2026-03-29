@@ -13,7 +13,7 @@ and P&L reporting by program.
     'website': "https://www.tenenet.sk",
 
     'category': 'Project',
-    'version': '19.0.5.7.0',
+    'version': '19.0.5.7.2',
     'license': 'LGPL-3',
 
     'depends': ['base', 'hr', 'hr_holidays', 'hr_skills', 'hr_expense', 'account_reports', 'mail', 'web_gantt'],
@@ -30,6 +30,7 @@ and P&L reporting by program.
             'tenenet_projects/static/src/js/tenenet_garant_timesheets_action.js',
             'tenenet_projects/static/src/js/timesheet_matrix_host.js',
             'tenenet_projects/static/src/xml/tenenet_internal_expense_report_filters.xml',
+            'tenenet_projects/static/src/xml/tenenet_internal_expense_report_line_cell.xml',
             'tenenet_projects/static/src/xml/tenenet_project_yearly_labor_report_filters.xml',
             'tenenet_projects/static/src/xml/tenenet_utilization_report_filters.xml',
             'tenenet_projects/static/src/xml/tenenet_allocation_report_filters.xml',

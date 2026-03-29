@@ -1,4 +1,8 @@
 .account_report.tenenet_internal_expense_report {
+    tr.total {
+        display: none;
+    }
+
     #filter_date {
         .o_datetime_input {
             box-shadow: none;

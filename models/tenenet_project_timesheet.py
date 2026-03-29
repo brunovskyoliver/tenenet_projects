@@ -1,6 +1,9 @@
+import logging
+
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 
+_logger = logging.getLogger(__name__)
 
 HOUR_FIELD_META = {
     "hours_pp": {
@@ -329,6 +332,7 @@ class TenenetProjectTimesheet(models.Model):
         for rec in self:
             assignment = rec.assignment_id
             if not assignment:
+                _logger.debug("Skipping wage cap check for timesheet %s because assignment is missing.", rec.id)
                 continue
 
             cap_hm = assignment.max_monthly_wage_hm or assignment.project_id.default_max_monthly_wage_hm or 0.0
@@ -349,6 +353,17 @@ class TenenetProjectTimesheet(models.Model):
             ])
             total_gross = sum(all_ts.mapped("gross_salary"))
             excess_hm = max(0.0, total_gross - cap_hm)
+            _logger.info(
+                "TENENET wage cap check: timesheet=%s assignment=%s project=%s period=%s cap_hm=%.4f total_gross=%.4f excess_hm=%.4f timesheet_ids=%s",
+                rec.id,
+                assignment.id,
+                assignment.project_id.id,
+                rec.period,
+                cap_hm,
+                total_gross,
+                excess_hm,
+                all_ts.ids,
+            )
 
             existing = InternalExpense.search([
                 ("source_assignment_id", "=", assignment.id),
@@ -362,8 +377,22 @@ class TenenetProjectTimesheet(models.Model):
                     "note": f"Prekročenie mzdového stropu – priradenie {assignment.name}",
                 }
                 if existing:
+                    _logger.info(
+                        "Updating internal wage expense %s for assignment=%s period=%s with excess_hm=%.4f",
+                        existing.id,
+                        assignment.id,
+                        rec.period,
+                        excess_hm,
+                    )
                     existing.write(vals)
                 else:
+                    _logger.info(
+                        "Creating internal wage expense for assignment=%s project=%s period=%s excess_hm=%.4f",
+                        assignment.id,
+                        assignment.project_id.id,
+                        rec.period,
+                        excess_hm,
+                    )
                     InternalExpense.create({
                         **vals,
                         "employee_id": assignment.employee_id.id,
@@ -374,6 +403,13 @@ class TenenetProjectTimesheet(models.Model):
                     })
             else:
                 if existing:
+                    _logger.info(
+                        "Removing internal wage expense %s for assignment=%s period=%s because excess_hm dropped to %.4f",
+                        existing.id,
+                        assignment.id,
+                        rec.period,
+                        excess_hm,
+                    )
                     existing.unlink()
 
     @api.depends("line_ids.hour_type", "line_ids.hours")
@@ -528,19 +564,39 @@ class TenenetProjectTimesheetLine(models.Model):
                         "Absencie (dovolenka/PN/lekár/sviatky) je možné pridávať iba cez HR Dovolenky."
                     )
         records = super().create(vals_list)
+        _logger.info(
+            "Timesheet lines created: ids=%s timesheet_ids=%s hour_types=%s",
+            records.ids,
+            records.mapped("timesheet_id").ids,
+            records.mapped("hour_type"),
+        )
         records._sync_employee_period_costs()
+        records.mapped("timesheet_id")._check_wage_cap()
         return records
 
     def write(self, vals):
         self._check_leave_lines_not_manually_mutated(vals)
         old_timesheets = self.mapped("timesheet_id")
         result = super().write(vals)
-        (old_timesheets | self.mapped("timesheet_id"))._sync_employee_period_costs()
+        impacted_timesheets = old_timesheets | self.mapped("timesheet_id")
+        _logger.info(
+            "Timesheet lines updated: ids=%s impacted_timesheet_ids=%s vals=%s",
+            self.ids,
+            impacted_timesheets.ids,
+            vals,
+        )
+        impacted_timesheets._sync_employee_period_costs()
+        impacted_timesheets._check_wage_cap()
         return result
 
     def unlink(self):
         self._check_leave_lines_not_manually_mutated({"hours": 0.0})
         timesheets = self.mapped("timesheet_id")
         result = super().unlink()
+        _logger.info(
+            "Timesheet lines deleted from timesheet_ids=%s",
+            timesheets.ids,
+        )
         timesheets._sync_employee_period_costs()
+        timesheets._check_wage_cap()
         return result

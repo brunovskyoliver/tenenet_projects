@@ -22,6 +22,9 @@ class TenenetInternalExpenseReportHandler(models.AbstractModel):
         custom_display_config.setdefault("components", {})["AccountReportFilters"] = (
             "TenenetInternalExpenseReportFilters"
         )
+        custom_display_config.setdefault("templates", {})["AccountReportLineCell"] = (
+            "tenenet_projects.TenenetInternalExpenseReportLineCell"
+        )
 
         selected_year = self._get_selected_year(options)
         self._set_year_options(options, selected_year)
@@ -46,11 +49,10 @@ class TenenetInternalExpenseReportHandler(models.AbstractModel):
             key=lambda b: (b["employee"].name or "").lower(),
         ):
             employee = bucket["employee"]
-            total_hours = bucket["total_hours"]
             total_costs = bucket["total_costs"]
 
             for m in range(1, 13):
-                grand_total_hours[m] += total_hours[m]
+                grand_total_hours[m] += bucket["total_hours"][m]
                 grand_total_costs[m] += total_costs[m]
 
             employee_line_id = report._get_generic_line_id(
@@ -61,7 +63,7 @@ class TenenetInternalExpenseReportHandler(models.AbstractModel):
             lines.append((0, {
                 "id": employee_line_id,
                 "name": employee.name or "",
-                "columns": self._build_columns(report, options, total_hours),
+                "columns": self._build_columns(report, options, total_costs),
                 "level": 1,
                 "unfoldable": True,
                 "unfolded": bool(
@@ -106,36 +108,75 @@ class TenenetInternalExpenseReportHandler(models.AbstractModel):
 
         project_rows = self._group_by_project(expenses)
         lines = []
-        for seq, (project, hours, cost_rows) in enumerate(project_rows, start=1):
+        for seq, (project, _hours, total_costs, cost_rows) in enumerate(project_rows, start=1):
             project_id = project.id if project else 0
             project_name = project.name if project else "(Bez projektu)"
+            project_line_id = report._get_generic_line_id(
+                "tenenet.project" if project_id else None,
+                project_id or None,
+                parent_line_id=line_dict_id,
+                markup=f"int_exp_project_{employee.id}_{project_id}_{seq}",
+            )
 
             lines.append({
-                "id": report._get_generic_line_id(
-                    "tenenet.project" if project_id else None,
-                    project_id or None,
-                    parent_line_id=line_dict_id,
-                    markup=f"int_exp_project_h_{project_id}_{seq}",
-                ),
+                "id": project_line_id,
                 "name": project_name,
-                "columns": self._build_columns(report, options, hours),
+                "columns": self._build_columns(report, options, total_costs),
                 "level": 2,
                 "parent_id": line_dict_id,
+                "unfoldable": True,
+                "unfolded": bool(
+                    options.get("unfold_all")
+                    or project_line_id in (options.get("unfolded_lines") or [])
+                ),
+                "expand_function": "_report_expand_unfoldable_line_int_exp_project",
             })
+        return {
+            "lines": lines,
+            "offset_increment": len(lines),
+            "has_more": False,
+            "progress": progress,
+        }
 
-            for detail_seq, (type_name, costs) in enumerate(cost_rows, start=1):
-                lines.append({
-                    "id": report._get_generic_line_id(
-                        None,
-                        None,
-                        parent_line_id=line_dict_id,
-                        markup=f"int_exp_project_type_{project_id}_{seq}_{detail_seq}",
-                    ),
-                    "name": type_name,
-                    "columns": self._build_columns(report, options, costs),
-                    "level": 3,
-                    "parent_id": line_dict_id,
-                })
+    def _report_expand_unfoldable_line_int_exp_project(
+        self, line_dict_id, groupby, options, progress, offset, unfold_all_batch_data=None
+    ):
+        report = self.env["account.report"].browse(options["report_id"])
+        markup, model, record_id = report._parse_line_id(line_dict_id)[-1]
+        employee_id, project_id = self._extract_project_markup(markup)
+        if not employee_id:
+            return {"lines": []}
+
+        employee = self.env["hr.employee"].browse(employee_id).exists()
+        if not employee:
+            return {"lines": []}
+
+        selected_year = self._get_selected_year(options)
+        expenses = self._get_year_expenses_for_employee(employee, selected_year)
+        project_rows = self._group_by_project(expenses)
+
+        target_row = next(
+            (row for row in project_rows if ((row[0].id if row[0] else 0) == project_id)),
+            None,
+        )
+        if not target_row:
+            return {"lines": []}
+
+        _project, _hours, _total_costs, cost_rows = target_row
+        lines = []
+        for detail_seq, (type_name, costs) in enumerate(cost_rows, start=1):
+            lines.append({
+                "id": report._get_generic_line_id(
+                    None,
+                    None,
+                    parent_line_id=line_dict_id,
+                    markup=f"int_exp_project_type_{employee_id}_{project_id}_{detail_seq}",
+                ),
+                "name": type_name,
+                "columns": self._build_columns(report, options, costs),
+                "level": 3,
+                "parent_id": line_dict_id,
+            })
         return {
             "lines": lines,
             "offset_increment": len(lines),
@@ -202,9 +243,22 @@ class TenenetInternalExpenseReportHandler(models.AbstractModel):
         category_labels = dict(self.env["tenenet.internal.expense"]._fields["category"].selection)
         return (f"cat_{expense.category}", category_labels.get(expense.category, expense.category or "Bez typu"))
 
+    def _extract_project_markup(self, markup):
+        prefix = "int_exp_project_"
+        if not markup or not markup.startswith(prefix):
+            return (None, None)
+        parts = markup[len(prefix):].split("_")
+        if len(parts) < 3:
+            return (None, None)
+        try:
+            return (int(parts[0]), int(parts[1]))
+        except (TypeError, ValueError):
+            return (None, None)
+
     def _group_by_project(self, expenses):
-        """Return list of (project|None, hours_by_month, [(type_name, costs_by_month)]) sorted by project/type."""
+        """Return list of (project|None, hours_by_month, total_costs_by_month, [(type_name, costs_by_month)]) sorted by project/type."""
         project_hours = {}
+        project_total_costs = {}
         project_type_costs = {}
         project_obj = {}
 
@@ -213,9 +267,11 @@ class TenenetInternalExpenseReportHandler(models.AbstractModel):
             proj_key = project.id if project else 0
             if proj_key not in project_hours:
                 project_hours[proj_key] = defaultdict(float)
+                project_total_costs[proj_key] = defaultdict(float)
                 project_type_costs[proj_key] = {}
                 project_obj[proj_key] = project if project else None
             project_hours[proj_key][exp.period.month] += exp.hours or 0.0
+            project_total_costs[proj_key][exp.period.month] += exp.cost_hm or 0.0
             type_key, type_name = self._get_expense_type_bucket(exp)
             if type_key not in project_type_costs[proj_key]:
                 project_type_costs[proj_key][type_key] = {
@@ -233,7 +289,7 @@ class TenenetInternalExpenseReportHandler(models.AbstractModel):
                 ],
                 key=lambda row: (row[0] or "").lower(),
             )
-            rows.append((project_obj[proj_key], project_hours[proj_key], cost_rows))
+            rows.append((project_obj[proj_key], project_hours[proj_key], project_total_costs[proj_key], cost_rows))
         return sorted(
             rows,
             key=lambda x: (x[0].name or "").lower() if x[0] else "\xff",
