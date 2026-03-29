@@ -9,6 +9,7 @@ from . import tenenet_employee_service
 from . import tenenet_project
 from . import tenenet_project_milestone
 from . import tenenet_project_receipt
+from . import tenenet_project_cashflow
 from . import tenenet_project_assignment
 from . import tenenet_project_assignment_wizard
 from . import tenenet_project_milestone_wizard

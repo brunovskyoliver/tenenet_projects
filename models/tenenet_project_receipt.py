@@ -1,3 +1,5 @@
+import datetime
+
 from odoo import api, fields, models
 
 
@@ -25,8 +27,64 @@ class TenenetProjectReceipt(models.Model):
     )
     amount = fields.Monetary(string="Prijaté (€)", currency_field="currency_id", default=0.0)
     note = fields.Char(string="Poznámka")
+    cashflow_ids = fields.One2many(
+        "tenenet.project.cashflow",
+        "receipt_id",
+        string="Cashflow",
+    )
 
     @api.depends("date_received")
     def _compute_year(self):
         for rec in self:
             rec.year = rec.date_received.year if rec.date_received else 0
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        for rec in records:
+            rec._generate_equal_cashflow()
+        return records
+
+    def write(self, vals):
+        result = super().write(vals)
+        if "amount" in vals or "date_received" in vals:
+            for rec in self:
+                rec._generate_equal_cashflow()
+        return result
+
+    def _generate_equal_cashflow(self):
+        self.ensure_one()
+        self.cashflow_ids.unlink()
+        if not self.year or not self.amount:
+            return
+        monthly_amount = self.amount / 12
+        vals_list = []
+        total_assigned = 0.0
+        for month in range(1, 13):
+            date_start = datetime.date(self.year, month, 1)
+            if month == 12:
+                date_stop = datetime.date(self.year, 12, 31)
+                month_amount = self.amount - total_assigned
+            else:
+                date_stop = datetime.date(self.year, month + 1, 1) - datetime.timedelta(days=1)
+                month_amount = monthly_amount
+                total_assigned += month_amount
+            vals_list.append({
+                "project_id": self.project_id.id,
+                "receipt_id": self.id,
+                "date_start": date_start,
+                "date_stop": date_stop,
+                "amount": month_amount,
+                "is_total": False,
+            })
+        # 13th "Spolu" record — placed in January of year+1 so it lands in the
+        # last gantt column; receipt_year keeps it tied to this receipt's year.
+        vals_list.append({
+            "project_id": self.project_id.id,
+            "receipt_id": self.id,
+            "date_start": datetime.date(self.year + 1, 1, 1),
+            "date_stop": datetime.date(self.year + 1, 1, 1),
+            "amount": self.amount,
+            "is_total": True,
+        })
+        self.env["tenenet.project.cashflow"].create(vals_list)

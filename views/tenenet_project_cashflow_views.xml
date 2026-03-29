@@ -1,0 +1,65 @@
+<odoo>
+    <data>
+
+        <record id="view_tenenet_project_receipt_form" model="ir.ui.view">
+            <field name="name">tenenet.project.receipt.form</field>
+            <field name="model">tenenet.project.receipt</field>
+            <field name="arch" type="xml">
+                <form string="Príjem projektu">
+                    <sheet>
+                        <group>
+                            <field name="project_id" readonly="1"/>
+                            <field name="date_received"/>
+                            <field name="amount"/>
+                            <field name="note"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_tenenet_project_cashflow_form" model="ir.ui.view">
+            <field name="name">tenenet.project.cashflow.form</field>
+            <field name="model">tenenet.project.cashflow</field>
+            <field name="arch" type="xml">
+                <form string="Cashflow">
+                    <sheet>
+                        <group>
+                            <field name="project_id" readonly="1"/>
+                            <field name="year" readonly="1"/>
+                            <field name="month" readonly="1"/>
+                            <field name="amount" readonly="is_total"/>
+                            <field name="is_total" invisible="1"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_tenenet_project_cashflow_gantt" model="ir.ui.view">
+            <field name="name">tenenet.project.cashflow.gantt</field>
+            <field name="model">tenenet.project.cashflow</field>
+            <field name="arch" type="xml">
+                <gantt
+                    js_class="cashflow_gantt"
+                    date_start="date_start"
+                    date_stop="date_stop"
+                    default_scale="year"
+                    scales="year"
+                    precision="{'year': 'month:full'}"
+                    string="Predikovaný cashflow"
+                    create="0"
+                    default_group_by="row_label"
+                    form_view_id="%(view_tenenet_project_cashflow_form)d"
+                />
+            </field>
+        </record>
+
+        <record id="action_tenenet_project_cashflow_gantt" model="ir.actions.act_window">
+            <field name="name">Predikovaný cashflow</field>
+            <field name="res_model">tenenet.project.cashflow</field>
+            <field name="view_mode">gantt</field>
+        </record>
+
+    </data>
+</odoo>

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!--
+        Header override: relabel the last column (January of year+1) as "Spolu".
+        Uses t-inherit-mode="primary" to create a copy with one targeted change.
+    -->
+    <t t-name="tenenet_projects.CashflowGanttRenderer.Header"
+       t-inherit="web_gantt.GanttRenderer.Header"
+       t-inherit-mode="primary">
+        <xpath expr="//div[@class='o_gantt_header_cell_title']" position="replace">
+            <div class="o_gantt_header_cell_title" t-if="'colHeaderFormatter' in model.metaData.scale">
+                <t t-if="column.start.year > model.metaData.startDate.year">
+                    <strong>Spolu</strong>
+                    <div class="small fw-normal" t-esc="model.yearTotalFormatted"/>
+                </t>
+                <t t-else="" t-esc="model.metaData.scale.colHeaderFormatter(column.start, env)"/>
+            </div>
+        </xpath>
+    </t>
+
+    <!--
+        Custom range-menu for the cashflow gantt.
+        Replaces the default scale selector with a plain year label + prev/next arrows.
+    -->
+    <t t-name="tenenet_projects.CashflowGanttRendererControls.RangeMenu">
+        <div class="btn-group" t-att-class="{ 'ms-3': env.isSmall }">
+            <button
+                class="btn btn-secondary"
+                data-hotkey="p"
+                t-on-click="() => this.selectRange('previous')"
+                title="Predchádzajúci rok"
+            >
+                <i class="oi oi-arrow-left"/>
+            </button>
+            <button
+                class="btn btn-secondary o_cashflow_gantt_year_btn px-3"
+                t-on-click="onTodayClicked"
+                title="Aktuálny rok"
+            >
+                <i class="fa fa-calendar me-2"/>
+                <strong t-esc="state.startDate.year"/>
+            </button>
+            <button
+                class="btn btn-secondary"
+                data-hotkey="n"
+                t-on-click="() => this.selectRange('next')"
+                title="Nasledujúci rok"
+            >
+                <i class="oi oi-arrow-right"/>
+            </button>
+        </div>
+    </t>
+
+</templates>

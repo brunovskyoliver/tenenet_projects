@@ -16,7 +16,7 @@ and P&L reporting by program.
     'version': '19.0.5.5.0',
     'license': 'LGPL-3',
 
-    'depends': ['base', 'hr', 'hr_holidays', 'hr_skills', 'account_reports', 'mail'],
+    'depends': ['base', 'hr', 'hr_holidays', 'hr_skills', 'account_reports', 'mail', 'web_gantt'],
 
 
     'assets': {
@@ -45,6 +45,10 @@ and P&L reporting by program.
             'tenenet_projects/static/src/scss/timesheet_matrix.scss',
             'tenenet_projects/static/src/scss/hr_employee.scss',
         ],
+        'web.assets_backend_lazy': [
+            'tenenet_projects/static/src/js/cashflow_gantt_view.js',
+            'tenenet_projects/static/src/xml/cashflow_gantt.xml',
+        ],
     },
 
     'data': [
@@ -62,6 +66,7 @@ and P&L reporting by program.
         'views/tenenet_program_views.xml',
         'views/tenenet_donor_views.xml',
         'views/tenenet_project_views.xml',
+        'views/tenenet_project_cashflow_views.xml',
         'views/tenenet_project_milestone_views.xml',
         'views/tenenet_allocation_views.xml',
         'views/tenenet_utilization_views.xml',

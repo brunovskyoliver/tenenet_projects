@@ -89,6 +89,11 @@
                                             string="Pridať príjem"
                                             class="btn btn-primary"
                                             invisible="not id"/>
+                                    <button name="action_open_cashflow_gantt"
+                                            type="object"
+                                            string="Predikovaný cashflow"
+                                            class="btn btn-secondary ms-2"
+                                            invisible="not id or not receipt_line_ids"/>
                                 </div>
                                 <field name="receipt_line_ids" nolabel="1">
                                     <list string="Prijaté prostriedky" create="0" delete="1"
