@@ -287,6 +287,8 @@ class TenenetProjectAssignment(models.Model):
             "allocation_ratio",
         } & set(vals):
             self._sync_precreated_timesheets()
+        if {"max_monthly_wage_hm", "project_id"} & set(vals):
+            self.mapped("timesheet_ids")._check_wage_cap()
         return result
 
     def action_open_timesheet_matrix_current_year(self):

@@ -103,7 +103,9 @@ class TenenetAllocationReportHandler(models.AbstractModel):
             f"alloc_{emp_id}_hours_doctor",
         )))
 
+        internal_expenses = self._get_employee_year_internal_expenses(employee, year)
         project_groups = self._group_timesheets_by_project(timesheets)
+        internal_wage_by_project = self._group_internal_wage_by_project(internal_expenses.filtered(lambda e: e.category == "wage"))
         sorted_projects = sorted(
             project_groups.keys(),
             key=lambda p: (p.name or "").lower(),
@@ -126,6 +128,16 @@ class TenenetAllocationReportHandler(models.AbstractModel):
             proj_deductions = self._aggregate_field_by_month(proj_timesheets, "deductions")
             proj_ccp = self._aggregate_field_by_month(proj_timesheets, "total_labor_cost")
             proj_hours = self._aggregate_field_by_month(proj_timesheets, "hours_project_total")
+            internal_wage = internal_wage_by_project.get(project.id, {})
+            internal_hm = internal_wage.get("hm", defaultdict(float))
+            internal_ccp = internal_wage.get("ccp", defaultdict(float))
+            internal_deductions = defaultdict(float, {
+                month: (internal_ccp.get(month, 0.0) - internal_hm.get(month, 0.0))
+                for month in range(1, 13)
+            })
+            proj_gross = self._subtract_monthly_values(proj_gross, internal_hm)
+            proj_deductions = self._subtract_monthly_values(proj_deductions, internal_deductions)
+            proj_ccp = self._subtract_monthly_values(proj_ccp, internal_ccp)
 
             lines.append((0, self._build_report_line(
                 report, options, f"{proj_name} - Hrubá mzda", proj_gross, "monetary", 3,
@@ -145,7 +157,6 @@ class TenenetAllocationReportHandler(models.AbstractModel):
             )))
 
         # ── Internal expenses section ────────────────────────────────────────
-        internal_expenses = self._get_employee_year_internal_expenses(employee, year)
         leave_expenses = internal_expenses.filtered(lambda e: e.category == "leave")
         wage_expenses = internal_expenses.filtered(lambda e: e.category == "wage")
 
@@ -280,6 +291,27 @@ class TenenetAllocationReportHandler(models.AbstractModel):
                 project_map[pid] = self.env["tenenet.project.timesheet"]
             project_map[pid] |= ts
         return {project_to_record[pid]: tss for pid, tss in project_map.items()}
+
+    def _group_internal_wage_by_project(self, wage_expenses):
+        result = {}
+        for exp in wage_expenses:
+            project = exp.source_assignment_id.project_id if exp.source_assignment_id else exp.source_project_id
+            if not project:
+                continue
+            if project.id not in result:
+                result[project.id] = {
+                    "hm": defaultdict(float),
+                    "ccp": defaultdict(float),
+                }
+            result[project.id]["hm"][exp.period.month] += exp.cost_hm or 0.0
+            result[project.id]["ccp"][exp.period.month] += exp.cost_ccp or 0.0
+        return result
+
+    def _subtract_monthly_values(self, source_values, subtract_values):
+        result = defaultdict(float)
+        for month in range(1, 13):
+            result[month] = max(0.0, (source_values.get(month, 0.0) - subtract_values.get(month, 0.0)))
+        return result
 
     def _build_report_line(self, report, options, name, monthly_values, figure_type, level, line_id_markup):
         return {

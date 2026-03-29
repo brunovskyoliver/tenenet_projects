@@ -38,6 +38,7 @@ class TenenetProjectAllowedExpenseTypeWizard(models.TransientModel):
         self.ensure_one()
         self.env["tenenet.project.allowed.expense.type"].create({
             "project_id": self.project_id.id,
+            "config_id": self.config_id.id,
             "name": self.name,
             "description": self.description or False,
             "max_amount": self.max_amount,

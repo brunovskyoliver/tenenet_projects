@@ -7,6 +7,7 @@
                 <list string="Typy projektových nákladov" editable="bottom">
                     <field name="sequence" widget="handle"/>
                     <field name="name"/>
+                    <field name="hr_expense_product_id"/>
                     <field name="description"/>
                     <field name="active"/>
                 </list>
@@ -23,9 +24,18 @@
                             <field name="name"/>
                             <field name="sequence"/>
                             <field name="active"/>
+                            <field name="hr_expense_product_id" readonly="1"/>
                         </group>
                         <group string="Popis">
                             <field name="description" nolabel="1"/>
+                        </group>
+                        <group string="HR kategórie výdavkov">
+                            <field name="expense_category_line_ids" nolabel="1">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="product_id"/>
+                                </list>
+                            </field>
                         </group>
                     </sheet>
                 </form>

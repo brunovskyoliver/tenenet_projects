@@ -106,7 +106,7 @@ class TenenetInternalExpenseReportHandler(models.AbstractModel):
 
         project_rows = self._group_by_project(expenses)
         lines = []
-        for seq, (project, hours, costs) in enumerate(project_rows, start=1):
+        for seq, (project, hours, cost_rows) in enumerate(project_rows, start=1):
             project_id = project.id if project else 0
             project_name = project.name if project else "(Bez projektu)"
 
@@ -122,18 +122,20 @@ class TenenetInternalExpenseReportHandler(models.AbstractModel):
                 "level": 2,
                 "parent_id": line_dict_id,
             })
-            lines.append({
-                "id": report._get_generic_line_id(
-                    None,
-                    None,
-                    parent_line_id=line_dict_id,
-                    markup=f"int_exp_project_eur_{project_id}_{seq}",
-                ),
-                "name": f"{project_name} – náklady (€)",
-                "columns": self._build_columns(report, options, costs),
-                "level": 2,
-                "parent_id": line_dict_id,
-            })
+
+            for detail_seq, (type_name, costs) in enumerate(cost_rows, start=1):
+                lines.append({
+                    "id": report._get_generic_line_id(
+                        None,
+                        None,
+                        parent_line_id=line_dict_id,
+                        markup=f"int_exp_project_type_{project_id}_{seq}_{detail_seq}",
+                    ),
+                    "name": type_name,
+                    "columns": self._build_columns(report, options, costs),
+                    "level": 3,
+                    "parent_id": line_dict_id,
+                })
         return {
             "lines": lines,
             "offset_increment": len(lines),
@@ -194,23 +196,44 @@ class TenenetInternalExpenseReportHandler(models.AbstractModel):
             buckets[emp_id]["total_costs"][exp.period.month] += exp.cost_hm or 0.0
         return buckets
 
+    def _get_expense_type_bucket(self, expense):
+        if expense.category == "expense" and expense.expense_type_config_id:
+            return (f"cfg_{expense.expense_type_config_id.id}", f"Náklady - {expense.expense_type_config_id.display_name}")
+        category_labels = dict(self.env["tenenet.internal.expense"]._fields["category"].selection)
+        return (f"cat_{expense.category}", category_labels.get(expense.category, expense.category or "Bez typu"))
+
     def _group_by_project(self, expenses):
-        """Return list of (project|None, hours_by_month, costs_by_month) sorted by project name."""
+        """Return list of (project|None, hours_by_month, [(type_name, costs_by_month)]) sorted by project/type."""
         project_hours = {}
-        project_costs = {}
+        project_type_costs = {}
         project_obj = {}
 
         for exp in expenses:
-            project = exp.source_assignment_id.project_id if exp.source_assignment_id else None
+            project = exp.source_project_id or (exp.source_assignment_id.project_id if exp.source_assignment_id else None)
             proj_key = project.id if project else 0
             if proj_key not in project_hours:
                 project_hours[proj_key] = defaultdict(float)
-                project_costs[proj_key] = defaultdict(float)
+                project_type_costs[proj_key] = {}
                 project_obj[proj_key] = project if project else None
             project_hours[proj_key][exp.period.month] += exp.hours or 0.0
-            project_costs[proj_key][exp.period.month] += exp.cost_hm or 0.0
+            type_key, type_name = self._get_expense_type_bucket(exp)
+            if type_key not in project_type_costs[proj_key]:
+                project_type_costs[proj_key][type_key] = {
+                    "type_name": type_name,
+                    "costs": defaultdict(float),
+                }
+            project_type_costs[proj_key][type_key]["costs"][exp.period.month] += exp.cost_hm or 0.0
 
-        rows = [(project_obj[k], project_hours[k], project_costs[k]) for k in project_hours]
+        rows = []
+        for proj_key in project_hours:
+            cost_rows = sorted(
+                [
+                    (values["type_name"], values["costs"])
+                    for values in project_type_costs[proj_key].values()
+                ],
+                key=lambda row: (row[0] or "").lower(),
+            )
+            rows.append((project_obj[proj_key], project_hours[proj_key], cost_rows))
         return sorted(
             rows,
             key=lambda x: (x[0].name or "").lower() if x[0] else "\xff",

@@ -12,6 +12,11 @@ class TenenetProjectAllowedExpenseType(models.Model):
         required=True,
         ondelete="cascade",
     )
+    config_id = fields.Many2one(
+        "tenenet.expense.type.config",
+        string="Typ nákladu (katalóg)",
+        ondelete="set null",
+    )
     name = fields.Char(string="Typ výdavku", required=True)
     description = fields.Text(string="Popis")
     currency_id = fields.Many2one(

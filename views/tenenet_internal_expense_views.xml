@@ -4,16 +4,19 @@
     <record id="view_tenenet_internal_expense_list" model="ir.ui.view">
         <field name="name">tenenet.internal.expense.list</field>
         <field name="model">tenenet.internal.expense</field>
-        <field name="arch" type="xml">
-            <list string="Interné náklady" default_order="period desc">
-                <field name="period"/>
-                <field name="employee_id"/>
-                <field name="category"/>
-                <field name="hour_type" optional="show"/>
-                <field name="hours" optional="show"/>
-                <field name="wage_hm" optional="hide"/>
-                <field name="wage_ccp" optional="hide" readonly="1"/>
-                <field name="cost_hm" sum="Spolu HM"/>
+            <field name="arch" type="xml">
+                <list string="Interné náklady" default_order="period desc">
+                    <field name="period"/>
+                    <field name="employee_id"/>
+                    <field name="category"/>
+                    <field name="source_project_id" optional="show"/>
+                    <field name="expense_type_config_id" optional="show"/>
+                    <field name="expense_amount" optional="show"/>
+                    <field name="hour_type" optional="show"/>
+                    <field name="hours" optional="show"/>
+                    <field name="wage_hm" optional="hide"/>
+                    <field name="wage_ccp" optional="hide" readonly="1"/>
+                    <field name="cost_hm" sum="Spolu HM"/>
                 <field name="cost_ccp" sum="Spolu CCP"/>
                 <field name="source_assignment_id" optional="show"/>
                 <field name="leave_id" optional="show"/>
@@ -34,11 +37,14 @@
                             <field name="employee_id"/>
                             <field name="period"/>
                             <field name="category"/>
+                            <field name="source_project_id" invisible="category != 'expense'"/>
+                            <field name="expense_type_config_id" invisible="category != 'expense'"/>
                             <field name="hour_type" invisible="category != 'leave'"/>
                             <field name="leave_id" invisible="category != 'leave'"/>
                             <field name="source_assignment_id"/>
                         </group>
                         <group string="Mzdové sadzby a náklady">
+                            <field name="expense_amount" invisible="category != 'expense'"/>
                             <field name="hours" invisible="category != 'leave'"/>
                             <field name="wage_hm"/>
                             <field name="wage_ccp" readonly="1"/>

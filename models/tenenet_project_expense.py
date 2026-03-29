@@ -20,6 +20,17 @@ class TenenetProjectExpense(models.Model):
         ondelete="restrict",
         domain="[('project_id', '=', project_id)]",
     )
+    expense_type_config_id = fields.Many2one(
+        "tenenet.expense.type.config",
+        string="Typ nákladu (katalóg)",
+        ondelete="set null",
+    )
+    hr_expense_id = fields.Many2one(
+        "hr.expense",
+        string="Zdrojový výdavok",
+        ondelete="cascade",
+        index=True,
+    )
     date = fields.Date(
         string="Dátum",
         required=True,
@@ -46,6 +57,11 @@ class TenenetProjectExpense(models.Model):
         required=True,
         default="project",
         help="Projekt: hradené z projektového rozpočtu. Interné: hradené z interných zdrojov TENENET.",
+    )
+
+    _unique_hr_expense = models.Constraint(
+        "UNIQUE(hr_expense_id)",
+        "Pre jeden HR výdavok môže existovať len jeden projektový záznam.",
     )
 
     @api.model_create_multi

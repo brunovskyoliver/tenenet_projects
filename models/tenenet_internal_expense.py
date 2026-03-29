@@ -8,6 +8,7 @@ _logger = logging.getLogger(__name__)
 INTERNAL_EXPENSE_CATEGORY = [
     ("leave", "Dovolenka"),
     ("wage", "Mzda"),
+    ("expense", "Výdavok"),
 ]
 
 LEAVE_HOUR_TYPE = [
@@ -51,6 +52,24 @@ class TenenetInternalExpense(models.Model):
         ondelete="set null",
         help="Zdrojová žiadosť o dovolenku (len pre kategóriu Dovolenka).",
     )
+    hr_expense_id = fields.Many2one(
+        "hr.expense",
+        string="Zdrojový výdavok",
+        ondelete="cascade",
+        index=True,
+        help="Pôvodný záznam z hr.expense pri projektových výdavkoch presunutých na interné náklady.",
+    )
+    source_project_id = fields.Many2one(
+        "tenenet.project",
+        string="Zdrojový projekt",
+        ondelete="set null",
+        help="Projekt, z ktorého išla nepokrytá časť výdavku do interných nákladov.",
+    )
+    expense_type_config_id = fields.Many2one(
+        "tenenet.expense.type.config",
+        string="Typ nákladu (katalóg)",
+        ondelete="set null",
+    )
     source_assignment_id = fields.Many2one(
         "tenenet.project.assignment",
         string="Zdrojové priradenie",
@@ -88,6 +107,11 @@ class TenenetInternalExpense(models.Model):
         readonly=False,
         help="Pre dovolenku: hodiny × mzda HM. Pre mzdu: priamy prebytok nad stropom.",
     )
+    expense_amount = fields.Monetary(
+        string="Suma výdavku",
+        currency_field="currency_id",
+        help="Pri kategórii Výdavok ide o internú časť sumy z hr.expense.",
+    )
     cost_ccp = fields.Monetary(
         string="Náklad CCP",
         currency_field="currency_id",
@@ -113,6 +137,10 @@ class TenenetInternalExpense(models.Model):
         "UNIQUE(source_assignment_id, period, category)",
         "Pre priradenie môže existovať len jeden mzdový náklad za obdobie.",
     )
+    _unique_hr_expense = models.Constraint(
+        "UNIQUE(hr_expense_id)",
+        "Pre jeden HR výdavok môže existovať len jeden interný náklad typu výdavok.",
+    )
 
     @api.depends("employee_id", "period", "category")
     def _compute_name(self):
@@ -135,12 +163,17 @@ class TenenetInternalExpense(models.Model):
         for rec in self:
             if rec.category == "leave":
                 rec.cost_hm = (rec.hours or 0.0) * (rec.wage_hm or 0.0)
+            elif rec.category == "expense":
+                rec.cost_hm = rec.expense_amount or 0.0
             # For "wage" category, cost_hm is written directly by _check_wage_cap().
 
-    @api.depends("cost_hm")
+    @api.depends("cost_hm", "expense_amount", "category")
     def _compute_cost_ccp(self):
         for rec in self:
-            rec.cost_ccp = (rec.cost_hm or 0.0) * self.CCP_MULTIPLIER
+            if rec.category == "expense":
+                rec.cost_ccp = rec.expense_amount or 0.0
+            else:
+                rec.cost_ccp = (rec.cost_hm or 0.0) * self.CCP_MULTIPLIER
 
     @api.onchange("source_assignment_id")
     def _onchange_source_assignment_id(self):

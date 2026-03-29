@@ -1,0 +1,35 @@
+<odoo>
+    <data>
+        <record id="view_hr_expense_form_tenenet" model="ir.ui.view">
+            <field name="name">hr.expense.form.tenenet</field>
+            <field name="model">hr.expense</field>
+            <field name="inherit_id" ref="hr_expense.hr_expense_view_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//label[@for='product_id']" position="before">
+                    <field name="tenenet_available_project_ids" invisible="1"/>
+                    <field name="tenenet_allowed_product_ids" invisible="1"/>
+                    <field name="tenenet_allowed_type_id" invisible="1"/>
+                </xpath>
+                <xpath expr="//label[@for='product_id']" position="before">
+                    <label for="tenenet_project_id"/>
+                    <div>
+                        <field name="tenenet_project_id"
+                               domain="[('id', 'in', tenenet_available_project_ids)]"
+                               readonly="not is_editable"
+                               class="w-100"/>
+                    </div>
+                    <label for="tenenet_expense_type_config_id"/>
+                    <div>
+                        <field name="tenenet_expense_type_config_id"
+                               readonly="not is_editable"
+                               required="tenenet_project_id"
+                               class="w-100"/>
+                    </div>
+                    <field name="tenenet_project_amount" readonly="1" invisible="not tenenet_project_id"/>
+                    <field name="tenenet_internal_amount" readonly="1" invisible="not tenenet_project_id"/>
+                    <field name="tenenet_split_note" readonly="1" invisible="not tenenet_project_id"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

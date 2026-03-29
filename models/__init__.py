@@ -6,6 +6,7 @@ from . import hr_employee_public
 from . import tenenet_employee_training
 from . import tenenet_service_catalog
 from . import tenenet_employee_service
+from . import hr_expense
 from . import tenenet_project
 from . import tenenet_project_milestone
 from . import tenenet_project_receipt
@@ -19,6 +20,7 @@ from . import tenenet_project_expense
 from . import tenenet_project_allowed_expense_type_wizard
 from . import tenenet_project_receipt_wizard
 from . import tenenet_expense_type_config
+from . import tenenet_expense_type_config_category
 from . import tenenet_alert_allowed_model
 from . import tenenet_alert_rule
 from . import tenenet_alert_condition

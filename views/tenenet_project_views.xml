@@ -171,6 +171,7 @@
                                 </div>
                                 <field name="allowed_expense_type_ids" nolabel="1">
                                     <list string="Povolené typy výdavkov" editable="bottom">
+                                        <field name="config_id" optional="show"/>
                                         <field name="name"/>
                                         <field name="description"/>
                                         <field name="currency_id" column_invisible="1"/>
@@ -184,6 +185,7 @@
                                 <field name="expense_ids" nolabel="1">
                                     <list string="Výdavky projektu" editable="bottom">
                                         <field name="date"/>
+                                        <field name="expense_type_config_id" optional="show"/>
                                         <field name="allowed_type_id"
                                                domain="[('project_id', '=', parent.id)]"/>
                                         <field name="description"/>

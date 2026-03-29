@@ -331,7 +331,7 @@ class TenenetProjectTimesheet(models.Model):
             if not assignment:
                 continue
 
-            cap_hm = assignment.max_monthly_wage_hm or 0.0
+            cap_hm = assignment.max_monthly_wage_hm or assignment.project_id.default_max_monthly_wage_hm or 0.0
 
             if cap_hm <= 0.0:
                 # No cap — clean up any leftover wage expense for this assignment+period

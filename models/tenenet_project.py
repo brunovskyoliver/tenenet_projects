@@ -258,6 +258,8 @@ class TenenetProject(models.Model):
         result = super().write(vals)
         if "date_start" in vals or "date_end" in vals:
             self.mapped("assignment_ids")._sync_precreated_timesheets()
+        if "default_max_monthly_wage_hm" in vals:
+            self.mapped("assignment_ids.timesheet_ids")._check_wage_cap()
         if "odborny_garant_id" in vals or "project_manager_id" in vals or "active" in vals:
             self._sync_garant_pm_group()
         return result
