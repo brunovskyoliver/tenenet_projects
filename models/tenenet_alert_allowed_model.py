@@ -15,7 +15,7 @@ class TenenetAlertAllowedModel(models.Model):
         ondelete="cascade",
         domain=[("transient", "=", False)],
     )
-    model_name = fields.Char(string="Názov modelu", related="model_id.name", store=True, readonly=True)
+    model_name = fields.Char(string="Názov modelu", related="model_id.name", store=True, readonly=True, translate=False)
     model_model = fields.Char(string="Technický názov", related="model_id.model", store=True, readonly=True)
     active = fields.Boolean(string="Aktívny", default=True)
     notes = fields.Text(string="Poznámky")
