@@ -21,6 +21,20 @@ MONTH_LABELS = {
     12: "Dec",
 }
 
+HOUR_TYPE_ORDER = {
+    "pp": 10,
+    "np": 20,
+    "travel": 30,
+    "training": 40,
+    "ambulance": 50,
+    "international": 60,
+    "vacation": 70,
+    "sick": 80,
+    "doctor": 90,
+    "holidays": 100,
+    "total": 9999,
+}
+
 # Extended hour type selection with total row
 MATRIX_HOUR_TYPE_SELECTION = HOUR_TYPE_SELECTION + [("total", "SPOLU")]
 
@@ -193,6 +207,23 @@ class TenenetProjectTimesheetMatrix(models.Model):
             "target": "current",
         }
 
+    def action_open_grid(self):
+        self.ensure_one()
+        self.assignment_id._sync_precreated_timesheets()
+        expected_years = self.assignment_id._get_expected_years()
+        if expected_years:
+            self._ensure_for_assignment_years(self.assignment_id, expected_years)
+        self._load_from_timesheets()
+        action = self.env.ref("tenenet_projects.action_tenenet_project_timesheet_matrix_grid").read()[0]
+        action["domain"] = [("matrix_id", "=", self.id)]
+        action["context"] = {
+            **dict(self.env.context),
+            "default_matrix_id": self.id,
+            "grid_anchor": f"{self.year}-01-01",
+            "auto_sync_timesheet_matrix_entries": True,
+        }
+        return action
+
     def _action_open_year(self, target_year):
         """Open the matrix for the specified year."""
         self.ensure_one()
@@ -201,22 +232,22 @@ class TenenetProjectTimesheetMatrix(models.Model):
             [target_year],
         ).filtered(lambda rec: rec.year == target_year)[:1]
         if matrix:
-            return matrix.action_open_form()
-        return self.action_open_form()
+            return matrix.action_open_grid()
+        return self.action_open_grid()
 
     def action_previous_year(self):
         """Navigate to the previous year's matrix."""
         self.ensure_one()
         if self.can_go_previous:
             return self._action_open_year(self.previous_year)
-        return self.action_open_form()
+        return self.action_open_grid()
 
     def action_next_year(self):
         """Navigate to the next year's matrix."""
         self.ensure_one()
         if self.can_go_next:
             return self._action_open_year(self.next_year)
-        return self.action_open_form()
+        return self.action_open_grid()
 
     @api.model
     def sync_my_matrices(self):
@@ -389,6 +420,11 @@ class TenenetProjectTimesheetMatrixLine(models.Model):
     month_10_editable = fields.Boolean(compute="_compute_month_editability", store=True)
     month_11_editable = fields.Boolean(compute="_compute_month_editability", store=True)
     month_12_editable = fields.Boolean(compute="_compute_month_editability", store=True)
+    entry_ids = fields.One2many(
+        "tenenet.project.timesheet.matrix.entry",
+        "line_id",
+        string="Mesačné bunky",
+    )
 
     _unique_matrix_hour_type = models.Constraint(
         "UNIQUE(matrix_id, hour_type)",
@@ -465,6 +501,33 @@ class TenenetProjectTimesheetMatrixLine(models.Model):
                 totals[field_name] = sum(line[field_name] or 0.0 for line in data_lines)
             total_line.with_context(skip_matrix_month_sync=True).write(totals)
 
+    def _sync_grid_entries(self):
+        Entry = self.env["tenenet.project.timesheet.matrix.entry"]
+        for rec in self.filtered(lambda line: line.year):
+            existing_entries = {entry.period: entry for entry in rec.entry_ids}
+            desired_periods = set()
+            for month in range(1, 13):
+                period = date(rec.year, month, 1)
+                desired_periods.add(period)
+                values = {
+                    "line_id": rec.id,
+                    "period": period,
+                    "hours": rec[f"month_{month:02d}"] or 0.0,
+                    "editable": bool(
+                        rec[f"month_{month:02d}_editable"]
+                        and not rec.leave_sync_managed
+                        and not rec.is_total
+                    ),
+                }
+                existing_entry = existing_entries.get(period)
+                if existing_entry:
+                    existing_entry.write(values)
+                else:
+                    Entry.create(values)
+            stale_entries = rec.entry_ids.filtered(lambda entry: entry.period not in desired_periods)
+            if stale_entries:
+                stale_entries.unlink()
+
     def _sync_month_values_to_timesheets(self, month_field_names):
         Timesheet = self.env["tenenet.project.timesheet"]
         Line = self.env["tenenet.project.timesheet.line"]
@@ -528,6 +591,7 @@ class TenenetProjectTimesheetMatrixLine(models.Model):
         non_total_records._load_month_values_from_timesheets()
         # Ensure total rows are updated
         records._update_total_rows()
+        records._sync_grid_entries()
         return records
 
     def write(self, vals):
@@ -535,6 +599,7 @@ class TenenetProjectTimesheetMatrixLine(models.Model):
             self._validate_month_writes_in_scope(vals)
         result = super().write(vals)
         if self.env.context.get("skip_matrix_month_sync"):
+            self._sync_grid_entries()
             return result
         month_field_names = [field_name for field_name in vals if field_name.startswith("month_")]
         if month_field_names:
@@ -542,4 +607,210 @@ class TenenetProjectTimesheetMatrixLine(models.Model):
             self.flush_recordset(month_field_names)
             self.invalidate_recordset(month_field_names)
             self._load_month_values_from_timesheets()
+        self._sync_grid_entries()
         return result
+
+
+class TenenetProjectTimesheetMatrixEntry(models.Model):
+    _name = "tenenet.project.timesheet.matrix.entry"
+    _description = "Mesačná bunka ročnej matice timesheetu"
+    _order = "matrix_id, sequence, period, id"
+    _rec_name = "name"
+
+    line_id = fields.Many2one(
+        "tenenet.project.timesheet.matrix.line",
+        string="Riadok matice",
+        required=True,
+        ondelete="cascade",
+    )
+    matrix_id = fields.Many2one(
+        "tenenet.project.timesheet.matrix",
+        string="Matica",
+        related="line_id.matrix_id",
+        store=True,
+        readonly=True,
+    )
+    assignment_id = fields.Many2one(
+        "tenenet.project.assignment",
+        string="Priradenie",
+        related="line_id.assignment_id",
+        store=True,
+        readonly=True,
+    )
+    employee_id = fields.Many2one(
+        "hr.employee",
+        string="Zamestnanec",
+        related="line_id.employee_id",
+        store=True,
+        readonly=True,
+    )
+    project_id = fields.Many2one(
+        "tenenet.project",
+        string="Projekt",
+        related="line_id.project_id",
+        store=True,
+        readonly=True,
+    )
+    year = fields.Integer(
+        string="Rok",
+        related="line_id.year",
+        store=True,
+        readonly=True,
+    )
+    hour_type = fields.Selection(
+        MATRIX_HOUR_TYPE_SELECTION,
+        string="Typ hodín",
+        related="line_id.hour_type",
+        store=True,
+        readonly=True,
+    )
+    is_total = fields.Boolean(
+        string="Je súčtový riadok",
+        related="line_id.is_total",
+        store=True,
+        readonly=True,
+    )
+    leave_sync_managed = fields.Boolean(
+        string="Absencia spravovaná HR",
+        related="line_id.leave_sync_managed",
+        store=True,
+        readonly=True,
+    )
+    name = fields.Char(
+        string="Kategória",
+        related="line_id.name",
+        store=True,
+        readonly=True,
+    )
+    scope = fields.Selection(
+        HOUR_SCOPE_SELECTION + [("total", "Súčet")],
+        string="Skupina",
+        related="line_id.scope",
+        store=True,
+        readonly=True,
+    )
+    sequence = fields.Integer(
+        string="Poradie",
+        related="line_id.sequence",
+        store=True,
+        readonly=True,
+    )
+    period = fields.Date(
+        string="Obdobie",
+        required=True,
+    )
+    month = fields.Integer(
+        string="Mesiac",
+        compute="_compute_month",
+        store=True,
+    )
+    hours = fields.Float(
+        string="Hodiny",
+        digits=(10, 2),
+        default=0.0,
+    )
+    editable = fields.Boolean(
+        string="Editovateľné",
+        default=False,
+    )
+
+    _unique_line_period = models.Constraint(
+        "UNIQUE(line_id, period)",
+        "Pre rovnaký riadok a mesiac môže existovať len jedna bunka matice.",
+    )
+
+    @api.depends("period")
+    def _compute_month(self):
+        for rec in self:
+            rec.month = rec.period.month if rec.period else 0
+
+    @api.model
+    def _auto_sync_grid_matrix(self):
+        if self.env.context.get("_timesheet_matrix_entry_autosync_done"):
+            return
+        if not self.env.context.get("auto_sync_timesheet_matrix_entries"):
+            return
+        matrix_id = self.env.context.get("default_matrix_id")
+        if not matrix_id:
+            return
+        matrix = self.env["tenenet.project.timesheet.matrix"].browse(matrix_id).exists()
+        if matrix:
+            matrix.line_ids.with_context(
+                _timesheet_matrix_entry_autosync_done=True
+            )._sync_grid_entries()
+
+    @api.model
+    def search(self, domain, offset=0, limit=None, order=None):
+        self._auto_sync_grid_matrix()
+        return super().search(domain, offset=offset, limit=limit, order=order)
+
+    @api.model
+    def read_group(self, domain, fields, groupby, offset=0, limit=None, orderby=False, lazy=True):
+        self._auto_sync_grid_matrix()
+        return super().read_group(
+            domain,
+            fields,
+            groupby,
+            offset=offset,
+            limit=limit,
+            orderby=orderby,
+            lazy=lazy,
+        )
+
+    @api.model
+    def formatted_read_group(self, domain, groupby=(), aggregates=(), having=(), offset=0, limit=None, order=None):
+        self._auto_sync_grid_matrix()
+        result = super().formatted_read_group(
+            domain, groupby=groupby, aggregates=aggregates, having=having,
+            offset=offset, limit=limit, order=order,
+        )
+        if 'hour_type' in groupby:
+            result = sorted(result, key=lambda g: HOUR_TYPE_ORDER.get(g.get('hour_type'), 9999))
+        return result
+
+    @api.model
+    def read_grid(self, domain, row_fields, col_field, cell_field, range):
+        self._auto_sync_grid_matrix()
+        result = super().read_grid(domain, row_fields, col_field, cell_field, range)
+        row_titles = result.get("row_titles", [])
+        data_rows = result.get("data", [])
+        sorted_rows = []
+        for row_title, row in zip(row_titles, data_rows):
+            row_values = row_title.get("values", {})
+            hour_type_info = row_values.get("hour_type") or [False, ""]
+            row_order = HOUR_TYPE_ORDER.get(hour_type_info[0], 9999)
+            sorted_rows.append((row_order, row_title, row))
+            for cell in row:
+                record = self.search(cell.get("domain", []), limit=1)
+                if not record:
+                    cell["readonly"] = True
+                    continue
+                cell["readonly"] = not record.editable
+                if record.is_total:
+                    cell.setdefault("classes", []).append("text-info")
+                if record.scope == "leave":
+                    cell.setdefault("classes", []).append("o_tenenet_grid_leave_cell")
+                if record.scope == "total":
+                    cell.setdefault("classes", []).append("o_tenenet_grid_total_cell")
+        if sorted_rows:
+            sorted_rows.sort(key=lambda item: (item[0],))
+            result["row_titles"] = [item[1] for item in sorted_rows]
+            result["data"] = [item[2] for item in sorted_rows]
+        return result
+
+    @api.model
+    def grid_update_cell(self, domain, measure_field_name, value):
+        if measure_field_name != "hours" or value == 0:
+            return False
+        entry = self.search(domain, limit=1)
+        if not entry:
+            return False
+        if not entry.editable:
+            raise ValidationError(
+                "Tento typ hodín je spravovaný automaticky alebo je mimo rozsahu priradenia a nie je možné ho upravovať v matici."
+            )
+        month_field_name = f"month_{entry.month:02d}"
+        entry.line_id.write({
+            month_field_name: (entry.hours or 0.0) + value,
+        })
+        return {"type": "ir.actions.client", "tag": "reload"}

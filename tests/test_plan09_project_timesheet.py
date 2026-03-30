@@ -285,7 +285,10 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
             "wage_ccp": 13.62,
         })
         action = assignment.action_open_timesheet_matrix_current_year()
-        matrix = self.env["tenenet.project.timesheet.matrix"].browse(action["res_id"])
+        self.assertEqual(action["res_model"], "tenenet.project.timesheet.matrix.entry")
+        self.assertEqual(action["view_mode"], "grid,list,form")
+        self.assertEqual(action["domain"], [("matrix_id", "=", assignment.matrix_ids.filtered(lambda rec: rec.year == 2026).id)])
+        matrix = self.env["tenenet.project.timesheet.matrix"].browse(action["context"]["default_matrix_id"])
         self.assertTrue(matrix)
         self.assertEqual(matrix.assignment_id, assignment)
         self.assertEqual(matrix.year, 2026)
@@ -294,10 +297,60 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
             [2025, 2026],
         )
         self.assertEqual(
-            sorted(action["context"]["matrix_year_options"]),
-            [2025, 2026],
+            action["context"]["grid_anchor"],
+            "2026-01-01",
         )
         self.assertEqual(len(matrix.line_ids), 10)
+
+    def test_matrix_grid_entries_follow_matrix_and_update_timesheets(self):
+        matrix = self.env["tenenet.project.timesheet.matrix"].create({
+            "assignment_id": self.assignment.id,
+            "year": 2026,
+        })
+        row_pp = matrix.line_ids.filtered(lambda line: line.hour_type == "pp")[:1]
+        entries = self.env["tenenet.project.timesheet.matrix.entry"].search([
+            ("line_id", "=", row_pp.id),
+        ], order="period")
+
+        self.assertEqual(len(entries), 12)
+        self.assertEqual(entries[0].period, fields.Date.to_date("2026-01-01"))
+        self.assertTrue(entries[0].editable)
+
+        january_entry = entries[0]
+        self.env["tenenet.project.timesheet.matrix.entry"].grid_update_cell(
+            [("id", "=", january_entry.id)],
+            "hours",
+            14.0,
+        )
+
+        row_pp.invalidate_recordset(["month_01"])
+        self.assertAlmostEqual(row_pp.month_01, 14.0)
+
+        january = self.env["tenenet.project.timesheet"].search([
+            ("assignment_id", "=", self.assignment.id),
+            ("period", "=", "2026-01-01"),
+        ], limit=1)
+        self.assertAlmostEqual(january.hours_pp, 14.0)
+
+    def test_matrix_grid_leave_entries_are_locked(self):
+        matrix = self.env["tenenet.project.timesheet.matrix"].create({
+            "assignment_id": self.assignment.id,
+            "year": 2026,
+        })
+        leave_entry = self.env["tenenet.project.timesheet.matrix.entry"].search([
+            ("matrix_id", "=", matrix.id),
+            ("hour_type", "=", "doctor"),
+            ("period", "=", "2026-01-01"),
+        ], limit=1)
+        self.assertTrue(leave_entry)
+        self.assertFalse(leave_entry.editable)
+
+        with self.assertRaises(ValidationError):
+            self.env["tenenet.project.timesheet.matrix.entry"].grid_update_cell(
+                [("id", "=", leave_entry.id)],
+                "hours",
+                2.0,
+            )
 
     def test_open_ended_assignment_creates_year_matrices_until_present(self):
         project = self.env["tenenet.project"].create({

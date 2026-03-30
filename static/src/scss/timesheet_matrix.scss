@@ -222,6 +222,38 @@
     }
 }
 
+.o_grid_renderer {
+    .o_grid_row.o_tenenet_grid_leave_row,
+    .o_grid_row_title:has(+ .o_tenenet_grid_leave_row) {
+        color: rgba(255, 255, 255, 0.45);
+
+        .o_grid_component,
+        .o_grid_row_data_separator,
+        .o_grid_cell_readonly span,
+        .o_grid_cell span {
+            color: inherit !important;
+        }
+    }
+
+    .o_grid_row.o_tenenet_grid_leave_row:not(.o_grid_row_title):not(.o_grid_row_total) {
+        pointer-events: none;
+        cursor: not-allowed;
+    }
+
+    .o_grid_row.o_tenenet_grid_leave_row:not(.o_grid_row_title):not(.o_grid_row_total) {
+        .o_grid_search_btn,
+        input,
+        button {
+            display: none !important;
+        }
+    }
+
+    .o_grid_row.o_tenenet_grid_total_row,
+    .o_grid_row_title.o_tenenet_grid_total_row {
+        font-weight: 700;
+    }
+}
+
 // ── Moje timesheety stacked client action ──────────────────────────────────
 .o_tenenet_my_timesheets {
     // Outer shell: fill whatever slot Odoo's action manager gives us.

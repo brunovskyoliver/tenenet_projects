@@ -299,7 +299,7 @@ class TenenetProjectAssignment(models.Model):
             self,
             years,
         )
-        return matrix.filtered(lambda rec: rec.year == year)[:1].action_open_form()
+        return matrix.filtered(lambda rec: rec.year == year)[:1].action_open_grid()
 
     def _get_effective_date_range(self):
         self.ensure_one()

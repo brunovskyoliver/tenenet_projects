@@ -20,11 +20,95 @@
                 <list string="Moje timesheety" create="0" delete="0">
                     <field name="project_id"/>
                     <field name="year"/>
-                    <button name="action_open_form"
+                    <button name="action_open_grid"
                             type="object"
                             string="Otvoriť maticu"
                             class="btn-link"/>
                 </list>
+            </field>
+        </record>
+
+        <record id="view_tenenet_project_timesheet_matrix_entry_list" model="ir.ui.view">
+            <field name="name">tenenet.project.timesheet.matrix.entry.list</field>
+            <field name="model">tenenet.project.timesheet.matrix.entry</field>
+            <field name="arch" type="xml">
+                <list string="Mesačná matica hodín" default_order="sequence, period">
+                    <field name="name"/>
+                    <field name="employee_id"/>
+                    <field name="project_id"/>
+                    <field name="year"/>
+                    <field name="period"/>
+                    <field name="hours"/>
+                    <field name="editable"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_tenenet_project_timesheet_matrix_entry_form" model="ir.ui.view">
+            <field name="name">tenenet.project.timesheet.matrix.entry.form</field>
+            <field name="model">tenenet.project.timesheet.matrix.entry</field>
+            <field name="arch" type="xml">
+                <form string="Mesačná bunka matice">
+                    <sheet>
+                        <group>
+                            <field name="matrix_id" readonly="1"/>
+                            <field name="assignment_id" readonly="1"/>
+                            <field name="employee_id" readonly="1"/>
+                            <field name="project_id" readonly="1"/>
+                            <field name="name" readonly="1"/>
+                            <field name="period" readonly="1"/>
+                            <field name="hours" readonly="1"/>
+                            <field name="editable" readonly="1"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_tenenet_project_timesheet_matrix_entry_grid" model="ir.ui.view">
+            <field name="name">tenenet.project.timesheet.matrix.entry.grid</field>
+            <field name="model">tenenet.project.timesheet.matrix.entry</field>
+            <field name="arch" type="xml">
+                <grid string="Mesačná matica hodín"
+                      create="false"
+                      edit="true"
+                      delete="false"
+                      js_class="tenenet_timesheet_matrix_grid"
+                      editable="1"
+                      display_empty="1"
+                      hide_column_total="1"
+                      form_view_id="%(view_tenenet_project_timesheet_matrix_entry_form)d">
+                    <field name="sequence" type="row" invisible="1"/>
+                    <field name="hour_type" type="row" invisible="1"/>
+                    <field name="scope" type="row" invisible="1"/>
+                    <field name="name" type="row"/>
+                    <field name="period" type="col">
+                        <range name="year" string="Rok" span="year" step="month" default="1"/>
+                        <range name="month" string="Mesiac" span="month" step="day"/>
+                    </field>
+                    <field name="hours" type="measure" widget="float"/>
+                </grid>
+            </field>
+        </record>
+
+        <record id="view_tenenet_project_timesheet_matrix_entry_search" model="ir.ui.view">
+            <field name="name">tenenet.project.timesheet.matrix.entry.search</field>
+            <field name="model">tenenet.project.timesheet.matrix.entry</field>
+            <field name="arch" type="xml">
+                <search string="Mesačná matica hodín">
+                    <field name="employee_id"/>
+                    <field name="project_id"/>
+                    <field name="name"/>
+                    <field name="year"/>
+                    <filter string="Aktuálny rok" name="current_year"
+                            domain="[('year', '=', context_today().year)]"/>
+                    <filter string="Bez absencií" name="without_leave" domain="[('leave_sync_managed', '=', False)]"/>
+                    <group>
+                        <filter string="Projekt" name="group_project" context="{'group_by': 'project_id'}"/>
+                        <filter string="Zamestnanec" name="group_employee" context="{'group_by': 'employee_id'}"/>
+                        <filter string="Rok" name="group_year" context="{'group_by': 'year'}"/>
+                    </group>
+                </search>
             </field>
         </record>
 
@@ -139,6 +223,19 @@
             <field name="res_model">tenenet.project.timesheet.matrix</field>
             <field name="view_mode">list,form</field>
             <field name="search_view_id" ref="view_tenenet_project_timesheet_matrix_search"/>
+            <field name="target">current</field>
+        </record>
+
+        <record id="action_tenenet_project_timesheet_matrix_grid" model="ir.actions.act_window">
+            <field name="name">Mesačná matica hodín</field>
+            <field name="res_model">tenenet.project.timesheet.matrix.entry</field>
+            <field name="view_mode">grid,list,form</field>
+            <field name="view_ids" eval="[(5, 0, 0),
+                   (0, 0, {'view_mode': 'grid', 'view_id': ref('view_tenenet_project_timesheet_matrix_entry_grid')}),
+                   (0, 0, {'view_mode': 'list', 'view_id': ref('view_tenenet_project_timesheet_matrix_entry_list')}),
+                   (0, 0, {'view_mode': 'form', 'view_id': ref('view_tenenet_project_timesheet_matrix_entry_form')})]"/>
+            <field name="search_view_id" ref="view_tenenet_project_timesheet_matrix_entry_search"/>
+            <field name="context">{'grid_range': 'year', 'auto_sync_timesheet_matrix_entries': True}</field>
             <field name="target">current</field>
         </record>
 
