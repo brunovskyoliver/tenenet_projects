@@ -327,14 +327,6 @@ class TenenetProjectAssignment(models.Model):
             self.date_end or self.project_id.date_end,
         )
 
-    @staticmethod
-    def _date_ranges_overlap(start_a, end_a, start_b, end_b):
-        if start_a and end_b and start_a > end_b:
-            return False
-        if start_b and end_a and start_b > end_a:
-            return False
-        return True
-
     @api.constrains("date_start", "date_end", "allocation_ratio")
     def _check_dates(self):
         for rec in self:
@@ -344,21 +336,3 @@ class TenenetProjectAssignment(models.Model):
                 )
             if rec.allocation_ratio <= 0.0 or rec.allocation_ratio > 100.0:
                 raise ValidationError("Úväzok na projekte musí byť v rozsahu 0 až 100 %.")
-
-    @api.constrains("employee_id", "project_id", "date_start", "date_end", "active")
-    def _check_overlap(self):
-        for rec in self:
-            if not rec.employee_id or not rec.project_id:
-                continue
-            current_start, current_end = rec._get_effective_date_range()
-            overlaps = self.search([
-                ("id", "!=", rec.id),
-                ("employee_id", "=", rec.employee_id.id),
-                ("project_id", "=", rec.project_id.id),
-            ])
-            for other in overlaps:
-                other_start, other_end = other._get_effective_date_range()
-                if rec._date_ranges_overlap(current_start, current_end, other_start, other_end):
-                    raise ValidationError(
-                        "Pre rovnakého zamestnanca a projekt sa obdobia priradení nesmú prekrývať."
-                    )

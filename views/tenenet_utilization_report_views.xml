@@ -26,6 +26,24 @@
                     <field name="expression_label">manager_name</field>
                     <field name="figure_type">string</field>
                 </record>
+                <record id="tenenet_utilization_report_column_project_type" model="account.report.column">
+                    <field name="sequence">20</field>
+                    <field name="name">Typ projektu</field>
+                    <field name="expression_label">project_type</field>
+                    <field name="figure_type">string</field>
+                </record>
+                <record id="tenenet_utilization_report_column_monthly_project_income" model="account.report.column">
+                    <field name="sequence">25</field>
+                    <field name="name">Mesačný príjem na projekte</field>
+                    <field name="expression_label">monthly_project_income</field>
+                    <field name="figure_type">monetary</field>
+                </record>
+                <record id="tenenet_utilization_report_column_project_insurance_income" model="account.report.column">
+                    <field name="sequence">26</field>
+                    <field name="name">Poistné pre projekt</field>
+                    <field name="expression_label">project_insurance_income</field>
+                    <field name="figure_type">monetary</field>
+                </record>
                 <record id="tenenet_utilization_report_column_work_ratio" model="account.report.column">
                     <field name="sequence">30</field>
                     <field name="name">Úväzok (%)</field>

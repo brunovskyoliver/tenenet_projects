@@ -83,14 +83,15 @@ class TestTenenetPlan08ProjectAssignment(TransactionCase):
                 self._assignment_vals(date_start="2026-06-01", date_end="2026-01-01")
             )
 
-    def test_overlapping_same_project_periods_are_rejected(self):
-        self.env["tenenet.project.assignment"].create(
+    def test_overlapping_same_project_periods_are_allowed(self):
+        first = self.env["tenenet.project.assignment"].create(
             self._assignment_vals(date_start="2026-01-01", date_end="2026-06-30")
         )
-        with self.assertRaises(ValidationError):
-            self.env["tenenet.project.assignment"].create(
-                self._assignment_vals(date_start="2026-06-15", date_end="2026-12-31")
-            )
+        second = self.env["tenenet.project.assignment"].create(
+            self._assignment_vals(date_start="2026-06-15", date_end="2026-12-31")
+        )
+        self.assertTrue(first.exists())
+        self.assertTrue(second.exists())
 
     def test_allocation_ratio_constraint(self):
         with self.assertRaises(ValidationError):

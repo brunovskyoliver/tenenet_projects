@@ -19,7 +19,7 @@ _logger = logging.getLogger(__name__)
 
 def migrate(cr, version):
     env = api.Environment(cr, SUPERUSER_ID, {})
-    _migrate_company_expenses(env)
+
     _migrate_internal_sync_entries(env)
     _archive_internal_project(env)
 
