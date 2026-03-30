@@ -30,12 +30,12 @@ class HrExpense(models.Model):
         compute="_compute_tenenet_split",
     )
     tenenet_project_amount = fields.Monetary(
-        string="Na projekt",
+        string="Projektové náklady",
         currency_field="company_currency_id",
         compute="_compute_tenenet_split",
     )
     tenenet_internal_amount = fields.Monetary(
-        string="Interne",
+        string="Interné náklady",
         currency_field="company_currency_id",
         compute="_compute_tenenet_split",
     )
