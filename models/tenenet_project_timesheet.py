@@ -274,7 +274,9 @@ class TenenetProjectTimesheet(models.Model):
             record._sync_line_hours(hour_vals)
         records._sync_employee_period_costs()
         records._check_wage_cap()
-        self.env["tenenet.utilization"]._sync_current_period()
+        self.env["tenenet.utilization"]._recompute_for_employee_periods([
+            (r.employee_id.id, r.period) for r in records if r.employee_id and r.period
+        ])
         return records
 
     def write(self, vals):
@@ -286,7 +288,9 @@ class TenenetProjectTimesheet(models.Model):
             self._sync_employee_period_costs()
         if hour_vals or {"assignment_id", "period", "wage_hm", "wage_ccp"} & set(clean_vals):
             self._check_wage_cap()
-        self.env["tenenet.utilization"]._sync_current_period()
+        self.env["tenenet.utilization"]._recompute_for_employee_periods([
+            (r.employee_id.id, r.period) for r in self if r.employee_id and r.period
+        ])
         return result
 
     def unlink(self):
@@ -315,7 +319,7 @@ class TenenetProjectTimesheet(models.Model):
                     ("period", "=", period),
                     ("category", "=", "wage"),
                 ]).unlink()
-        self.env["tenenet.utilization"]._sync_current_period()
+        self.env["tenenet.utilization"]._recompute_for_employee_periods(sync_keys)
         return result
 
     def _check_wage_cap(self):

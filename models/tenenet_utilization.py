@@ -231,6 +231,25 @@ class TenenetUtilization(models.Model):
     def _sync_current_period(self):
         return self._sync_for_period(self._current_period())
 
+    @api.model
+    def _recompute_for_employee_periods(self, employee_period_pairs):
+        """Ensure a utilization record exists for each (employee_id, period) pair and
+        force-recompute its hour totals from the current timesheet state.
+
+        This is the correct replacement for _sync_current_period() at call sites that
+        know which employee/period is affected (timesheet write/unlink, leave sync, etc.).
+        """
+        if not employee_period_pairs:
+            return
+        for emp_id, period in set(employee_period_pairs):
+            if not emp_id or not period:
+                continue
+            normalized = self._normalize_period(period)
+            util = self.search([("employee_id", "=", emp_id), ("period", "=", normalized)])
+            if not util:
+                util = self.create({"employee_id": emp_id, "period": normalized})
+            util._compute_from_timesheets()
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:

@@ -276,6 +276,25 @@ class TenenetProjectAssignment(models.Model):
         records._sync_precreated_timesheets()
         return records
 
+    def unlink(self):
+        # Collect affected (employee_id, period) pairs before cascade-deletes them.
+        # After deletion the timesheets are gone, so we need to recompute utilization
+        # to clear any stale leave/project hours that were stored there.
+        affected = {
+            (ts.employee_id.id, ts.period)
+            for rec in self
+            for ts in rec.timesheet_ids
+            if ts.employee_id and ts.period
+        }
+        result = super().unlink()
+        if affected:
+            Util = self.env["tenenet.utilization"].sudo()
+            for emp_id, period in affected:
+                util = Util.search([("employee_id", "=", emp_id), ("period", "=", period)])
+                if util:
+                    util._compute_from_timesheets()
+        return result
+
     def write(self, vals):
         result = super().write(vals)
         if {

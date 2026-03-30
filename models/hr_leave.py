@@ -86,6 +86,7 @@ class HrLeave(models.Model):
         LeaveRule = self.env["tenenet.project.leave.rule"].sudo()
         SyncEntry = self.env["tenenet.project.leave.sync.entry"].sudo()
         InternalExpense = self.env["tenenet.internal.expense"].sudo()
+        affected_employee_periods = set()
 
         for leave in self:
             if leave.state != "validate":
@@ -222,8 +223,13 @@ class HrLeave(models.Model):
                 len(allocations),
             )
             SyncEntry._replace_for_leave(leave, allocations)
+            if leave.employee_id:
+                for alloc in allocations:
+                    period = alloc.get("period")
+                    if period:
+                        affected_employee_periods.add((leave.employee_id.id, period.replace(day=1)))
 
-        self.env["tenenet.utilization"]._sync_current_period()
+        self.env["tenenet.utilization"]._recompute_for_employee_periods(affected_employee_periods)
 
     # ── Helpers ──────────────────────────────────────────────────────────────
 

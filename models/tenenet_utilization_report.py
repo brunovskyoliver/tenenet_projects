@@ -60,7 +60,10 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
 
     def _dynamic_lines_generator(self, report, options, all_column_groups_expression_totals, warnings=None):
         period = self._get_selected_month_start(report, options)
-        self.env["tenenet.utilization"].sudo()._sync_for_period(period)
+        utilization_records = self.env["tenenet.utilization"].sudo()._sync_for_period(period)
+        # Force a fresh recompute so the report always shows live data even when leaves
+        # or project assignments have been deleted since the records were last computed.
+        utilization_records._compute_from_timesheets()
         utilization_records = self._get_utilization_records(
             period,
             search_term=options.get("filter_search_bar"),
