@@ -1,0 +1,35 @@
+.account_report.tenenet_cashflow_report {
+    #filter_date {
+        .o_datetime_input {
+            min-width: 5rem;
+            text-align: center;
+        }
+    }
+
+    .line_cell.numeric {
+        text-align: center !important;
+
+        > .wrapper {
+            justify-content: center;
+        }
+
+        > .wrapper > .content {
+            justify-content: center;
+            width: 100%;
+        }
+    }
+
+    tr.cashflow_expense_line {
+        .line_cell.numeric {
+            color: var(--danger);
+        }
+    }
+
+    tr.cashflow_spacer_line {
+        td {
+            height: 1rem;
+            border: 0;
+            background: transparent;
+        }
+    }
+}

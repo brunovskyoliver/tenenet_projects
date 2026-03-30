@@ -11,6 +11,7 @@ from . import tenenet_project
 from . import tenenet_project_milestone
 from . import tenenet_project_receipt
 from . import tenenet_project_cashflow
+from . import tenenet_cashflow_global_override
 from . import tenenet_project_assignment
 from . import tenenet_project_assignment_wizard
 from . import tenenet_project_milestone_wizard
@@ -29,7 +30,6 @@ from . import tenenet_alert_match
 from . import tenenet_project_timesheet
 from . import tenenet_project_timesheet_matrix
 from . import tenenet_employee_tenenet_cost
-from . import tenenet_company_expense
 from . import tenenet_project_leave_sync_entry
 from . import tenenet_internal_expense
 from . import hr_leave_type
@@ -43,6 +43,7 @@ from . import tenenet_utilization_sync_wizard
 from . import tenenet_pl_line
 from . import tenenet_pl_report
 from . import tenenet_internal_expense_report
+from . import tenenet_cashflow_report
 from . import tenenet_sk_holidays
 from . import tenenet_employee_list_report
 from . import res_users

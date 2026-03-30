@@ -57,14 +57,24 @@ class TenenetProjectReceipt(models.Model):
         self.cashflow_ids.unlink()
         if not self.year or not self.amount:
             return
-        monthly_amount = self.amount / 12
+        currency = self.currency_id or self.env.company.currency_id
+        monthly_amount = currency.round(self.amount / 12)
+        start_month = self.date_received.month if self.date_received else 1
         vals_list = []
         total_assigned = 0.0
-        for month in range(1, 13):
+        for month in range(start_month, 13):
             date_start = datetime.date(self.year, month, 1)
-            if month == 12:
+            if month == start_month:
+                date_stop = (
+                    datetime.date(self.year, month + 1, 1) - datetime.timedelta(days=1)
+                    if month < 12
+                    else datetime.date(self.year, 12, 31)
+                )
+                month_amount = currency.round(monthly_amount * start_month)
+                total_assigned += month_amount
+            elif month == 12:
                 date_stop = datetime.date(self.year, 12, 31)
-                month_amount = self.amount - total_assigned
+                month_amount = currency.round(self.amount - total_assigned)
             else:
                 date_stop = datetime.date(self.year, month + 1, 1) - datetime.timedelta(days=1)
                 month_amount = monthly_amount
@@ -75,16 +85,5 @@ class TenenetProjectReceipt(models.Model):
                 "date_start": date_start,
                 "date_stop": date_stop,
                 "amount": month_amount,
-                "is_total": False,
             })
-        # 13th "Spolu" record — placed in January of year+1 so it lands in the
-        # last gantt column; receipt_year keeps it tied to this receipt's year.
-        vals_list.append({
-            "project_id": self.project_id.id,
-            "receipt_id": self.id,
-            "date_start": datetime.date(self.year + 1, 1, 1),
-            "date_stop": datetime.date(self.year + 1, 1, 1),
-            "amount": self.amount,
-            "is_total": True,
-        })
         self.env["tenenet.project.cashflow"].create(vals_list)

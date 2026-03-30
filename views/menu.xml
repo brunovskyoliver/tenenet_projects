@@ -80,6 +80,12 @@
                   action="action_tenenet_pl_report"
                   sequence="20"/>
 
+        <menuitem id="menu_tenenet_cashflow_report"
+                  name="CashFlow report"
+                  parent="menu_tenenet_reporting"
+                  action="action_tenenet_cashflow_report"
+                  sequence="21"/>
+
         <menuitem id="menu_tenenet_internal_expense_report"
                   name="Interné náklady – Ročný report"
                   parent="menu_tenenet_reporting"
@@ -155,11 +161,25 @@
                   sequence="20"
                   groups="tenenet_projects.group_tenenet_manager"/>
 
+        <menuitem id="menu_tenenet_project_cashflow_editor"
+                  name="Cashflow projektov"
+                  parent="menu_tenenet_projects"
+                  action="action_tenenet_project_cashflow_editor"
+                  sequence="25"
+                  groups="tenenet_projects.group_tenenet_manager"/>
+
         <menuitem id="menu_tenenet_internal_expenses"
                   name="Interné náklady"
                   parent="menu_tenenet_configuration"
                   action="action_tenenet_internal_expense"
                   sequence="40"
+                  groups="tenenet_projects.group_tenenet_manager"/>
+
+        <menuitem id="menu_tenenet_cashflow_global_override"
+                  name="Cashflow override"
+                  parent="menu_tenenet_configuration"
+                  action="action_tenenet_cashflow_global_override"
+                  sequence="45"
                   groups="tenenet_projects.group_tenenet_manager"/>
     </data>
 </odoo>

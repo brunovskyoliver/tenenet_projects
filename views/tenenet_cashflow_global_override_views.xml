@@ -1,0 +1,110 @@
+<odoo>
+    <data>
+        <record id="view_tenenet_cashflow_global_override_tree" model="ir.ui.view">
+            <field name="name">tenenet.cashflow.global.override.tree</field>
+            <field name="model">tenenet.cashflow.global.override</field>
+            <field name="arch" type="xml">
+                <list string="Cashflow override" default_order="period desc">
+                    <field name="section_label"/>
+                    <field name="project_label"/>
+                    <field name="row_label"/>
+                    <field name="row_type"/>
+                    <field name="program_label"/>
+                    <field name="period"/>
+                    <field name="year" readonly="1"/>
+                    <field name="month" readonly="1"/>
+                    <field name="amount"/>
+                    <field name="note"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_tenenet_cashflow_global_override_form" model="ir.ui.view">
+            <field name="name">tenenet.cashflow.global.override.form</field>
+            <field name="model">tenenet.cashflow.global.override</field>
+            <field name="arch" type="xml">
+                <form string="Cashflow override">
+                    <sheet>
+                        <group>
+                            <field name="section_label"/>
+                            <field name="project_label"/>
+                            <field name="row_label"/>
+                            <field name="row_type"/>
+                            <field name="program_label"/>
+                            <field name="period"/>
+                            <field name="year" readonly="1"/>
+                            <field name="month" readonly="1"/>
+                            <field name="amount"/>
+                            <field name="note"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_tenenet_cashflow_global_override_grid" model="ir.ui.view">
+            <field name="name">tenenet.cashflow.global.override.grid</field>
+            <field name="model">tenenet.cashflow.global.override</field>
+            <field name="arch" type="xml">
+                <grid string="Cashflow override"
+                      create="false"
+                      edit="true"
+                      delete="false"
+                      editable="1"
+                      display_empty="1"
+                      hide_column_total="1"
+                      form_view_id="%(view_tenenet_cashflow_global_override_form)d">
+                    <field name="section_label" type="row"/>
+                    <field name="program_label" type="row"/>
+                    <field name="project_label" type="row"/>
+                    <field name="period" type="col">
+                        <range name="year" string="Rok" span="year" step="month" default="1"/>
+                        <range name="month" string="Mesiac" span="month" step="day"/>
+                    </field>
+                    <field name="amount" type="measure" widget="float"/>
+                </grid>
+            </field>
+        </record>
+
+        <record id="view_tenenet_cashflow_global_override_search" model="ir.ui.view">
+            <field name="name">tenenet.cashflow.global.override.search</field>
+            <field name="model">tenenet.cashflow.global.override</field>
+            <field name="arch" type="xml">
+                <search string="Cashflow override">
+                    <field name="section_label"/>
+                    <field name="project_label"/>
+                    <field name="row_label"/>
+                    <field name="row_type"/>
+                    <field name="program_label"/>
+                    <field name="period"/>
+                    <field name="year"/>
+                    <filter string="Aktuálny rok" name="current_year"
+                            domain="[('year', '=', context_today().year)]"/>
+                    <filter string="Príjmy" name="section_income" domain="[('section_label', '=', 'Príjmy')]"/>
+                    <filter string="Výdavky" name="section_expense" domain="[('section_label', '=', 'Výdavky')]"/>
+                    <filter string="Cash-IN detail" name="income_rows" domain="[('row_type', '=', 'income')]"/>
+                    <filter string="Mzdy" name="salary_rows" domain="[('row_type', '=', 'salary')]"/>
+                    <filter string="Cash-OUT detail" name="expense_rows" domain="[('row_type', '=', 'expense')]"/>
+                    <group>
+                        <filter string="Rok" name="group_year" context="{'group_by': 'year'}"/>
+                        <filter string="Sekcia" name="group_section_label" context="{'group_by': 'section_label'}"/>
+                        <filter string="Program" name="group_program_label" context="{'group_by': 'program_label'}"/>
+                        <filter string="Typ riadku" name="group_row_type" context="{'group_by': 'row_type'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_tenenet_cashflow_global_override" model="ir.actions.act_window">
+            <field name="name">Cashflow override</field>
+            <field name="res_model">tenenet.cashflow.global.override</field>
+            <field name="view_mode">grid,list,form</field>
+            <field name="view_ids" eval="[(5, 0, 0),
+                   (0, 0, {'view_mode': 'grid', 'view_id': ref('view_tenenet_cashflow_global_override_grid')}),
+                   (0, 0, {'view_mode': 'list', 'view_id': ref('view_tenenet_cashflow_global_override_tree')}),
+                   (0, 0, {'view_mode': 'form', 'view_id': ref('view_tenenet_cashflow_global_override_form')})]"/>
+            <field name="search_view_id" ref="view_tenenet_cashflow_global_override_search"/>
+            <field name="context">{'grid_range': 'year', 'auto_sync_cashflow_override': True}</field>
+        </record>
+    </data>
+</odoo>

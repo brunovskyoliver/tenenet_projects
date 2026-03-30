@@ -1,20 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
 
-    <!--
-        Header override: relabel the last column (January of year+1) as "Spolu".
-        Uses t-inherit-mode="primary" to create a copy with one targeted change.
-    -->
     <t t-name="tenenet_projects.CashflowGanttRenderer.Header"
        t-inherit="web_gantt.GanttRenderer.Header"
        t-inherit-mode="primary">
         <xpath expr="//div[@class='o_gantt_header_cell_title']" position="replace">
             <div class="o_gantt_header_cell_title" t-if="'colHeaderFormatter' in model.metaData.scale">
-                <t t-if="column.start.year > model.metaData.startDate.year">
-                    <strong>Spolu</strong>
-                    <div class="small fw-normal" t-esc="model.yearTotalFormatted"/>
-                </t>
-                <t t-else="" t-esc="model.metaData.scale.colHeaderFormatter(column.start, env)"/>
+                <t t-esc="model.metaData.scale.colHeaderFormatter(column.start, env)"/>
             </div>
         </xpath>
     </t>

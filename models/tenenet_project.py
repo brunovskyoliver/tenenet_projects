@@ -288,19 +288,21 @@ class TenenetProject(models.Model):
 
     def action_open_cashflow_gantt(self):
         self.ensure_one()
-        context = {"default_project_id": self.id}
+        action = self.env.ref("tenenet_projects.action_tenenet_project_cashflow_gantt").read()[0]
+        context = dict(self.env.context)
+        context.update({
+            "default_project_id": self.id,
+            "search_default_group_project_label": 1,
+            "auto_sync_project_cashflow_labels": True,
+        })
         if self.receipt_line_ids:
             # Open to the year of the most recent receipt for convenience
             context["cashflow_initial_year"] = max(self.receipt_line_ids.mapped("year"))
-        return {
-            "type": "ir.actions.act_window",
-            "name": "Predikovaný cashflow",
-            "res_model": "tenenet.project.cashflow",
-            "view_mode": "gantt",
-            "domain": [("project_id", "=", self.id)],
-            "context": context,
-            "target": "current",
-        }
+            context["grid_anchor"] = f"{context['cashflow_initial_year']}-01-01"
+        action["domain"] = [("project_id", "=", self.id)]
+        action["context"] = context
+        action["target"] = "current"
+        return action
 
     def action_open_receipt_wizard(self):
         self.ensure_one()

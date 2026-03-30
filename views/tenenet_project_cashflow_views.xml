@@ -26,13 +26,76 @@
                     <sheet>
                         <group>
                             <field name="project_id" readonly="1"/>
+                            <field name="receipt_id" readonly="1"/>
                             <field name="year" readonly="1"/>
                             <field name="month" readonly="1"/>
-                            <field name="amount" readonly="is_total"/>
-                            <field name="is_total" invisible="1"/>
+                            <field name="amount"/>
                         </group>
                     </sheet>
                 </form>
+            </field>
+        </record>
+
+        <record id="view_tenenet_project_cashflow_tree_editor" model="ir.ui.view">
+            <field name="name">tenenet.project.cashflow.tree.editor</field>
+            <field name="model">tenenet.project.cashflow</field>
+            <field name="arch" type="xml">
+                <list string="Cashflow projektov" create="0" delete="0" default_order="receipt_year desc, project_id, date_start">
+                    <field name="project_id" readonly="1"/>
+                    <field name="receipt_id" readonly="1"/>
+                    <field name="receipt_year" readonly="1"/>
+                    <field name="date_start" readonly="1"/>
+                    <field name="month" readonly="1"/>
+                    <field name="amount"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_tenenet_project_cashflow_grid" model="ir.ui.view">
+            <field name="name">tenenet.project.cashflow.grid</field>
+            <field name="model">tenenet.project.cashflow</field>
+            <field name="arch" type="xml">
+                <grid string="Predikovaný cashflow"
+                      create="false"
+                      edit="true"
+                      delete="false"
+                      editable="1"
+                      display_empty="1"
+                      hide_column_total="1"
+                      form_view_id="%(view_tenenet_project_cashflow_form)d">
+                    <field name="section_label" type="row"/>
+                    <field name="project_label" type="row"/>
+                    <field name="receipt_label" type="row"/>
+                    <field name="date_start" type="col">
+                        <range name="year" string="Rok" span="year" step="month" default="1"/>
+                        <range name="month" string="Mesiac" span="month" step="day"/>
+                    </field>
+                    <field name="amount" type="measure" widget="float"/>
+                </grid>
+            </field>
+        </record>
+
+        <record id="view_tenenet_project_cashflow_search" model="ir.ui.view">
+            <field name="name">tenenet.project.cashflow.search</field>
+            <field name="model">tenenet.project.cashflow</field>
+            <field name="arch" type="xml">
+                <search string="Cashflow projektov">
+                    <field name="project_id"/>
+                    <field name="receipt_id"/>
+                    <field name="receipt_year"/>
+                    <field name="project_label"/>
+                    <field name="receipt_label"/>
+                    <filter string="Aktuálny rok" name="current_year"
+                            domain="[('receipt_year', '=', context_today().year)]"/>
+                    <group>
+                        <filter string="Sekcia" name="group_section" context="{'group_by': 'section_label'}"/>
+                        <filter string="Projekt" name="group_project_label" context="{'group_by': 'project_label'}"/>
+                        <filter string="Príjem" name="group_receipt_label" context="{'group_by': 'receipt_label'}"/>
+                        <filter string="Projekt" name="group_project" context="{'group_by': 'project_id'}"/>
+                        <filter string="Príjem" name="group_receipt" context="{'group_by': 'receipt_id'}"/>
+                        <filter string="Rok" name="group_year" context="{'group_by': 'receipt_year'}"/>
+                    </group>
+                </search>
             </field>
         </record>
 
@@ -58,7 +121,25 @@
         <record id="action_tenenet_project_cashflow_gantt" model="ir.actions.act_window">
             <field name="name">Predikovaný cashflow</field>
             <field name="res_model">tenenet.project.cashflow</field>
-            <field name="view_mode">gantt</field>
+            <field name="view_mode">grid,list,form</field>
+            <field name="view_ids" eval="[(5, 0, 0),
+                   (0, 0, {'view_mode': 'grid', 'view_id': ref('view_tenenet_project_cashflow_grid')}),
+                   (0, 0, {'view_mode': 'list', 'view_id': ref('view_tenenet_project_cashflow_tree_editor')}),
+                   (0, 0, {'view_mode': 'form', 'view_id': ref('view_tenenet_project_cashflow_form')})]"/>
+            <field name="search_view_id" ref="view_tenenet_project_cashflow_search"/>
+            <field name="context">{'grid_range': 'year', 'auto_sync_project_cashflow_labels': True}</field>
+        </record>
+
+        <record id="action_tenenet_project_cashflow_editor" model="ir.actions.act_window">
+            <field name="name">Cashflow projektov</field>
+            <field name="res_model">tenenet.project.cashflow</field>
+            <field name="view_mode">grid,list,form</field>
+            <field name="view_ids" eval="[(5, 0, 0),
+                   (0, 0, {'view_mode': 'grid', 'view_id': ref('view_tenenet_project_cashflow_grid')}),
+                   (0, 0, {'view_mode': 'list', 'view_id': ref('view_tenenet_project_cashflow_tree_editor')}),
+                   (0, 0, {'view_mode': 'form', 'view_id': ref('view_tenenet_project_cashflow_form')})]"/>
+            <field name="search_view_id" ref="view_tenenet_project_cashflow_search"/>
+            <field name="context">{'grid_range': 'year', 'auto_sync_project_cashflow_labels': True}</field>
         </record>
 
     </data>
