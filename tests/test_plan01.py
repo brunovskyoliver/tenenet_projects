@@ -5,14 +5,6 @@ from odoo.tests import TransactionCase, tagged
 
 @tagged("post_install", "-at_install")
 class TestTenenetPlan01(TransactionCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.calendar_6h = cls.env["resource.calendar"].create({
-            "name": "Test 6h",
-            "hours_per_day": 6.0,
-        })
-
     def test_program_unique_code_constraint(self):
         self.env["tenenet.program"].create(
             {
@@ -80,7 +72,7 @@ class TestTenenetPlan01(TransactionCase):
                 "first_name": "Test",
                 "last_name": "Zamestnanec",
                 "position": "Sociálny pracovník",
-                "resource_calendar_id": self.calendar_6h.id,
+                "work_ratio": 75.0,
                 "hourly_rate": 15.5,
             }
         )

@@ -116,13 +116,7 @@
                     <page string="TENENET">
                         <group>
                             <group>
-                                <field name="work_hours" readonly="1" />
-                                <field
-                                    name="work_ratio"
-                                    readonly="1"
-                                    string="Celkový úväzok (%)"
-                                />
-                                <field name="tenenet_actual_work_ratio" readonly="1" />
+                                <field name="work_ratio" string="Úväzok (%)" />
                             </group>
                             <group>
                                 <field name="hourly_rate" />

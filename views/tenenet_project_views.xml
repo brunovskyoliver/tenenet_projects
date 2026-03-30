@@ -8,6 +8,7 @@
                     <field name="name"/>
                     <field name="program_ids" widget="many2many_tags"/>
                     <field name="donor_id"/>
+                    <field name="international" optional="show"/>
                     <field name="budget_total"/>
                     <field name="date_start"/>
                     <field name="date_end"/>
@@ -36,6 +37,7 @@
                             <group>
                                 <field name="program_ids" widget="many2many_tags"/>
                                 <field name="donor_id"/>
+                                <field name="international"/>
                                 <field name="recipient_partner_id"/>
                                 <field name="partner_id"/>
                             </group>
@@ -224,6 +226,7 @@
                     <field name="program_ids"/>
                     <field name="donor_id"/>
                     <filter string="Aktívne" name="active" domain="[('active', '=', True)]"/>
+                    <filter string="Medzinárodné" name="international" domain="[('international', '=', True)]"/>
                     <filter string="Donor" name="group_donor" context="{'group_by': 'donor_id'}"/>
                 </search>
             </field>

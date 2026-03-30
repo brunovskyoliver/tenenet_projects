@@ -17,6 +17,14 @@ def _next_month(value):
     return date(value.year, value.month + 1, 1)
 
 
+def _ranges_overlap(start_a, end_a, start_b, end_b):
+    if start_a and end_b and start_a > end_b:
+        return False
+    if start_b and end_a and start_b > end_a:
+        return False
+    return True
+
+
 class TenenetProjectAssignment(models.Model):
     _name = "tenenet.project.assignment"
     _description = "Priradenie zamestnanca k projektu"
@@ -116,7 +124,7 @@ class TenenetProjectAssignment(models.Model):
     @api.depends("employee_id.work_ratio", "allocation_ratio")
     def _compute_effective_work_ratio(self):
         for rec in self:
-            rec.effective_work_ratio = (rec.employee_id.work_ratio or 0.0) * (rec.allocation_ratio or 0.0) / 100.0
+            rec.effective_work_ratio = rec.allocation_ratio or 0.0
 
     @api.depends("wage_hm", "max_monthly_wage_hm")
     def _compute_ccp_fields(self):
@@ -330,7 +338,7 @@ class TenenetProjectAssignment(models.Model):
             self.date_end or self.project_id.date_end,
         )
 
-    @api.constrains("date_start", "date_end", "allocation_ratio")
+    @api.constrains("active", "employee_id", "project_id", "date_start", "date_end", "allocation_ratio")
     def _check_dates(self):
         for rec in self:
             if rec.date_start and rec.date_end and rec.date_start > rec.date_end:
@@ -339,3 +347,24 @@ class TenenetProjectAssignment(models.Model):
                 )
             if rec.allocation_ratio <= 0.0 or rec.allocation_ratio > 100.0:
                 raise ValidationError("Úväzok na projekte musí byť v rozsahu 0 až 100 %.")
+            if not rec.active or not rec.employee_id:
+                continue
+
+            start, end = rec._get_effective_date_range()
+            overlapping_assignments = self.with_context(active_test=False).search([
+                ("id", "!=", rec.id),
+                ("employee_id", "=", rec.employee_id.id),
+                ("active", "=", True),
+            ])
+            overlapping_ratio = sum(
+                assignment.allocation_ratio
+                for assignment in overlapping_assignments
+                if _ranges_overlap(start, end, *assignment._get_effective_date_range())
+            )
+            total_ratio = overlapping_ratio + (rec.allocation_ratio or 0.0)
+            max_ratio = rec.employee_id.work_ratio or 0.0
+            if total_ratio > max_ratio:
+                raise ValidationError(
+                    "Súčet projektových úväzkov nesmie prekročiť úväzok zamestnanca (%s %%)."
+                    % (f"{max_ratio:.2f}")
+                )

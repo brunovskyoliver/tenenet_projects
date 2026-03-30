@@ -26,24 +26,23 @@ class HrEmployee(models.Model):
     work_hours = fields.Float(
         string="Denný úväzok (hod.)",
         digits=(10, 2),
-        compute="_compute_workload_from_calendar",
+        compute="_compute_workload_from_ratio",
         store=True,
         readonly=True,
-        help="Denný úväzok zamestnanca vypočítaný z pracovného kalendára.",
+        help="Denný úväzok odvodený z percenta úväzku pri plnom 8-hodinovom dni.",
     )
     monthly_capacity_hours = fields.Float(
         string="Mesačný fond hodín",
         digits=(10, 2),
-        compute="_compute_workload_from_calendar",
+        compute="_compute_workload_from_ratio",
         store=True,
-        help="Orientačný mesačný fond hodín vypočítaný z denného úväzku. Pri plnom úväzku je to 160 hodín.",
+        help="Orientačný mesačný fond hodín odvodený z percenta úväzku. Pri plnom úväzku je to 160 hodín.",
     )
     work_ratio = fields.Float(
         string="Úväzok (%)",
         digits=(5, 2),
-        compute="_compute_workload_from_calendar",
-        store=True,
-        help="Percento úväzku vypočítané voči plnému 8-hodinovému úväzku.",
+        default=100.0,
+        help="Percento pracovnej kapacity zamestnanca. Pri 100 % je mesačný fond 160 hodín.",
     )
     hourly_rate = fields.Float(string="Hodinová sadzba", digits=(10, 2))
     allocation_ids = fields.One2many(
@@ -267,19 +266,12 @@ class HrEmployee(models.Model):
             pass
         return result
 
-    @api.depends(
-        "resource_calendar_id",
-        "resource_calendar_id.hours_per_day",
-        "company_id.resource_calendar_id",
-        "company_id.resource_calendar_id.hours_per_day",
-    )
-    def _compute_workload_from_calendar(self):
+    @api.depends("work_ratio")
+    def _compute_workload_from_ratio(self):
         for rec in self:
-            calendar = rec.resource_calendar_id or rec.company_id.resource_calendar_id
-            hours_per_day = calendar.hours_per_day or 0.0
+            ratio = rec.work_ratio or 0.0
+            hours_per_day = 8.0 * ratio / 100.0
             rec.work_hours = hours_per_day
-            ratio = (hours_per_day / 8.0) * 100.0 if hours_per_day > 0 else 0.0
-            rec.work_ratio = ratio
             rec.monthly_capacity_hours = 160.0 * ratio / 100.0
 
     @api.depends("parent_id", "parent_id.user_id", "parent_id.service_manager_user_ids")
@@ -313,18 +305,19 @@ class HrEmployee(models.Model):
     def _compute_tenenet_assignment_availability(self):
         for rec in self:
             active_assignments = rec.assignment_ids.filtered(lambda assignment: assignment.is_current)
+            capacity_ratio = rec.work_ratio or 0.0
             total_ratio = sum(active_assignments.mapped("allocation_ratio"))
             rec.tenenet_allocation_ratio_total = total_ratio
-            rec.tenenet_actual_work_ratio = (rec.work_ratio or 0.0) * total_ratio / 100.0
+            rec.tenenet_actual_work_ratio = total_ratio
             rec.tenenet_active_assignment_count = len(active_assignments)
-            rec.tenenet_free_ratio = max(0.0, 100.0 - total_ratio)
+            rec.tenenet_free_ratio = max(0.0, capacity_ratio - total_ratio)
             if total_ratio <= 0.0:
                 rec.tenenet_availability_state = "free"
                 rec.tenenet_availability_label = "Voľný"
-            elif total_ratio < 100.0:
+            elif capacity_ratio > 0.0 and total_ratio < capacity_ratio:
                 rec.tenenet_availability_state = "partial"
                 rec.tenenet_availability_label = "Čiastočne alokovaný"
-            elif total_ratio == 100.0:
+            elif total_ratio == capacity_ratio:
                 rec.tenenet_availability_state = "full"
                 rec.tenenet_availability_label = "Plne alokovaný"
             else:

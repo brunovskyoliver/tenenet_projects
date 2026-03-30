@@ -9,7 +9,10 @@ from odoo.tests import TransactionCase, tagged
 class TestTenenetPlan08ProjectAssignment(TransactionCase):
     def setUp(self):
         super().setUp()
-        self.employee = self.env["hr.employee"].create({"name": "Zamestnanec Priradenie"})
+        self.employee = self.env["hr.employee"].create({
+            "name": "Zamestnanec Priradenie",
+            "work_ratio": 100.0,
+        })
         self.employee2 = self.env["hr.employee"].create({"name": "Zamestnanec 2 Priradenie"})
         self.project = self.env["tenenet.project"].create({"name": "Testovací projekt"})
         self.project2 = self.env["tenenet.project"].create({"name": "Testovací projekt 2"})
@@ -69,11 +72,10 @@ class TestTenenetPlan08ProjectAssignment(TransactionCase):
         self.assertTrue(a1.exists())
         self.assertTrue(a2.exists())
 
-    def test_different_projects_allowed(self):
+    def test_different_projects_allowed_when_capacity_allows(self):
         a1 = self.env["tenenet.project.assignment"].create(self._assignment_vals())
-        a2 = self.env["tenenet.project.assignment"].create(
-            self._assignment_vals(project_id=self.project2.id)
-        )
+        self.employee.write({"work_ratio": 200.0})
+        a2 = self.env["tenenet.project.assignment"].create(self._assignment_vals(project_id=self.project2.id))
         self.assertTrue(a1.exists())
         self.assertTrue(a2.exists())
 
@@ -83,12 +85,39 @@ class TestTenenetPlan08ProjectAssignment(TransactionCase):
                 self._assignment_vals(date_start="2026-06-01", date_end="2026-01-01")
             )
 
-    def test_overlapping_same_project_periods_are_allowed(self):
+    def test_overlapping_assignments_above_employee_capacity_are_rejected(self):
+        self.env["tenenet.project.assignment"].create(
+            self._assignment_vals(
+                allocation_ratio=60.0,
+                date_start="2026-01-01",
+                date_end="2026-06-30",
+            )
+        )
+        with self.assertRaises(ValidationError):
+            self.env["tenenet.project.assignment"].create(
+                self._assignment_vals(
+                    project_id=self.project2.id,
+                    allocation_ratio=50.0,
+                    date_start="2026-06-15",
+                    date_end="2026-12-31",
+                )
+            )
+
+    def test_non_overlapping_assignments_can_exceed_capacity_across_time(self):
         first = self.env["tenenet.project.assignment"].create(
-            self._assignment_vals(date_start="2026-01-01", date_end="2026-06-30")
+            self._assignment_vals(
+                allocation_ratio=100.0,
+                date_start="2026-01-01",
+                date_end="2026-06-30",
+            )
         )
         second = self.env["tenenet.project.assignment"].create(
-            self._assignment_vals(date_start="2026-06-15", date_end="2026-12-31")
+            self._assignment_vals(
+                project_id=self.project2.id,
+                allocation_ratio=100.0,
+                date_start="2026-07-01",
+                date_end="2026-12-31",
+            )
         )
         self.assertTrue(first.exists())
         self.assertTrue(second.exists())

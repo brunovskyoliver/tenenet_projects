@@ -11,18 +11,6 @@ class TestTenenetPlan04Utilization(TransactionCase):
     Tests drive hours via timesheets + assignments instead of direct field assignment.
     """
 
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.calendar_6h = cls.env["resource.calendar"].create({
-            "name": "Utilization 6h",
-            "hours_per_day": 6.0,
-        })
-        cls.calendar_4h = cls.env["resource.calendar"].create({
-            "name": "Utilization 4h",
-            "hours_per_day": 4.0,
-        })
-
     def setUp(self):
         super().setUp()
         self.manager = self.env["hr.employee"].create({"name": "Manažér Vyťaženosť"})
@@ -30,6 +18,7 @@ class TestTenenetPlan04Utilization(TransactionCase):
             {
                 "name": "Zamestnanec Vyťaženosť",
                 "parent_id": self.manager.id,
+                "work_ratio": 100.0,
             }
         )
         self.project = self.env["tenenet.project"].create({"name": "Projekt Util Test"})
@@ -37,12 +26,14 @@ class TestTenenetPlan04Utilization(TransactionCase):
         self.assignment = self.env["tenenet.project.assignment"].create({
             "employee_id": self.employee.id,
             "project_id": self.project.id,
+            "allocation_ratio": 50.0,
             "wage_hm": 10.0,
             "wage_ccp": 13.62,
         })
         self.assignment2 = self.env["tenenet.project.assignment"].create({
             "employee_id": self.employee.id,
             "project_id": self.project2.id,
+            "allocation_ratio": 50.0,
             "wage_hm": 10.0,
             "wage_ccp": 13.62,
         })
@@ -152,14 +143,14 @@ class TestTenenetPlan04Utilization(TransactionCase):
         self.assertEqual(utilization.non_project_status, "warning")
         self.assertEqual(utilization.hours_diff, 10.0)
 
-    def test_employee_workload_computed_from_contract_hours(self):
+    def test_employee_workload_computed_from_manual_work_ratio(self):
         employee_6h = self.env["hr.employee"].create({
             "name": "Zamestnanec 6h",
-            "resource_calendar_id": self.calendar_6h.id,
+            "work_ratio": 75.0,
         })
         employee_4h = self.env["hr.employee"].create({
             "name": "Zamestnanec 4h",
-            "resource_calendar_id": self.calendar_4h.id,
+            "work_ratio": 50.0,
         })
 
         self.assertAlmostEqual(self.employee.work_hours, 8.0, places=2)
@@ -172,14 +163,14 @@ class TestTenenetPlan04Utilization(TransactionCase):
         self.assertAlmostEqual(employee_4h.work_ratio, 50.0, places=2)
         self.assertAlmostEqual(employee_4h.monthly_capacity_hours, 80.0, places=2)
 
-        self.employee.resource_calendar_id = self.calendar_6h
+        self.employee.work_ratio = 75.0
         self.employee.invalidate_recordset(["work_hours", "work_ratio", "monthly_capacity_hours"])
         self.assertAlmostEqual(self.employee.work_hours, 6.0, places=2)
         self.assertAlmostEqual(self.employee.work_ratio, 75.0, places=2)
         self.assertAlmostEqual(self.employee.monthly_capacity_hours, 120.0, places=2)
 
     def test_actual_work_ratio_is_computed_from_total_workload_and_assignments(self):
-        self.employee.resource_calendar_id = self.calendar_6h
+        self.employee.work_ratio = 75.0
         self.assignment.write({"allocation_ratio": 25.0})
         self.assignment2.write({"allocation_ratio": 25.0})
         self.employee.invalidate_recordset([
@@ -192,9 +183,9 @@ class TestTenenetPlan04Utilization(TransactionCase):
 
         self.assertAlmostEqual(self.employee.work_ratio, 75.0, places=2)
         self.assertAlmostEqual(self.employee.tenenet_allocation_ratio_total, 50.0, places=2)
-        self.assertAlmostEqual(self.employee.tenenet_actual_work_ratio, 37.5, places=2)
-        self.assertAlmostEqual(self.assignment.effective_work_ratio, 18.75, places=2)
-        self.assertAlmostEqual(self.assignment2.effective_work_ratio, 18.75, places=2)
+        self.assertAlmostEqual(self.employee.tenenet_actual_work_ratio, 50.0, places=2)
+        self.assertAlmostEqual(self.assignment.effective_work_ratio, 25.0, places=2)
+        self.assertAlmostEqual(self.assignment2.effective_work_ratio, 25.0, places=2)
 
     def test_sync_current_period_creates_rows_for_all_active_employees(self):
         employee_2 = self.env["hr.employee"].create({"name": "Zamestnanec 2"})

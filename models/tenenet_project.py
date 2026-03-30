@@ -49,6 +49,11 @@ class TenenetProject(models.Model):
         string="Programy",
     )
     donor_id = fields.Many2one("tenenet.donor", string="Donor", ondelete="restrict")
+    international = fields.Boolean(
+        string="Medzinárodný",
+        default=False,
+        help="Určuje, či sa projekt v reportoch a alokáciách klasifikuje ako medzinárodný.",
+    )
 
     odborny_garant_id = fields.Many2one("hr.employee", string="Odborný garant")
     project_manager_id = fields.Many2one("hr.employee", string="Projektový manažér")

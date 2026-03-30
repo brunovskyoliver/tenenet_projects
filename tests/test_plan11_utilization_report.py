@@ -8,21 +8,18 @@ class TestTenenetPlan11UtilizationReport(TransactionCase):
         super().setUp()
         self.manager_a = self.env["hr.employee"].create({"name": "Manager A"})
         self.manager_b = self.env["hr.employee"].create({"name": "Manager B"})
-        self.calendar_8h = self.env["resource.calendar"].create({"name": "Kalendár report 8h"})
-        self.calendar_8h.hours_per_day = 8.0
-
         self.employee_a = self.env["hr.employee"].create(
             {
                 "name": "Adam Zamestnanec",
                 "parent_id": self.manager_a.id,
-                "resource_calendar_id": self.calendar_8h.id,
+                "work_ratio": 100.0,
             }
         )
         self.employee_b = self.env["hr.employee"].create(
             {
                 "name": "Beata Zamestnanec",
                 "parent_id": self.manager_b.id,
-                "resource_calendar_id": self.calendar_8h.id,
+                "work_ratio": 100.0,
             }
         )
         self.donor_national = self.env["tenenet.donor"].create({
@@ -182,9 +179,14 @@ class TestTenenetPlan11UtilizationReport(TransactionCase):
         self.assertIn("Beata Zamestnanec", line_names)
 
     def test_employee_unfold_shows_projects_with_aggregated_assignments(self):
+        self.assignment_a.write({
+            "allocation_ratio": 50.0,
+            "date_start": "2026-01-01",
+        })
         international_project = self.env["tenenet.project"].create({
             "name": "Medzinárodný projekt",
-            "donor_id": self.donor_international.id,
+            "donor_id": self.donor_national.id,
+            "international": True,
         })
         assignment_int_a = self.env["tenenet.project.assignment"].create({
             "employee_id": self.employee_a.id,
@@ -201,10 +203,6 @@ class TestTenenetPlan11UtilizationReport(TransactionCase):
             "date_start": "2026-02-01",
             "wage_hm": 12.0,
             "wage_ccp": 16.34,
-        })
-        self.assignment_a.write({
-            "allocation_ratio": 50.0,
-            "date_start": "2026-01-01",
         })
 
         self._create_timesheet(self.assignment_a, "2026-03-01", hours_pp=30.0, hours_np=5.0)
@@ -246,9 +244,11 @@ class TestTenenetPlan11UtilizationReport(TransactionCase):
         self.assertFalse(international_line.get("expand_function"))
 
     def test_unfolded_lines_option_returns_project_rows_only(self):
+        self.employee_a.work_ratio = 130.0
         international_project = self.env["tenenet.project"].create({
             "name": "Medzinárodný projekt 2",
-            "donor_id": self.donor_international.id,
+            "donor_id": self.donor_national.id,
+            "international": True,
         })
         assignment_int = self.env["tenenet.project.assignment"].create({
             "employee_id": self.employee_a.id,
@@ -316,6 +316,38 @@ class TestTenenetPlan11UtilizationReport(TransactionCase):
         self.assertAlmostEqual(project_columns["capacity_hours"], 160.0, places=2)
         self.assertAlmostEqual(project_columns["hours_pp"], 0.0, places=2)
         self.assertEqual(assignment_support.employee_id, self.employee_b)
+
+    def test_project_checkbox_overrides_donor_classification_in_report(self):
+        self.employee_a.work_ratio = 120.0
+        project = self.env["tenenet.project"].create({
+            "name": "Lokálny podľa checkboxu",
+            "donor_id": self.donor_international.id,
+            "international": False,
+        })
+        assignment = self.env["tenenet.project.assignment"].create({
+            "employee_id": self.employee_a.id,
+            "project_id": project.id,
+            "allocation_ratio": 20.0,
+            "wage_hm": 10.0,
+            "wage_ccp": 13.62,
+        })
+        self._create_timesheet(assignment, "2026-08-01", hours_pp=10.0)
+
+        top_lines, options = self._get_lines("2026-08-18")
+        adam_line = self._find_employee_line(top_lines, "Adam Zamestnanec")
+        self.assertEqual(self._column_map(adam_line)["project_type"], "N: 2 / M: 0")
+
+        project_lines = self.report.get_expanded_lines(
+            options,
+            adam_line["id"],
+            adam_line.get("groupby"),
+            adam_line["expand_function"],
+            adam_line.get("progress"),
+            0,
+            adam_line.get("horizontal_split_side"),
+        )
+        project_line = self._find_line(project_lines, "Lokálny podľa checkboxu")
+        self.assertEqual(self._column_map(project_line)["project_type"], "Národný")
 
     def test_report_hides_total_rows(self):
         top_lines, options = self._get_lines("2026-03-18")

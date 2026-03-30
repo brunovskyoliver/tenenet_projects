@@ -382,8 +382,7 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
         return values.get(label, "" if label in {"manager_name", "project_type", "utilization_status", "non_project_status"} else 0.0)
 
     def _get_project_type_key(self, project):
-        donor_type = project.donor_id.donor_type if project and project.donor_id else False
-        if donor_type == "international":
+        if project and project.international:
             return "international"
         return "national"
 
