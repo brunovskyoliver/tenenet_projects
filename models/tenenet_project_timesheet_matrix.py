@@ -521,9 +521,9 @@ class TenenetProjectTimesheetMatrixLine(models.Model):
                 }
                 existing_entry = existing_entries.get(period)
                 if existing_entry:
-                    existing_entry.write(values)
+                    existing_entry.with_context(skip_matrix_entry_sync=True).write(values)
                 else:
-                    Entry.create(values)
+                    Entry.with_context(skip_matrix_entry_sync=True).create(values)
             stale_entries = rec.entry_ids.filtered(lambda entry: entry.period not in desired_periods)
             if stale_entries:
                 stale_entries.unlink()
@@ -739,6 +739,12 @@ class TenenetProjectTimesheetMatrixEntry(models.Model):
                 _timesheet_matrix_entry_autosync_done=True
             )._sync_grid_entries()
 
+    def _is_effectively_editable(self):
+        self.ensure_one()
+        if self.leave_sync_managed or self.is_total:
+            return False
+        return bool(self.line_id[f"month_{self.month:02d}_editable"])
+
     @api.model
     def search(self, domain, offset=0, limit=None, order=None):
         self._auto_sync_grid_matrix()
@@ -805,7 +811,7 @@ class TenenetProjectTimesheetMatrixEntry(models.Model):
         entry = self.search(domain, limit=1)
         if not entry:
             return False
-        if not entry.editable:
+        if not entry._is_effectively_editable():
             raise ValidationError(
                 "Tento typ hodín je spravovaný automaticky alebo je mimo rozsahu priradenia a nie je možné ho upravovať v matici."
             )
@@ -814,3 +820,17 @@ class TenenetProjectTimesheetMatrixEntry(models.Model):
             month_field_name: (entry.hours or 0.0) + value,
         })
         return {"type": "ir.actions.client", "tag": "reload"}
+
+    def write(self, vals):
+        if self.env.context.get("skip_matrix_entry_sync") or "hours" not in vals:
+            return super().write(vals)
+
+        for rec in self:
+            if not rec._is_effectively_editable():
+                raise ValidationError(
+                    "Tento typ hodín je spravovaný automaticky alebo je mimo rozsahu priradenia a nie je možné ho upravovať v matici."
+                )
+            rec.line_id.with_context(skip_matrix_entry_sync=True).write({
+                f"month_{rec.month:02d}": vals["hours"] or 0.0,
+            })
+        return True

@@ -135,7 +135,7 @@ class TenenetCashflowReportHandler(models.AbstractModel):
                 "values": defaultdict(float, forecast_row["values"]),
             }
 
-            if override_row:
+            if override_row and row["row_type"] != "salary":
                 for month, amount in override_row["values"].items():
                     row["values"][month] = amount
 
@@ -220,7 +220,7 @@ class TenenetCashflowReportHandler(models.AbstractModel):
         internal_expenses = self.env["tenenet.internal.expense"].sudo().search([
             ("period", ">=", year_start),
             ("period", "<=", year_end),
-            ("category", "!=", "expense"),
+            ("category", "=", "leave"),
         ])
         for expense in internal_expenses:
             result[expense.period.month] -= expense.cost_ccp or 0.0

@@ -297,6 +297,7 @@ class TenenetProjectAssignment(models.Model):
 
     def write(self, vals):
         result = super().write(vals)
+        timesheets = self.mapped("timesheet_ids")
         if {
             "employee_id",
             "project_id",
@@ -306,8 +307,10 @@ class TenenetProjectAssignment(models.Model):
             "allocation_ratio",
         } & set(vals):
             self._sync_precreated_timesheets()
-        if {"max_monthly_wage_hm", "project_id"} & set(vals):
-            self.mapped("timesheet_ids")._check_wage_cap()
+            timesheets = self.mapped("timesheet_ids")
+        if {"wage_hm", "max_monthly_wage_hm", "project_id"} & set(vals):
+            timesheets._sync_employee_period_costs()
+            timesheets._check_wage_cap()
         return result
 
     def action_open_timesheet_matrix_current_year(self):

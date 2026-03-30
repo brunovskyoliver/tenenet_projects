@@ -41,6 +41,18 @@ class TestTenenetPlan15CashflowReport(TransactionCase):
         })
         return self.report._get_lines(options)
 
+    def _get_allocation_lines(self, year):
+        report = self.env.ref("tenenet_projects.tenenet_allocation_report")
+        options = report.get_options({
+            "date": {
+                "mode": "single",
+                "filter": "custom",
+                "date_to": f"{year}-12-31",
+            },
+            "employee_ids": [self.employee.id],
+        })
+        return report._get_lines(options)
+
     def _find_line(self, lines, project_name):
         return next(line for line in lines if self._column_map(line).get("project_label") == project_name)
 
@@ -54,6 +66,9 @@ class TestTenenetPlan15CashflowReport(TransactionCase):
 
     def _find_named_line(self, lines, name):
         return next(line for line in lines if self._column_map(line).get("project_label") == name)
+
+    def _find_allocation_line(self, lines, name):
+        return next(line for line in lines if line["name"] == name)
 
     def _create_override_row(self, year, month, row_key, row_label, row_type, amount, program_label=""):
         return self.env["tenenet.cashflow.global.override"].create({
@@ -243,6 +258,62 @@ class TestTenenetPlan15CashflowReport(TransactionCase):
             300.0,
             places=2,
         )
+
+    def test_matrix_entry_write_recomputes_timesheets_and_reports(self):
+        year = fields.Date.context_today(self).year + 1
+        self.assignment.write({"max_monthly_wage_hm": 1000.0})
+        matrix = self.env["tenenet.project.timesheet.matrix"]._ensure_for_assignment_years(
+            self.assignment,
+            [year],
+        )
+        matrix_line = matrix.line_ids.filtered(lambda line: line.hour_type == "pp")[:1]
+        march_entry = matrix_line.entry_ids.filtered(lambda entry: entry.period == fields.Date.to_date(f"{year}-03-01"))[:1]
+
+        march_entry.write({"hours": 150.0})
+
+        timesheet = self.env["tenenet.project.timesheet"].search([
+            ("assignment_id", "=", self.assignment.id),
+            ("period", "=", f"{year}-03-01"),
+        ], limit=1)
+        wage_expense = self.env["tenenet.internal.expense"].search([
+            ("source_assignment_id", "=", self.assignment.id),
+            ("period", "=", f"{year}-03-01"),
+            ("category", "=", "wage"),
+        ], limit=1)
+
+        self.assertEqual(timesheet.hours_pp, 150.0)
+        self.assertAlmostEqual(timesheet.total_labor_cost, 2043.0, places=2)
+        self.assertAlmostEqual(wage_expense.cost_ccp, 681.0, places=2)
+
+        cashflow_salary = self._column_map(self._find_named_line(self._get_lines(year), "Mzdy"))
+        allocation_ccp = self._column_map(self._find_allocation_line(self._get_allocation_lines(year), "CCP"))
+        allocation_internal_wage = self._column_map(
+            self._find_allocation_line(self._get_allocation_lines(year), "Interné náklady - mzda (CCP)")
+        )
+
+        self.assertAlmostEqual(cashflow_salary["month_03"], -2043.0, places=2)
+        self.assertAlmostEqual(allocation_ccp["month_03"], 2043.0, places=2)
+        self.assertAlmostEqual(allocation_internal_wage["month_03"], 681.0, places=2)
+
+    def test_salary_row_ignores_stale_override_values(self):
+        year = fields.Date.context_today(self).year + 1
+        self.env["tenenet.project.timesheet"].create({
+            "assignment_id": self.assignment.id,
+            "period": f"{year}-04-01",
+            "hours_pp": 100.0,
+        })
+        self.env["tenenet.cashflow.global.override"].create({
+            "period": f"{year}-04-01",
+            "row_key": "salary:mzdy",
+            "row_label": "Mzdy",
+            "row_type": "salary",
+            "amount": 0.0,
+        })
+
+        lines = self._get_lines(year)
+        salary_columns = self._column_map(self._find_named_line(lines, "Mzdy"))
+
+        self.assertAlmostEqual(salary_columns["month_04"], -2000.0, places=2)
 
     def test_income_override_rebalances_last_active_month_to_project_total(self):
         selected_year = fields.Date.context_today(self).year + 1

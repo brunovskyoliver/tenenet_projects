@@ -378,6 +378,7 @@ class TenenetProjectTimesheet(models.Model):
             if excess_hm > 0.001:
                 vals = {
                     "cost_hm": excess_hm,
+                    "wage_hm": assignment.wage_hm,
                     "note": f"Prekročenie mzdového stropu – priradenie {assignment.name}",
                 }
                 if existing:
