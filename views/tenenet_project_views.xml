@@ -184,8 +184,8 @@
                                 </field>
                             </page>
                             <page string="Výdavky projektu">
-                                <field name="expense_ids" nolabel="1">
-                                    <list string="Výdavky projektu" editable="bottom">
+                                <field name="expense_ids" nolabel="1" readonly="1">
+                                    <list string="Výdavky projektu" create="0" delete="0" edit="0">
                                         <field name="date"/>
                                         <field name="expense_type_config_id" optional="show"/>
                                         <field name="allowed_type_id"

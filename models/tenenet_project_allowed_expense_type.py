@@ -66,3 +66,33 @@ class TenenetProjectAllowedExpenseType(models.Model):
                 rec.remaining = max(0.0, rec.max_amount - rec.total_project_spent)
             else:
                 rec.remaining = 0.0
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records._resync_related_hr_expenses()
+        return records
+
+    def write(self, vals):
+        result = super().write(vals)
+        self._resync_related_hr_expenses()
+        return result
+
+    def unlink(self):
+        affected_projects = self.mapped("project_id")
+        result = super().unlink()
+        affected_projects._resync_project_hr_expenses()
+        return result
+
+    def _resync_related_hr_expenses(self):
+        self.mapped("project_id")._resync_project_hr_expenses()
+
+
+class TenenetProject(models.Model):
+    _inherit = "tenenet.project"
+
+    def _resync_project_hr_expenses(self):
+        HrExpense = self.env["hr.expense"].with_context(active_test=False)
+        for project in self:
+            expenses = HrExpense.search([("tenenet_project_id", "=", project.id)])
+            expenses._sync_tenenet_project_expenses()

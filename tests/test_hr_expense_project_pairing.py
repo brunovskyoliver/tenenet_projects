@@ -74,3 +74,27 @@ class TestHrExpenseProjectPairing(TransactionCase):
         self.assertEqual(second_expense.tenenet_internal_amount, 40.0)
         self.assertEqual(second_expense.tenenet_project_expense_ids.amount, 40.0)
         self.assertEqual(second_expense.tenenet_internal_expense_ids.expense_amount, 40.0)
+
+    def test_adding_allowed_type_resyncs_existing_hr_expense(self):
+        late_project = self.env["tenenet.project"].create({"name": "Projekt Neskorý Typ"})
+        self.env["tenenet.project.assignment"].create({
+            "employee_id": self.employee.id,
+            "project_id": late_project.id,
+        })
+        expense = self._create_expense(60.0, late_project)
+
+        self.assertFalse(expense.tenenet_project_expense_ids)
+        self.assertEqual(expense.tenenet_internal_amount, 60.0)
+        self.assertEqual(expense.tenenet_internal_expense_ids.expense_amount, 60.0)
+
+        late_project.allowed_expense_type_ids = [(0, 0, {
+            "config_id": self.expense_type.id,
+            "name": self.expense_type.name,
+            "max_amount": 100.0,
+        })]
+        expense.invalidate_recordset()
+
+        self.assertEqual(expense.tenenet_project_amount, 60.0)
+        self.assertEqual(expense.tenenet_internal_amount, 0.0)
+        self.assertEqual(len(expense.tenenet_project_expense_ids), 1)
+        self.assertFalse(expense.tenenet_internal_expense_ids)
