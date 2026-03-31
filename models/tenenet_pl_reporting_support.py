@@ -8,65 +8,56 @@ class TenenetPLReportingSupport(models.AbstractModel):
     _name = "tenenet.pl.reporting.support"
     _description = "TENENET P&L Reporting Support"
 
-    _STRUCTURE_ROW_SPECS = [
-        {"row_key": "section:income", "row_label": "Príjmy/výnosy", "sequence": 10, "section_label": "", "project_label": ""},
-        {
-            "row_key": "section:international",
-            "row_label": "Projekty medzinárodné",
-            "sequence": 20,
-            "section_label": "Príjmy/výnosy",
-            "project_label": "",
-        },
-        {
-            "row_key": "section:national",
-            "row_label": "Projekty národné",
-            "sequence": 30,
-            "section_label": "Príjmy/výnosy",
-            "project_label": "",
-        },
-        {"row_key": "section:expense", "row_label": "Náklady", "sequence": 450, "section_label": "", "project_label": ""},
-        {
-            "row_key": "section:admin",
-            "row_label": "Admin a MNG náklady",
-            "sequence": 750,
+    _ROW_SPEC_METADATA = {
+        "trzby": {"row_label": "Tržby", "sequence": 300, "section_label": "Príjmy", "project_label": "", "is_editable": True},
+        "labor_cost": {
+            "row_label": "Mzdové náklady - program",
+            "sequence": 400,
             "section_label": "Náklady",
             "project_label": "",
+            "is_editable": True,
         },
-    ]
-    _ROW_SPEC_METADATA = {
-        "trzby": {"row_label": "Tržby", "sequence": 300, "section_label": "Príjmy/výnosy", "project_label": ""},
-        "prijmy_spolu": {"row_label": "Príjmy spolu", "sequence": 400, "section_label": "Príjmy/výnosy", "project_label": ""},
-        "labor_cost": {"row_label": "Mzdové náklady - program", "sequence": 500, "section_label": "Náklady", "project_label": ""},
-        "stravne": {"row_label": "Stravné a iné", "sequence": 600, "section_label": "Náklady", "project_label": ""},
+        "stravne": {
+            "row_label": "Stravné a iné",
+            "sequence": 500,
+            "section_label": "Náklady",
+            "project_label": "",
+            "is_editable": True,
+        },
         "pre_admin_result": {
             "row_label": "Zisk/strata - vykrytie mzdových nákladov",
-            "sequence": 700,
+            "sequence": 600,
             "section_label": "Náklady",
             "project_label": "",
+            "is_editable": False,
         },
         "support_admin": {
             "row_label": "Mzdové N - podporné odd/admin",
-            "sequence": 800,
-            "section_label": "Admin a MNG náklady",
+            "sequence": 700,
+            "section_label": "Náklady",
             "project_label": "",
+            "is_editable": True,
         },
         "management": {
             "row_label": "Mzdové N - management",
-            "sequence": 900,
-            "section_label": "Admin a MNG náklady",
+            "sequence": 800,
+            "section_label": "Náklady",
             "project_label": "",
+            "is_editable": True,
         },
         "operating": {
             "row_label": "Prevádzkové náklady",
-            "sequence": 1000,
-            "section_label": "Admin a MNG náklady",
+            "sequence": 900,
+            "section_label": "Náklady",
             "project_label": "",
+            "is_editable": True,
         },
         "final_result": {
             "row_label": "Zisk/strata - za program",
-            "sequence": 1100,
-            "section_label": "Admin a MNG náklady",
+            "sequence": 1000,
+            "section_label": "Náklady",
             "project_label": "",
+            "is_editable": False,
         },
     }
 
@@ -208,35 +199,38 @@ class TenenetPLReportingSupport(models.AbstractModel):
     def _build_program_override_row_specs(self, program, selected_year):
         values = self._get_program_report_values(program, selected_year)
         row_specs = []
-        for metadata in self._STRUCTURE_ROW_SPECS:
-            row_specs.append({
-                "program_id": program.id,
-                "row_key": metadata["row_key"],
-                "row_label": metadata["row_label"],
-                "section_label": metadata["section_label"],
-                "project_label": metadata["project_label"],
-                "sequence": metadata["sequence"],
-                "values": self._zero_by_month(),
-            })
         for index, row in enumerate(values["international_rows"], start=1):
             row_specs.append({
                 "program_id": program.id,
                 "row_key": f"income:{row['project'].id}",
-                "row_label": row["name"],
-                "section_label": "Projekty medzinárodné",
+                "row_label": f"Príjmy projektu - {row['name']}",
+                "section_label": "Príjmy",
                 "project_label": row["name"],
                 "sequence": 100 + index,
                 "values": self._copy_month_values(row["values"]),
+                "is_editable": True,
             })
         for index, row in enumerate(values["national_rows"], start=1):
             row_specs.append({
                 "program_id": program.id,
                 "row_key": f"income:{row['project'].id}",
-                "row_label": row["name"],
-                "section_label": "Projekty národné",
+                "row_label": f"Príjmy projektu - {row['name']}",
+                "section_label": "Príjmy",
                 "project_label": row["name"],
                 "sequence": 200 + index,
                 "values": self._copy_month_values(row["values"]),
+                "is_editable": True,
+            })
+        for index, row in enumerate(values["labor_project_rows"], start=1):
+            row_specs.append({
+                "program_id": program.id,
+                "row_key": f"labor_project:{row['project'].id}",
+                "row_label": f"Mzdové náklady projektu - {row['name']}",
+                "section_label": "Náklady",
+                "project_label": row["name"],
+                "sequence": 400 + index,
+                "values": self._copy_month_values(row["values"]),
+                "is_editable": True,
             })
         for row_key, metadata in self._ROW_SPEC_METADATA.items():
             row_specs.append({
@@ -247,6 +241,7 @@ class TenenetPLReportingSupport(models.AbstractModel):
                 "project_label": metadata["project_label"],
                 "sequence": metadata["sequence"],
                 "values": self._copy_month_values(values[row_key]),
+                "is_editable": metadata["is_editable"],
             })
         return row_specs
 
@@ -257,24 +252,13 @@ class TenenetPLReportingSupport(models.AbstractModel):
         return row_specs
 
     def _get_program_labor_cost_by_month(self, program, selected_year):
+        labor_project_rows = self._get_program_labor_cost_rows(program, selected_year)
+        if labor_project_rows:
+            return self._sum_month_dicts(*(row["values"] for row in labor_project_rows))
+
         year_start = date(selected_year, 1, 1)
         year_end = date(selected_year, 12, 31)
-        timesheets = self.env["tenenet.project.timesheet"].with_context(active_test=False).search(
-            [
-                ("project_id.program_ids", "in", [program.id]),
-                ("period", ">=", year_start),
-                ("period", "<=", year_end),
-            ]
-        )
         values = defaultdict(float)
-        if timesheets:
-            timesheet_lines = self.env["tenenet.project.timesheet.line"].with_context(active_test=False).search([
-                ("timesheet_id", "in", timesheets.ids),
-            ])
-            for line in timesheet_lines:
-                values[line.period.month] -= (line.hours or 0.0) * (line.timesheet_id.wage_ccp or 0.0)
-            return values
-
         pl_lines = self.env["tenenet.pl.line"].search(
             [
                 ("program_id", "=", program.id),
@@ -285,6 +269,30 @@ class TenenetPLReportingSupport(models.AbstractModel):
         for line in pl_lines:
             values[line.period.month] -= line.amount or 0.0
         return values
+
+    def _get_program_labor_cost_rows(self, program, selected_year):
+        year_start = date(selected_year, 1, 1)
+        year_end = date(selected_year, 12, 31)
+        timesheets = self.env["tenenet.project.timesheet"].with_context(active_test=False).search(
+            [
+                ("project_id.program_ids", "in", [program.id]),
+                ("period", ">=", year_start),
+                ("period", "<=", year_end),
+            ],
+            order="project_id, period",
+        )
+        project_values = {}
+        for timesheet in timesheets:
+            project = timesheet.project_id
+            bucket = project_values.setdefault(
+                project.id,
+                {"project": project, "name": self._get_project_line_name(project), "values": defaultdict(float)},
+            )
+            bucket["values"][timesheet.period.month] -= timesheet.total_labor_cost or 0.0
+
+        rows = [row for row in project_values.values() if any(row["values"].values())]
+        rows.sort(key=lambda row: (row["name"] or "").lower())
+        return rows
 
     def _get_program_trzby_by_month(self, program, selected_year):
         override_rows = self.env["tenenet.pl.program.override"].get_year_row_data(selected_year)
@@ -300,14 +308,22 @@ class TenenetPLReportingSupport(models.AbstractModel):
             row["values"] = self._override_month_values(row["values"], override_rows.get(f"income:{row['project'].id}"))
         for row in national_rows:
             row["values"] = self._override_month_values(row["values"], override_rows.get(f"income:{row['project'].id}"))
+        labor_project_rows = self._get_program_labor_cost_rows(program, selected_year)
+        for row in labor_project_rows:
+            row["values"] = self._override_month_values(
+                row["values"],
+                override_rows.get(f"labor_project:{row['project'].id}"),
+            )
         international_income = self._sum_month_dicts(*(row["values"] for row in international_rows))
         national_income = self._sum_month_dicts(*(row["values"] for row in national_rows))
         trzby = self._override_month_values(self._zero_by_month(), override_rows.get("trzby"))
         prijmy_spolu = self._sum_month_dicts(international_income, national_income, trzby)
-        labor_cost = self._override_month_values(
-            self._get_program_labor_cost_by_month(program, selected_year),
-            override_rows.get("labor_cost"),
+        labor_cost_base = (
+            self._sum_month_dicts(*(row["values"] for row in labor_project_rows))
+            if labor_project_rows
+            else self._get_program_labor_cost_by_month(program, selected_year)
         )
+        labor_cost = self._override_month_values(labor_cost_base, override_rows.get("labor_cost"))
         stravne = self._override_month_values(self._zero_by_month(), override_rows.get("stravne"))
         support_admin = self._override_month_values(self._zero_by_month(), override_rows.get("support_admin"))
         management = self._override_month_values(self._zero_by_month(), override_rows.get("management"))
@@ -320,6 +336,7 @@ class TenenetPLReportingSupport(models.AbstractModel):
         return {
             "international_rows": international_rows,
             "national_rows": national_rows,
+            "labor_project_rows": labor_project_rows,
             "trzby": trzby,
             "prijmy_spolu": prijmy_spolu,
             "labor_cost": labor_cost,

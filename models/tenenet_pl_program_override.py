@@ -1,6 +1,7 @@
 from datetime import date
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 
 
 class TenenetPLProgramOverride(models.Model):
@@ -19,6 +20,7 @@ class TenenetPLProgramOverride(models.Model):
     section_label = fields.Char(string="Sekcia", readonly=True)
     project_label = fields.Char(string="Projekt", readonly=True)
     sequence = fields.Integer(string="Poradie", default=100, readonly=True)
+    is_editable = fields.Boolean(string="Upraviteľné", default=True, readonly=True)
     amount = fields.Monetary(string="Suma (€)", currency_field="currency_id", default=0.0)
     is_manual = fields.Boolean(string="Manuálne upravené", default=False, readonly=True)
     note = fields.Char(string="Poznámka")
@@ -101,6 +103,12 @@ class TenenetPLProgramOverride(models.Model):
         vals = dict(vals)
         if vals.get("period"):
             vals["period"] = self._normalize_period(vals["period"])
+        if (
+            "amount" in vals
+            and not self.env.context.get("_pl_program_override_syncing")
+            and self.filtered(lambda rec: not rec.is_editable)
+        ):
+            raise UserError(_("Tento riadok je vypočítaný a nie je možné ho manuálne upravovať."))
         if "amount" in vals and not self.env.context.get("_pl_program_override_syncing"):
             vals["is_manual"] = True
         return super().write(vals)
@@ -129,6 +137,7 @@ class TenenetPLProgramOverride(models.Model):
                     "section_label": record.section_label or "",
                     "project_label": record.project_label or "",
                     "sequence": record.sequence,
+                    "is_editable": record.is_editable,
                     "values": {},
                     "manual_months": {},
                 },
@@ -160,6 +169,7 @@ class TenenetPLProgramOverride(models.Model):
                     "section_label": row.get("section_label") or "",
                     "project_label": row.get("project_label") or "",
                     "sequence": row.get("sequence", 100),
+                    "is_editable": row.get("is_editable", True),
                     "amount": row.get("values", {}).get(month, existing.amount if existing else 0.0),
                     "currency_id": self.env.company.currency_id.id,
                     "is_manual": False,

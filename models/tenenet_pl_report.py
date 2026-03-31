@@ -145,14 +145,16 @@ class TenenetPLReportHandler(models.AbstractModel):
         report = self.env["account.report"].browse(options["report_id"])
         values = self._get_selected_program_report_values(options)
         lines = [
-            self._build_value_line(
+            self._build_unfoldable_section_line(
                 report,
                 options,
                 "Mzdové náklady - program",
-                values["labor_cost"],
                 "tenenet_pl_labor_cost",
+                "_report_expand_unfoldable_line_tenenet_pl_labor_cost",
                 level=2,
                 parent_line_id=line_dict_id,
+                unfoldable=bool(values["labor_project_rows"]),
+                monthly_values=values["labor_cost"],
             ),
             self._build_value_line(
                 report,
@@ -219,6 +221,27 @@ class TenenetPLReportHandler(models.AbstractModel):
         ]
         return self._build_expand_result(lines, progress)
 
+    def _report_expand_unfoldable_line_tenenet_pl_labor_cost(
+        self, line_dict_id, groupby, options, progress, offset, unfold_all_batch_data=None
+    ):
+        report = self.env["account.report"].browse(options["report_id"])
+        values = self._get_selected_program_report_values(options)
+        lines = [
+            self._build_value_line(
+                report,
+                options,
+                row["name"],
+                row["values"],
+                markup=f"tenenet_pl_labor_project_{row['project'].id}",
+                level=3,
+                parent_line_id=line_dict_id,
+                model="tenenet.project",
+                record_id=row["project"].id,
+            )
+            for row in values["labor_project_rows"]
+        ]
+        return self._build_expand_result(lines, progress)
+
     def _build_expand_result(self, lines, progress):
         return {
             "lines": lines,
@@ -235,9 +258,29 @@ class TenenetPLReportHandler(models.AbstractModel):
         return self._get_program_report_values(program, selected_year)
 
     def _build_unfoldable_section_line(
-        self, report, options, name, markup, expand_function, level=1, parent_line_id=None, unfoldable=True
+        self,
+        report,
+        options,
+        name,
+        markup,
+        expand_function,
+        level=1,
+        parent_line_id=None,
+        unfoldable=True,
+        monthly_values=None,
     ):
-        line = self._build_section_line(report, options, name, markup, level=level, parent_line_id=parent_line_id)
+        if monthly_values is None:
+            line = self._build_section_line(report, options, name, markup, level=level, parent_line_id=parent_line_id)
+        else:
+            line = self._build_value_line(
+                report,
+                options,
+                name,
+                monthly_values,
+                markup,
+                level=level,
+                parent_line_id=parent_line_id,
+            )
         line["parent_id"] = parent_line_id
         line["unfoldable"] = unfoldable
         line["unfolded"] = bool(

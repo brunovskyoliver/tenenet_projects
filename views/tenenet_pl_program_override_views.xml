@@ -4,7 +4,7 @@
             <field name="name">tenenet.pl.program.override.tree</field>
             <field name="model">tenenet.pl.program.override</field>
             <field name="arch" type="xml">
-                <list string="P&amp;L override programu" default_order="program_label, period desc">
+                <list string="P&amp;L override programu" default_order="program_label, sequence, period desc">
                     <field name="program_id"/>
                     <field name="section_label"/>
                     <field name="row_label"/>
@@ -43,6 +43,7 @@
             <field name="model">tenenet.pl.program.override</field>
             <field name="arch" type="xml">
                 <grid string="P&amp;L override programu"
+                      js_class="tenenet_pl_program_override_grid"
                       create="false"
                       edit="true"
                       delete="false"
@@ -50,8 +51,8 @@
                       display_empty="1"
                       hide_column_total="1"
                       form_view_id="%(view_tenenet_pl_program_override_form)d">
-                    <field name="program_label" type="row"/>
-                    <field name="section_label" type="row"/>
+                    <field name="program_id" type="row"/>
+                    <field name="sequence" type="row" invisible="1"/>
                     <field name="row_label" type="row"/>
                     <field name="period" type="col">
                         <range name="year" string="Rok" span="year" step="month" default="1"/>
@@ -72,6 +73,9 @@
                     <field name="row_label"/>
                     <field name="period"/>
                     <field name="year"/>
+                    <searchpanel view_types="grid,list">
+                        <field name="program_id" enable_counters="1"/>
+                    </searchpanel>
                     <filter string="Aktuálny rok" name="current_year" domain="[('year', '=', context_today().year)]"/>
                     <group>
                         <filter string="Rok" name="group_year" context="{'group_by': 'year'}"/>

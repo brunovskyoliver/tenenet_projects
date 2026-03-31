@@ -51,6 +51,7 @@ and P&L reporting by program.
         ],
         'web.assets_backend_lazy': [
             'tenenet_projects/static/src/js/cashflow_gantt_view.js',
+            'tenenet_projects/static/src/js/tenenet_pl_program_override_grid_view.js',
             'tenenet_projects/static/src/js/tenenet_timesheet_matrix_grid_view.js',
             'tenenet_projects/static/src/xml/cashflow_gantt.xml',
         ],

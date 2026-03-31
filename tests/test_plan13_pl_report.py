@@ -1,4 +1,5 @@
 from odoo import fields
+from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -161,6 +162,8 @@ class TestTenenetPlan13PLReport(TransactionCase):
             "Príjmy spolu",
             "Náklady",
             "Mzdové náklady - program",
+            "International Alpha",
+            "National Beta",
             "Stravné a iné",
             "Zisk/strata - vykrytie mzdových nákladov",
             "Admin a MNG náklady",
@@ -182,7 +185,13 @@ class TestTenenetPlan13PLReport(TransactionCase):
         national_columns = self._column_map(self._find_line(lines, "National Beta"))
         trzby_columns = self._column_map(self._find_line(lines, "Tržby"))
         income_total_columns = self._column_map(self._find_line(lines, "Príjmy spolu"))
-        labor_cost_columns = self._column_map(self._find_line(lines, "Mzdové náklady - program"))
+        labor_cost_line = self._find_line(lines, "Mzdové náklady - program")
+        labor_cost_columns = self._column_map(labor_cost_line)
+        labor_project_columns = [
+            self._column_map(line)
+            for line in lines
+            if line["name"] in {"International Alpha", "National Beta"} and line.get("parent_id") == labor_cost_line["id"]
+        ]
         pre_admin_columns = self._column_map(self._find_line(lines, "Zisk/strata - vykrytie mzdových nákladov"))
         final_columns = self._column_map(self._find_line(lines, "Zisk/strata - za program"))
 
@@ -190,6 +199,7 @@ class TestTenenetPlan13PLReport(TransactionCase):
         self.assertAlmostEqual(national_columns["month_03"], 600.0, places=2)
         self.assertAlmostEqual(trzby_columns["month_03"], 200.0, places=2)
         self.assertAlmostEqual(income_total_columns["month_03"], 2000.0, places=2)
+        self.assertEqual(len(labor_project_columns), 2)
         self.assertAlmostEqual(labor_cost_columns["month_03"], -100.0, places=2)
         self.assertAlmostEqual(labor_cost_columns["month_04"], -50.0, places=2)
         self.assertAlmostEqual(pre_admin_columns["month_03"], 1900.0, places=2)
@@ -221,8 +231,8 @@ class TestTenenetPlan13PLReport(TransactionCase):
         self._set_income_override(year, self.project_a_int, 3, 1200.0)
         self._create_timesheet(self.assignment_a_int, f"{year}-03-01", 100.0)
         self._set_pl_override(year, self.program_a, f"income:{self.project_a_int.id}", 3, 1500.0)
-        self._set_pl_override(year, self.program_a, "labor_cost", 3, -300.0)
-        self._set_pl_override(year, self.program_a, "final_result", 3, 777.0)
+        self._set_pl_override(year, self.program_a, f"labor_project:{self.project_a_int.id}", 3, -300.0)
+        self._set_pl_override(year, self.program_a, "support_admin", 3, -50.0)
 
         lines = self._get_detail_lines(year, self.program_a, unfold_all=True)
         international_columns = self._column_map(self._find_line(lines, "International Alpha"))
@@ -233,7 +243,7 @@ class TestTenenetPlan13PLReport(TransactionCase):
         self.assertAlmostEqual(international_columns["month_03"], 1500.0, places=2)
         self.assertAlmostEqual(labor_cost_columns["month_03"], -300.0, places=2)
         self.assertAlmostEqual(pre_admin_columns["month_03"], 1200.0, places=2)
-        self.assertAlmostEqual(final_columns["month_03"], 777.0, places=2)
+        self.assertAlmostEqual(final_columns["month_03"], 1150.0, places=2)
 
     def test_international_split_uses_project_checkbox(self):
         year = fields.Date.context_today(self).year + 1
@@ -304,6 +314,8 @@ class TestTenenetPlan13PLReport(TransactionCase):
         self._create_receipt(self.project_a_nat, f"{year}-03-01", 600.0)
         self._set_income_override(year, self.project_a_int, 3, 1200.0)
         self._set_income_override(year, self.project_a_nat, 3, 600.0)
+        self._create_timesheet(self.assignment_a_int, f"{year}-03-01", 100.0)
+        self._create_timesheet(self.assignment_a_nat, f"{year}-04-01", 50.0)
         self.env["tenenet.pl.program.override"].with_context(grid_anchor=f"{year}-01-01").action_prepare_grid_year()
 
         overrides = self.env["tenenet.pl.program.override"].search([("year", "=", year)])
@@ -312,12 +324,37 @@ class TestTenenetPlan13PLReport(TransactionCase):
 
         self.assertEqual(len(program_a_rows.filtered(lambda rec: rec.row_key == f"income:{self.project_a_int.id}")), 12)
         self.assertEqual(len(program_a_rows.filtered(lambda rec: rec.row_key == f"income:{self.project_a_nat.id}")), 12)
+        self.assertEqual(len(program_a_rows.filtered(lambda rec: rec.row_key == f"labor_project:{self.project_a_int.id}")), 12)
+        self.assertEqual(len(program_a_rows.filtered(lambda rec: rec.row_key == f"labor_project:{self.project_a_nat.id}")), 12)
         self.assertEqual(len(program_a_rows.filtered(lambda rec: rec.row_key == "trzby")), 12)
-        self.assertEqual(len(program_a_rows.filtered(lambda rec: rec.row_key == "prijmy_spolu")), 12)
         self.assertEqual(len(program_a_rows.filtered(lambda rec: rec.row_key == "labor_cost")), 12)
         self.assertEqual(len(program_a_rows.filtered(lambda rec: rec.row_key == "final_result")), 12)
         self.assertEqual(len(program_b_rows.filtered(lambda rec: rec.row_key == "trzby")), 12)
+        self.assertNotIn("Príjmy/výnosy", set(program_a_rows.mapped("row_label")))
+        self.assertNotIn("Projekty medzinárodné", set(program_a_rows.mapped("row_label")))
+        self.assertNotIn("Projekty národné", set(program_a_rows.mapped("row_label")))
+        self.assertNotIn("Príjmy spolu", set(program_a_rows.mapped("row_label")))
+        self.assertIn(f"Príjmy projektu - {self.project_a_int.name}", set(program_a_rows.mapped("row_label")))
+        self.assertIn(f"Príjmy projektu - {self.project_a_nat.name}", set(program_a_rows.mapped("row_label")))
+        self.assertIn(
+            f"Mzdové náklady projektu - {self.project_a_int.name}",
+            set(program_a_rows.mapped("row_label")),
+        )
+        self.assertIn(
+            f"Mzdové náklady projektu - {self.project_a_nat.name}",
+            set(program_a_rows.mapped("row_label")),
+        )
 
-        report_line_names = {line["name"] for line in self._get_detail_lines(year, self.program_a, unfold_all=True)}
-        override_row_labels = set(program_a_rows.mapped("row_label"))
-        self.assertTrue(report_line_names.issubset(override_row_labels))
+    def test_result_rows_are_visible_but_not_editable(self):
+        year = fields.Date.context_today(self).year + 1
+        self.env["tenenet.pl.program.override"].with_context(grid_anchor=f"{year}-01-01").action_prepare_grid_year()
+        result_row = self.env["tenenet.pl.program.override"].search([
+            ("year", "=", year),
+            ("program_id", "=", self.program_a.id),
+            ("row_key", "=", "final_result"),
+            ("month", "=", 3),
+        ], limit=1)
+
+        self.assertFalse(result_row.is_editable)
+        with self.assertRaises(UserError):
+            result_row.write({"amount": 1.0})
