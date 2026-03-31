@@ -53,6 +53,26 @@ class HrExpense(models.Model):
         "hr_expense_id",
         string="TENENET interné výdavky",
     )
+    tenenet_type_supported_on_project = fields.Boolean(
+        string="Typ je povolený na projekte",
+        compute="_compute_tenenet_allowed_type_shortcut",
+    )
+    tenenet_can_add_allowed_type = fields.Boolean(
+        string="Môže pridať povolený typ",
+        compute="_compute_tenenet_allowed_type_shortcut",
+    )
+    tenenet_add_allowed_type = fields.Boolean(
+        string="Pridať medzi povolené výdavky projektu",
+        default=False,
+        copy=False,
+    )
+    tenenet_allowed_type_limit = fields.Monetary(
+        string="Limit pre projekt",
+        currency_field="company_currency_id",
+        default=0.0,
+        copy=False,
+        help="Celkový limit tohto typu výdavku na projekte. 0 = bez limitu.",
+    )
 
     @api.depends("employee_id", "date")
     def _compute_tenenet_available_project_ids(self):
@@ -79,6 +99,13 @@ class HrExpense(models.Model):
             rec.tenenet_internal_amount = split["internal_amount"]
             rec.tenenet_split_note = split["note"]
 
+    @api.depends("tenenet_project_id", "tenenet_expense_type_config_id")
+    def _compute_tenenet_allowed_type_shortcut(self):
+        can_add_allowed_type = self.env["tenenet.project.allowed.expense.type"].browse().has_access("create")
+        for rec in self:
+            rec.tenenet_can_add_allowed_type = bool(can_add_allowed_type)
+            rec.tenenet_type_supported_on_project = bool(rec._get_tenenet_matching_allowed_type())
+
     @api.onchange("employee_id", "date")
     def _onchange_tenenet_employee_or_date(self):
         for rec in self:
@@ -90,6 +117,14 @@ class HrExpense(models.Model):
     def _onchange_tenenet_expense_type_config_id(self):
         for rec in self:
             rec._apply_tenenet_category_from_config()
+            rec.tenenet_add_allowed_type = False
+            rec.tenenet_allowed_type_limit = 0.0
+
+    @api.onchange("tenenet_project_id")
+    def _onchange_tenenet_project_id(self):
+        for rec in self:
+            rec.tenenet_add_allowed_type = False
+            rec.tenenet_allowed_type_limit = 0.0
 
     @api.constrains("tenenet_project_id", "tenenet_expense_type_config_id")
     def _check_tenenet_type_required(self):
@@ -107,23 +142,44 @@ class HrExpense(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        vals_list = [self._prepare_tenenet_category_vals(vals) for vals in vals_list]
+        allow_type_requests = []
+        prepared_vals_list = []
+        for vals in vals_list:
+            vals, allow_type_request = self._pop_tenenet_allowed_type_request(vals)
+            allow_type_requests.append(allow_type_request)
+            prepared_vals_list.append(self._prepare_tenenet_category_vals(vals))
+
+        vals_list = prepared_vals_list
         records = super().create(vals_list)
+        for rec, allow_type_request in zip(records, allow_type_requests):
+            rec._ensure_tenenet_allowed_type(allow_type_request)
         records._sync_tenenet_project_expenses()
         return records
 
     def write(self, vals):
+        vals, allow_type_request = self._pop_tenenet_allowed_type_request(vals)
         if "tenenet_expense_type_config_id" in vals or "product_id" in vals:
             if len(self) == 1:
                 vals = self._prepare_tenenet_category_vals(vals, self)
             else:
                 for rec in self:
                     super(HrExpense, rec).write(self._prepare_tenenet_category_vals(vals, rec))
+                    rec._ensure_tenenet_allowed_type(allow_type_request)
                     rec._sync_tenenet_project_expenses()
                 return True
         result = super().write(vals)
+        self._ensure_tenenet_allowed_type(allow_type_request)
         self._sync_tenenet_project_expenses()
         return result
+
+    def _pop_tenenet_allowed_type_request(self, vals):
+        cleaned_vals = dict(vals)
+        allow_create = bool(cleaned_vals.pop("tenenet_add_allowed_type", False))
+        limit = cleaned_vals.pop("tenenet_allowed_type_limit", 0.0)
+        return cleaned_vals, {
+            "create": allow_create,
+            "max_amount": limit or 0.0,
+        }
 
     def _prepare_tenenet_category_vals(self, vals, record=None):
         prepared_vals = dict(vals)
@@ -256,6 +312,28 @@ class HrExpense(models.Model):
             "internal_amount": internal_amount,
             "note": note,
         }
+
+    def _ensure_tenenet_allowed_type(self, allow_type_request):
+        request = allow_type_request or {}
+        if not request.get("create"):
+            return
+
+        AllowedType = self.env["tenenet.project.allowed.expense.type"]
+        AllowedType.browse().check_access("create")
+        for rec in self:
+            if not rec.tenenet_project_id or not rec.tenenet_expense_type_config_id:
+                continue
+            if rec._get_tenenet_matching_allowed_type():
+                continue
+
+            config = rec.tenenet_expense_type_config_id
+            AllowedType.create({
+                "project_id": rec.tenenet_project_id.id,
+                "config_id": config.id,
+                "name": config.name,
+                "description": config.description or False,
+                "max_amount": request.get("max_amount", 0.0),
+            })
 
     def _sync_tenenet_project_expenses(self):
         ProjectExpense = self.env["tenenet.project.expense"].sudo()

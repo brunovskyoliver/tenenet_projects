@@ -5,7 +5,7 @@ from odoo.tests import TransactionCase, tagged
 class TestHrExpenseProjectPairing(TransactionCase):
     def setUp(self):
         super().setUp()
-        self.employee = self.env["hr.employee"].create({"name": "Expense Employee"})
+        self.employee = self.env["hr.employee"].create({"name": "Expense Employee", "work_ratio": 200.0})
         self.other_employee = self.env["hr.employee"].create({"name": "Other Employee"})
         self.expense_product = self.env["product.product"].create({
             "name": "Cestovné HR",
@@ -14,9 +14,7 @@ class TestHrExpenseProjectPairing(TransactionCase):
         })
         self.expense_type = self.env["tenenet.expense.type.config"].create({
             "name": "Cestovné",
-            "expense_category_line_ids": [(0, 0, {
-                "product_id": self.expense_product.id,
-            })],
+            "hr_expense_product_id": self.expense_product.id,
         })
         self.allowed_project = self.env["tenenet.project"].create({
             "name": "Projekt Expense",
@@ -98,3 +96,50 @@ class TestHrExpenseProjectPairing(TransactionCase):
         self.assertEqual(expense.tenenet_internal_amount, 0.0)
         self.assertEqual(len(expense.tenenet_project_expense_ids), 1)
         self.assertFalse(expense.tenenet_internal_expense_ids)
+
+    def test_expense_can_create_missing_allowed_type_from_form_shortcut(self):
+        late_project = self.env["tenenet.project"].create({"name": "Projekt Skratka"})
+        self.env["tenenet.project.assignment"].create({
+            "employee_id": self.employee.id,
+            "project_id": late_project.id,
+        })
+
+        expense = self.env["hr.expense"].create({
+            "name": "Shortcut expense",
+            "employee_id": self.employee.id,
+            "total_amount_currency": 60.0,
+            "tenenet_project_id": late_project.id,
+            "tenenet_expense_type_config_id": self.expense_type.id,
+            "tenenet_add_allowed_type": True,
+            "tenenet_allowed_type_limit": 100.0,
+        })
+        allowed_type = late_project.allowed_expense_type_ids.filtered(
+            lambda rec: rec.config_id == self.expense_type
+        )
+
+        self.assertEqual(len(allowed_type), 1)
+        self.assertEqual(allowed_type.name, self.expense_type.name)
+        self.assertEqual(allowed_type.description, self.expense_type.description)
+        self.assertEqual(allowed_type.max_amount, 100.0)
+        self.assertEqual(expense.tenenet_project_amount, 60.0)
+        self.assertEqual(expense.tenenet_internal_amount, 0.0)
+        self.assertEqual(len(expense.tenenet_project_expense_ids), 1)
+
+    def test_expense_shortcut_does_not_duplicate_existing_allowed_type(self):
+        expense = self.env["hr.expense"].create({
+            "name": "Duplicate shortcut expense",
+            "employee_id": self.employee.id,
+            "total_amount_currency": 40.0,
+            "tenenet_project_id": self.allowed_project.id,
+            "tenenet_expense_type_config_id": self.expense_type.id,
+            "tenenet_add_allowed_type": True,
+            "tenenet_allowed_type_limit": 999.0,
+        })
+        allowed_types = self.allowed_project.allowed_expense_type_ids.filtered(
+            lambda rec: rec.config_id == self.expense_type
+        )
+
+        self.assertEqual(len(allowed_types), 1)
+        self.assertEqual(allowed_types.max_amount, 100.0)
+        self.assertEqual(expense.tenenet_project_amount, 40.0)
+        self.assertEqual(expense.tenenet_internal_amount, 0.0)

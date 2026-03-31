@@ -146,6 +146,11 @@
                                                 string="Matica"
                                                 icon="fa-table"
                                                 class="btn-link"/>
+                                        <button name="action_open_remove_wizard"
+                                                type="object"
+                                                string="Odstrániť"
+                                                icon="fa-trash"
+                                                class="btn-link text-danger"/>
                                     </list>
                                 </field>
                             </page>

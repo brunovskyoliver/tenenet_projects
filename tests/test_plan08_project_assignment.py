@@ -148,6 +148,37 @@ class TestTenenetPlan08ProjectAssignment(TransactionCase):
         )
         self.assertTrue(assignment.exists())
 
+    def test_remove_wizard_action_opens_for_assignment(self):
+        assignment = self.env["tenenet.project.assignment"].create(self._assignment_vals())
+
+        action = assignment.action_open_remove_wizard()
+
+        self.assertEqual(action["res_model"], "tenenet.project.assignment.remove.wizard")
+        self.assertEqual(action["target"], "new")
+        self.assertEqual(action["context"]["default_assignment_id"], assignment.id)
+
+    def test_remove_wizard_can_archive_assignment(self):
+        assignment = self.env["tenenet.project.assignment"].create(self._assignment_vals())
+        wizard = self.env["tenenet.project.assignment.remove.wizard"].create({
+            "assignment_id": assignment.id,
+        })
+
+        wizard.action_archive_assignment()
+        assignment.invalidate_recordset(["active", "state"])
+
+        self.assertFalse(assignment.active)
+        self.assertEqual(assignment.state, "finished")
+
+    def test_remove_wizard_can_delete_assignment(self):
+        assignment = self.env["tenenet.project.assignment"].create(self._assignment_vals())
+        wizard = self.env["tenenet.project.assignment.remove.wizard"].create({
+            "assignment_id": assignment.id,
+        })
+
+        wizard.action_delete_assignment()
+
+        self.assertFalse(assignment.exists())
+
     def test_leave_rule_creates_successfully(self):
         leave_type = self.env["hr.leave.type"].create({
             "name": "Dovolenka test",

@@ -89,6 +89,7 @@ and P&L reporting by program.
         'views/tenenet_pl_line_views.xml',
         'views/tenenet_project_assignment_views.xml',
         'views/tenenet_project_assignment_wizard_views.xml',
+        'views/tenenet_project_assignment_remove_wizard_views.xml',
         'views/tenenet_project_milestone_wizard_views.xml',
         'views/tenenet_project_allowed_expense_type_wizard_views.xml',
         'views/tenenet_project_expense_views.xml',

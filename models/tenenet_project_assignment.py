@@ -331,6 +331,17 @@ class TenenetProjectAssignment(models.Model):
         )
         return matrix.filtered(lambda rec: rec.year == year)[:1].action_open_grid()
 
+    def action_open_remove_wizard(self):
+        self.ensure_one()
+        return {
+            "name": "Odstrániť priradenie",
+            "type": "ir.actions.act_window",
+            "res_model": "tenenet.project.assignment.remove.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {"default_assignment_id": self.id},
+        }
+
     def _get_effective_date_range(self):
         self.ensure_one()
         return (
