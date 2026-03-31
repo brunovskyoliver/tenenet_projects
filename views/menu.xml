@@ -86,10 +86,16 @@
                   sequence="22"/>
 
         <menuitem id="menu_tenenet_internal_expense_report"
-                  name="Interné náklady – Ročný report"
+                  name="Interné náklady – ročný report podľa zamestnanca"
                   parent="menu_tenenet_reporting"
                   action="action_tenenet_internal_expense_report"
                   sequence="23"/>
+
+        <menuitem id="menu_tenenet_internal_expense_project_report"
+                  name="Interné náklady – ročný report podľa projektu"
+                  parent="menu_tenenet_reporting"
+                  action="action_tenenet_internal_expense_project_report"
+                  sequence="24"/>
 
         <menuitem id="menu_tenenet_employee_list_report"
                   name="Zoznam zamestnancov"

@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <record id="hr_holidays.menu_hr_holidays_root" model="ir.ui.menu">
+        <field name="name">Dovolenky</field>
+    </record>
+
     <!-- Change 2a: Override placeholder on description field in leave request form -->
     <record id="view_hr_leave_form_tenenet" model="ir.ui.view">
         <field name="name">hr.leave.view.form.tenenet</field>

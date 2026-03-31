@@ -18,7 +18,7 @@
             <field name="name">tenenet.expense.type.config.form</field>
             <field name="model">tenenet.expense.type.config</field>
             <field name="arch" type="xml">
-                <form string="Typ projektového nákladu">
+                <form string="Typ projektového nákladu" class="o_tenenet_expense_type_config_form">
                     <sheet>
                         <group>
                             <field name="name"/>

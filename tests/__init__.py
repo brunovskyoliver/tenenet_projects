@@ -17,3 +17,4 @@ from . import test_employee_training
 from . import test_employee_service
 from . import test_project_milestone
 from . import test_hr_expense_project_pairing
+from . import test_internal_expense_report

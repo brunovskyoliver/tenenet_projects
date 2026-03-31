@@ -33,3 +33,55 @@
 .o_form_view .o_tenenet_employee_assignments_field .o_list_table tfoot {
     display: none;
 }
+
+.o_tenenet_project_list {
+    th[data-name="semaphore"],
+    td[name="semaphore"] {
+        width: 28px !important;
+        min-width: 28px !important;
+        max-width: 28px !important;
+        padding-left: 8px !important;
+        padding-right: 4px !important;
+        text-align: center;
+    }
+
+    th[data-name="semaphore"] .o_column_title {
+        display: none;
+    }
+
+    td[name="semaphore"] .badge {
+        width: 10px;
+        height: 10px;
+        min-width: 10px;
+        min-height: 10px;
+        padding: 0;
+        border-radius: 999px;
+        font-size: 0;
+        line-height: 0;
+        vertical-align: middle;
+    }
+}
+
+.modal .o_tenenet_expense_type_config_form {
+    width: 96vw;
+    max-width: 1400px;
+
+    .o_form_sheet_bg,
+    .o_form_sheet {
+        width: 100% !important;
+        max-width: none !important;
+    }
+
+    .o_group {
+        width: 100%;
+    }
+
+    .o_field_x2many .o_list_renderer {
+        width: 100%;
+    }
+
+    .o_form_sheet_bg {
+        padding-left: 24px;
+        padding-right: 24px;
+    }
+}

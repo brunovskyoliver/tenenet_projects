@@ -4,7 +4,13 @@
             <field name="name">tenenet.project.list</field>
             <field name="model">tenenet.project</field>
             <field name="arch" type="xml">
-                <list string="Projekty">
+                <list string="Projekty" class="o_tenenet_project_list">
+                    <field name="semaphore"
+                           widget="badge"
+                           decoration-success="semaphore == 'green'"
+                           decoration-warning="semaphore == 'yellow'"
+                           decoration-danger="semaphore == 'red'"
+                           class="o_tenenet_project_semaphore_dot"/>
                     <field name="name"/>
                     <field name="program_ids" widget="many2many_tags"/>
                     <field name="donor_id"/>
@@ -12,10 +18,6 @@
                     <field name="budget_total"/>
                     <field name="date_start"/>
                     <field name="date_end"/>
-                    <field name="semaphore" widget="badge"
-                           decoration-success="semaphore == 'green'"
-                           decoration-warning="semaphore == 'yellow'"
-                           decoration-danger="semaphore == 'red'"/>
                     <field name="active"/>
                 </list>
             </field>
