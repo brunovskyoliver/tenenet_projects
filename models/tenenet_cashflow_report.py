@@ -22,7 +22,7 @@ MONTH_COLUMN_LABELS = {
 
 class TenenetCashflowReportHandler(models.AbstractModel):
     _name = "tenenet.cashflow.report.handler"
-    _inherit = ["account.report.custom.handler"]
+    _inherit = ["account.report.custom.handler", "tenenet.pl.reporting.support"]
     _description = "TENENET CashFlow Report Handler"
 
     def _custom_options_initializer(self, report, options, previous_options=None):
@@ -107,21 +107,6 @@ class TenenetCashflowReportHandler(models.AbstractModel):
         )))
         return lines
 
-    def _get_selected_year(self, options):
-        date_to = options.get("date", {}).get("date_to") or fields.Date.context_today(self)
-        return fields.Date.to_date(date_to).year
-
-    def _set_year_options(self, options, selected_year):
-        today_year = fields.Date.context_today(self).year
-        year_start = date(selected_year, 1, 1)
-        year_end = date(selected_year, 12, 31)
-        options["date"]["filter"] = "this_year"
-        options["date"]["period_type"] = "year"
-        options["date"]["period"] = selected_year - today_year
-        options["date"]["date_from"] = fields.Date.to_string(year_start)
-        options["date"]["date_to"] = fields.Date.to_string(year_end)
-        options["date"]["string"] = str(selected_year)
-
     def _get_effective_editable_rows(self, selected_year):
         forecast_rows = self._get_forecast_editable_rows(selected_year)
         forecast_by_key = {row["row_key"]: row for row in forecast_rows}
@@ -158,40 +143,7 @@ class TenenetCashflowReportHandler(models.AbstractModel):
         ]
 
     def _get_income_rows(self, selected_year):
-        rows = []
-        project_values = {}
-
-        cashflows = self.env["tenenet.project.cashflow"].search(
-            [("receipt_year", "=", selected_year)],
-            order="project_id, receipt_id, date_start",
-        )
-        for cashflow in cashflows:
-            project = cashflow.project_id
-            if project.id not in project_values:
-                project_values[project.id] = {
-                    "project": project,
-                    "values": defaultdict(float),
-                }
-            project_values[project.id]["values"][cashflow.month] += cashflow.amount or 0.0
-
-        for bucket in project_values.values():
-            if not any(bucket["values"].values()):
-                continue
-            rows.append(self._make_income_row(bucket["project"], bucket["values"]))
-
-        return sorted(rows, key=lambda row: ((row["program"] or "").lower(), row["row_label"].lower()))
-
-    def _make_income_row(self, project, values):
-        return {
-            "row_key": f"income:{project.id}",
-            "row_label": project.display_name,
-            "row_type": "income",
-            "section_label": "Príjmy",
-            "program": self._get_program_label(project),
-            "project_label": project.display_name,
-            "sequence": 100,
-            "values": defaultdict(float, values),
-        }
+        return super()._get_income_rows(selected_year)
 
     def _make_salary_row(self, values):
         return {

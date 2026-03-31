@@ -1,0 +1,92 @@
+<odoo>
+    <data>
+        <record id="view_tenenet_pl_program_override_tree" model="ir.ui.view">
+            <field name="name">tenenet.pl.program.override.tree</field>
+            <field name="model">tenenet.pl.program.override</field>
+            <field name="arch" type="xml">
+                <list string="P&amp;L override programu" default_order="program_label, period desc">
+                    <field name="program_id"/>
+                    <field name="row_label"/>
+                    <field name="period"/>
+                    <field name="year" readonly="1"/>
+                    <field name="month" readonly="1"/>
+                    <field name="amount"/>
+                    <field name="note"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_tenenet_pl_program_override_form" model="ir.ui.view">
+            <field name="name">tenenet.pl.program.override.form</field>
+            <field name="model">tenenet.pl.program.override</field>
+            <field name="arch" type="xml">
+                <form string="P&amp;L override programu">
+                    <sheet>
+                        <group>
+                            <field name="program_id"/>
+                            <field name="row_label"/>
+                            <field name="period"/>
+                            <field name="year" readonly="1"/>
+                            <field name="month" readonly="1"/>
+                            <field name="amount"/>
+                            <field name="note"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_tenenet_pl_program_override_grid" model="ir.ui.view">
+            <field name="name">tenenet.pl.program.override.grid</field>
+            <field name="model">tenenet.pl.program.override</field>
+            <field name="arch" type="xml">
+                <grid string="P&amp;L override programu"
+                      create="false"
+                      edit="true"
+                      delete="false"
+                      editable="1"
+                      display_empty="1"
+                      hide_column_total="1"
+                      form_view_id="%(view_tenenet_pl_program_override_form)d">
+                    <field name="program_label" type="row"/>
+                    <field name="row_label" type="row"/>
+                    <field name="period" type="col">
+                        <range name="year" string="Rok" span="year" step="month" default="1"/>
+                        <range name="month" string="Mesiac" span="month" step="day"/>
+                    </field>
+                    <field name="amount" type="measure" widget="float"/>
+                </grid>
+            </field>
+        </record>
+
+        <record id="view_tenenet_pl_program_override_search" model="ir.ui.view">
+            <field name="name">tenenet.pl.program.override.search</field>
+            <field name="model">tenenet.pl.program.override</field>
+            <field name="arch" type="xml">
+                <search string="P&amp;L override programu">
+                    <field name="program_id"/>
+                    <field name="row_label"/>
+                    <field name="period"/>
+                    <field name="year"/>
+                    <filter string="Aktuálny rok" name="current_year" domain="[('year', '=', context_today().year)]"/>
+                    <group>
+                        <filter string="Rok" name="group_year" context="{'group_by': 'year'}"/>
+                        <filter string="Program" name="group_program" context="{'group_by': 'program_id'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_tenenet_pl_program_override" model="ir.actions.act_window">
+            <field name="name">P&amp;L tržby override</field>
+            <field name="res_model">tenenet.pl.program.override</field>
+            <field name="view_mode">grid,list,form</field>
+            <field name="view_ids" eval="[(5, 0, 0),
+                   (0, 0, {'view_mode': 'grid', 'view_id': ref('view_tenenet_pl_program_override_grid')}),
+                   (0, 0, {'view_mode': 'list', 'view_id': ref('view_tenenet_pl_program_override_tree')}),
+                   (0, 0, {'view_mode': 'form', 'view_id': ref('view_tenenet_pl_program_override_form')})]"/>
+            <field name="search_view_id" ref="view_tenenet_pl_program_override_search"/>
+            <field name="context">{'grid_range': 'year', 'auto_sync_pl_program_override': True}</field>
+        </record>
+    </data>
+</odoo>

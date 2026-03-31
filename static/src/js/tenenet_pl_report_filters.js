@@ -6,6 +6,24 @@ const { DateTime } = luxon;
 export class TenenetPLReportFilters extends AccountReportFilters {
     static template = "tenenet_projects.TenenetPLReportFilters";
 
+    get currentProgramName() {
+        return this.controller.cachedFilterOptions.selected_program_name || "Program";
+    }
+
+    get selectedProgramIds() {
+        return this.controller.cachedFilterOptions.program_ids || [];
+    }
+
+    get programSelectorProps() {
+        return {
+            resModel: "tenenet.program",
+            resIds: this.selectedProgramIds,
+            update: (resIds) => this.selectProgram(resIds),
+            context: { active_test: false },
+            placeholder: "Vyber program...",
+        };
+    }
+
     get selectedYearValue() {
         const dateTo = this.controller.cachedFilterOptions.date?.date_to;
         const selectedYear = dateTo ? DateTime.fromISO(dateTo) : DateTime.now();
@@ -14,6 +32,12 @@ export class TenenetPLReportFilters extends AccountReportFilters {
 
     get yearFilterLabel() {
         return this.selectedYearValue.toFormat("yyyy");
+    }
+
+    async selectProgram(resIds) {
+        const nextProgramIds = resIds.length ? [resIds[resIds.length - 1]] : [];
+        await this.controller.updateOption("program_ids", nextProgramIds);
+        await this.applyFilters("program_ids", 0);
     }
 
     async selectYearPeriod() {

@@ -1,9 +1,32 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <templates>
     <t t-name="tenenet_projects.TenenetPLReportFilters" t-inherit="account_reports.AccountReportFiltersCustomizable">
+        <xpath expr="//div[@id='filter_date']" position="before">
+            <t t-if="controller.cachedFilterOptions.enable_program_filter">
+                <div id="filter_program" class="filter_program">
+                    <t t-call="tenenet_projects.TenenetPLReportFilterProgram"/>
+                </div>
+            </t>
+        </xpath>
         <xpath expr="//div[@id='filter_date']/t[@t-call='account_reports.AccountReportFilterDate']" position="replace">
             <t t-call="tenenet_projects.TenenetPLReportFilterYear"/>
         </xpath>
+    </t>
+
+    <t t-name="tenenet_projects.TenenetPLReportFilterProgram">
+        <Dropdown menuClass="'account_report_filter project'">
+            <button class="btn btn-secondary">
+                <i class="fa fa-folder-open me-1"/>
+                <t t-out="currentProgramName"/>
+            </button>
+
+            <t t-set-slot="content">
+                <div class="dropdown-item gap-2 align-items-center">
+                    <label>Program</label>
+                    <MultiRecordSelector t-props="programSelectorProps"/>
+                </div>
+            </t>
+        </Dropdown>
     </t>
 
     <t t-name="tenenet_projects.TenenetPLReportFilterYear">

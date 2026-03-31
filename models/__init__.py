@@ -12,6 +12,8 @@ from . import tenenet_project_milestone
 from . import tenenet_project_receipt
 from . import tenenet_project_cashflow
 from . import tenenet_cashflow_global_override
+from . import tenenet_pl_reporting_support
+from . import tenenet_pl_program_override
 from . import tenenet_project_assignment
 from . import tenenet_project_assignment_wizard
 from . import tenenet_project_milestone_wizard

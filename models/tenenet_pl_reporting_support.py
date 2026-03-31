@@ -1,0 +1,192 @@
+from collections import defaultdict
+from datetime import date
+
+from odoo import fields, models
+
+
+class TenenetPLReportingSupport(models.AbstractModel):
+    _name = "tenenet.pl.reporting.support"
+    _description = "TENENET P&L Reporting Support"
+
+    def _get_selected_year(self, options):
+        date_to = options.get("date", {}).get("date_to") or fields.Date.context_today(self)
+        return fields.Date.to_date(date_to).year
+
+    def _set_year_options(self, options, selected_year):
+        today_year = fields.Date.context_today(self).year
+        year_start = date(selected_year, 1, 1)
+        year_end = date(selected_year, 12, 31)
+
+        options["date"]["filter"] = "this_year"
+        options["date"]["period_type"] = "year"
+        options["date"]["period"] = selected_year - today_year
+        options["date"]["date_from"] = fields.Date.to_string(year_start)
+        options["date"]["date_to"] = fields.Date.to_string(year_end)
+        options["date"]["string"] = str(selected_year)
+
+    def _get_report_programs(self):
+        return self.env["tenenet.program"].with_context(active_test=False).search([], order="name")
+
+    def _get_default_program(self):
+        return self._get_report_programs()[:1]
+
+    def _get_selected_program_from_options(self, options):
+        program_ids = (options or {}).get("program_ids") or []
+        if program_ids:
+            return self.env["tenenet.program"].with_context(active_test=False).browse(program_ids[0]).exists()
+        return self._get_default_program()
+
+    def _get_program_line_name(self, program):
+        return program.display_name or program.name or ""
+
+    def _get_project_line_name(self, project):
+        code = ""
+        if "code" in project._fields:
+            code = (project.code or "").strip()
+        name = (project.name or "").strip() or project.display_name or ""
+        return f"{code} {name}".strip() if code else name
+
+    def _zero_by_month(self):
+        return defaultdict(float, {month: 0.0 for month in range(1, 13)})
+
+    def _sum_month_dicts(self, *value_maps):
+        result = defaultdict(float)
+        for month in range(1, 13):
+            result[month] = sum((values or {}).get(month, 0.0) for values in value_maps)
+        return result
+
+    def _get_income_rows(self, selected_year):
+        rows = []
+        project_values = {}
+        cashflows = self.env["tenenet.project.cashflow"].search(
+            [("receipt_year", "=", selected_year)],
+            order="project_id, receipt_id, date_start",
+        )
+        for cashflow in cashflows:
+            project = cashflow.project_id
+            bucket = project_values.setdefault(
+                project.id,
+                {"project": project, "values": defaultdict(float)},
+            )
+            bucket["values"][cashflow.month] += cashflow.amount or 0.0
+
+        for bucket in project_values.values():
+            if any(bucket["values"].values()):
+                rows.append(self._make_income_row(bucket["project"], bucket["values"]))
+
+        return sorted(rows, key=lambda row: ((row["program"] or "").lower(), row["row_label"].lower()))
+
+    def _make_income_row(self, project, values):
+        return {
+            "row_key": f"income:{project.id}",
+            "project_id": project.id,
+            "project": project,
+            "row_label": project.display_name,
+            "row_type": "income",
+            "section_label": "Príjmy",
+            "program": ", ".join(project.program_ids.mapped("name")),
+            "project_label": project.display_name,
+            "sequence": 100,
+            "values": defaultdict(float, values),
+        }
+
+    def _get_effective_income_rows(self, selected_year):
+        forecast_rows = self._get_income_rows(selected_year)
+        forecast_by_key = {row["row_key"]: row for row in forecast_rows}
+        override_rows = self.env["tenenet.cashflow.global.override"].get_year_row_data(selected_year)
+        effective_rows = []
+
+        for row_key, forecast_row in forecast_by_key.items():
+            row = {**forecast_row, "values": defaultdict(float, forecast_row["values"])}
+            override_row = override_rows.get(row_key)
+            if override_row:
+                for month, amount in override_row["values"].items():
+                    row["values"][month] = amount
+            if any(row["values"].get(month, 0.0) for month in range(1, 13)):
+                effective_rows.append(row)
+
+        return sorted(
+            effective_rows,
+            key=lambda row: ((row["program"] or "").lower(), row["row_label"].lower()),
+        )
+
+    def _get_program_income_rows(self, program, selected_year):
+        international_rows = []
+        national_rows = []
+        for income_row in self._get_effective_income_rows(selected_year):
+            project = income_row["project"]
+            if program not in project.program_ids:
+                continue
+            target = international_rows if project.international else national_rows
+            target.append({
+                "project": project,
+                "name": self._get_project_line_name(project),
+                "values": defaultdict(float, income_row["values"]),
+            })
+        international_rows.sort(key=lambda row: (row["name"] or "").lower())
+        national_rows.sort(key=lambda row: (row["name"] or "").lower())
+        return international_rows, national_rows
+
+    def _get_program_labor_cost_by_month(self, program, selected_year):
+        year_start = date(selected_year, 1, 1)
+        year_end = date(selected_year, 12, 31)
+        timesheets = self.env["tenenet.project.timesheet"].with_context(active_test=False).search(
+            [
+                ("project_id.program_ids", "in", [program.id]),
+                ("period", ">=", year_start),
+                ("period", "<=", year_end),
+            ]
+        )
+        values = defaultdict(float)
+        if timesheets:
+            timesheet_lines = self.env["tenenet.project.timesheet.line"].with_context(active_test=False).search([
+                ("timesheet_id", "in", timesheets.ids),
+            ])
+            for line in timesheet_lines:
+                values[line.period.month] -= (line.hours or 0.0) * (line.timesheet_id.wage_ccp or 0.0)
+            return values
+
+        pl_lines = self.env["tenenet.pl.line"].search(
+            [
+                ("program_id", "=", program.id),
+                ("period", ">=", year_start),
+                ("period", "<=", year_end),
+            ]
+        )
+        for line in pl_lines:
+            values[line.period.month] -= line.amount or 0.0
+        return values
+
+    def _get_program_trzby_by_month(self, program, selected_year):
+        override_rows = self.env["tenenet.pl.program.override"].get_year_row_data(selected_year)
+        program_row = override_rows.get(program.id, {}).get("trzby")
+        if not program_row:
+            return self._zero_by_month()
+        return defaultdict(float, program_row["values"])
+
+    def _get_program_report_values(self, program, selected_year):
+        international_rows, national_rows = self._get_program_income_rows(program, selected_year)
+        international_income = self._sum_month_dicts(*(row["values"] for row in international_rows))
+        national_income = self._sum_month_dicts(*(row["values"] for row in national_rows))
+        trzby = self._get_program_trzby_by_month(program, selected_year)
+        prijmy_spolu = self._sum_month_dicts(international_income, national_income, trzby)
+        labor_cost = self._get_program_labor_cost_by_month(program, selected_year)
+        stravne = self._zero_by_month()
+        support_admin = self._zero_by_month()
+        management = self._zero_by_month()
+        operating = self._zero_by_month()
+        pre_admin_result = self._sum_month_dicts(prijmy_spolu, labor_cost, stravne)
+        final_result = self._sum_month_dicts(pre_admin_result, support_admin, management, operating)
+        return {
+            "international_rows": international_rows,
+            "national_rows": national_rows,
+            "trzby": trzby,
+            "prijmy_spolu": prijmy_spolu,
+            "labor_cost": labor_cost,
+            "stravne": stravne,
+            "support_admin": support_admin,
+            "management": management,
+            "operating": operating,
+            "pre_admin_result": pre_admin_result,
+            "final_result": final_result,
+        }

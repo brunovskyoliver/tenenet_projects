@@ -73,6 +73,7 @@ and P&L reporting by program.
         'views/tenenet_project_views.xml',
         'views/tenenet_project_cashflow_views.xml',
         'views/tenenet_cashflow_global_override_views.xml',
+        'views/tenenet_pl_program_override_views.xml',
         'views/tenenet_project_milestone_views.xml',
         'views/tenenet_allocation_views.xml',
         'views/tenenet_utilization_views.xml',

@@ -73,23 +73,29 @@
                   action="action_tenenet_pl_report"
                   sequence="20"/>
 
+        <menuitem id="menu_tenenet_pl_summary_report"
+                  name="P&amp;L súhrn programov"
+                  parent="menu_tenenet_reporting"
+                  action="action_tenenet_pl_summary_report"
+                  sequence="21"/>
+
         <menuitem id="menu_tenenet_cashflow_report"
                   name="CashFlow report"
                   parent="menu_tenenet_reporting"
                   action="action_tenenet_cashflow_report"
-                  sequence="21"/>
+                  sequence="22"/>
 
         <menuitem id="menu_tenenet_internal_expense_report"
                   name="Interné náklady – Ročný report"
                   parent="menu_tenenet_reporting"
                   action="action_tenenet_internal_expense_report"
-                  sequence="22"/>
+                  sequence="23"/>
 
         <menuitem id="menu_tenenet_employee_list_report"
                   name="Zoznam zamestnancov"
                   parent="menu_tenenet_reporting"
                   action="action_tenenet_employee_list_report"
-                  sequence="25"/>
+                  sequence="26"/>
 
         <menuitem id="menu_tenenet_alerts"
                   name="Upozornenia"
@@ -160,6 +166,13 @@
                   parent="menu_tenenet_configuration"
                   action="action_tenenet_cashflow_global_override"
                   sequence="45"
+                  groups="tenenet_projects.group_tenenet_manager"/>
+
+        <menuitem id="menu_tenenet_pl_program_override"
+                  name="P&amp;L tržby override"
+                  parent="menu_tenenet_configuration"
+                  action="action_tenenet_pl_program_override"
+                  sequence="46"
                   groups="tenenet_projects.group_tenenet_manager"/>
     </data>
 </odoo>
