@@ -16,8 +16,11 @@ class TenenetPLProgramOverride(models.Model):
     month = fields.Integer(string="Mesiac", compute="_compute_year_month", store=True)
     row_key = fields.Char(string="Kľúč riadku", required=True, readonly=True, index=True, default="trzby")
     row_label = fields.Char(string="Riadok", required=True, readonly=True, default="Tržby")
+    section_label = fields.Char(string="Sekcia", readonly=True)
+    project_label = fields.Char(string="Projekt", readonly=True)
     sequence = fields.Integer(string="Poradie", default=100, readonly=True)
     amount = fields.Monetary(string="Suma (€)", currency_field="currency_id", default=0.0)
+    is_manual = fields.Boolean(string="Manuálne upravené", default=False, readonly=True)
     note = fields.Char(string="Poznámka")
     currency_id = fields.Many2one(
         "res.currency",
@@ -79,7 +82,10 @@ class TenenetPLProgramOverride(models.Model):
             return
         anchor = self.env.context.get("grid_anchor")
         anchor_date = fields.Date.to_date(anchor) if anchor else fields.Date.context_today(self)
-        self.with_context(_pl_program_override_autosync_done=True).sync_year_rows(anchor_date.year)
+        row_specs = self.with_context(
+            _pl_program_override_autosync_done=True
+        ).env["tenenet.pl.reporting.support"]._get_editable_program_row_specs(anchor_date.year)
+        self.with_context(_pl_program_override_autosync_done=True).sync_year_rows(anchor_date.year, row_specs)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -95,20 +101,14 @@ class TenenetPLProgramOverride(models.Model):
         vals = dict(vals)
         if vals.get("period"):
             vals["period"] = self._normalize_period(vals["period"])
+        if "amount" in vals and not self.env.context.get("_pl_program_override_syncing"):
+            vals["is_manual"] = True
         return super().write(vals)
 
     @api.model
     def _get_default_row_specs(self):
-        return [
-            {
-                "program_id": program.id,
-                "row_key": "trzby",
-                "row_label": "Tržby",
-                "sequence": 100,
-                "values": {},
-            }
-            for program in self.env["tenenet.program"].with_context(active_test=False).search([], order="name")
-        ]
+        selected_year = fields.Date.context_today(self).year
+        return self.env["tenenet.pl.reporting.support"]._get_editable_program_row_specs(selected_year)
 
     @api.model
     def get_year_row_data(self, year):
@@ -126,16 +126,20 @@ class TenenetPLProgramOverride(models.Model):
                     "program_label": record.program_label or "",
                     "row_key": record.row_key,
                     "row_label": record.row_label,
+                    "section_label": record.section_label or "",
+                    "project_label": record.project_label or "",
                     "sequence": record.sequence,
                     "values": {},
+                    "manual_months": {},
                 },
             )
             row_data["values"][record.month] = record.amount or 0.0
+            row_data["manual_months"][record.month] = bool(record.is_manual)
         return result
 
     @api.model
     def sync_year_rows(self, year, row_specs=None):
-        row_specs = row_specs or self._get_default_row_specs()
+        row_specs = row_specs or self.env["tenenet.pl.reporting.support"]._get_editable_program_row_specs(year)
         sync_self = self.with_context(_pl_program_override_autosync_done=True)
         existing_records = sync_self.search([("year", "=", year)])
         records_by_key_month = {
@@ -153,15 +157,25 @@ class TenenetPLProgramOverride(models.Model):
                     "period": date(year, month, 1),
                     "row_key": row["row_key"],
                     "row_label": row["row_label"],
+                    "section_label": row.get("section_label") or "",
+                    "project_label": row.get("project_label") or "",
                     "sequence": row.get("sequence", 100),
                     "amount": row.get("values", {}).get(month, existing.amount if existing else 0.0),
                     "currency_id": self.env.company.currency_id.id,
+                    "is_manual": False,
                 }
                 if existing:
-                    existing.write(values)
+                    if existing.is_manual:
+                        existing.with_context(_pl_program_override_syncing=True).write({
+                            key: value
+                            for key, value in values.items()
+                            if key not in {"amount", "is_manual"}
+                        })
+                    else:
+                        existing.with_context(_pl_program_override_syncing=True).write(values)
                     synced_record_ids.add(existing.id)
                 else:
-                    created = sync_self.create(values)
+                    created = sync_self.with_context(_pl_program_override_syncing=True).create(values)
                     synced_record_ids.add(created.id)
 
         stale_records = existing_records.filtered(
@@ -174,7 +188,8 @@ class TenenetPLProgramOverride(models.Model):
     def action_prepare_grid_year(self):
         anchor = self.env.context.get("grid_anchor")
         anchor_date = fields.Date.to_date(anchor) if anchor else fields.Date.context_today(self)
-        self.with_context(_pl_program_override_autosync_done=True).sync_year_rows(anchor_date.year)
+        row_specs = self.env["tenenet.pl.reporting.support"]._get_editable_program_row_specs(anchor_date.year)
+        self.with_context(_pl_program_override_autosync_done=True).sync_year_rows(anchor_date.year, row_specs)
         return False
 
     @api.model

@@ -6,6 +6,7 @@
             <field name="arch" type="xml">
                 <list string="P&amp;L override programu" default_order="program_label, period desc">
                     <field name="program_id"/>
+                    <field name="section_label"/>
                     <field name="row_label"/>
                     <field name="period"/>
                     <field name="year" readonly="1"/>
@@ -24,6 +25,7 @@
                     <sheet>
                         <group>
                             <field name="program_id"/>
+                            <field name="section_label"/>
                             <field name="row_label"/>
                             <field name="period"/>
                             <field name="year" readonly="1"/>
@@ -49,6 +51,7 @@
                       hide_column_total="1"
                       form_view_id="%(view_tenenet_pl_program_override_form)d">
                     <field name="program_label" type="row"/>
+                    <field name="section_label" type="row"/>
                     <field name="row_label" type="row"/>
                     <field name="period" type="col">
                         <range name="year" string="Rok" span="year" step="month" default="1"/>
@@ -65,6 +68,7 @@
             <field name="arch" type="xml">
                 <search string="P&amp;L override programu">
                     <field name="program_id"/>
+                    <field name="section_label"/>
                     <field name="row_label"/>
                     <field name="period"/>
                     <field name="year"/>
@@ -78,7 +82,7 @@
         </record>
 
         <record id="action_tenenet_pl_program_override" model="ir.actions.act_window">
-            <field name="name">P&amp;L tržby override</field>
+            <field name="name">P&amp;L override</field>
             <field name="res_model">tenenet.pl.program.override</field>
             <field name="view_mode">grid,list,form</field>
             <field name="view_ids" eval="[(5, 0, 0),
