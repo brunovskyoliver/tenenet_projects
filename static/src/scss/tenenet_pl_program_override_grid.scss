@@ -1,0 +1,24 @@
+.o_tenenet_pl_grid_cost_start_cell,
+.o_tenenet_pl_grid_cost_start_total {
+    position: relative;
+}
+
+.o_tenenet_pl_grid_cost_start_cell::before,
+.o_tenenet_pl_grid_cost_start_total::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 8px;
+    background: var(--o-view-background-color);
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.06);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.o_tenenet_pl_grid_cost_start_cell > *,
+.o_tenenet_pl_grid_cost_start_total > * {
+    position: relative;
+    z-index: 2;
+}

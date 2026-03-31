@@ -68,6 +68,7 @@ class TenenetPLReportHandler(models.AbstractModel):
             level=2,
             parent_line_id=line_dict_id,
             unfoldable=bool(values["international_rows"]),
+            monthly_values=values["international_income"],
         )
         national_line = self._build_unfoldable_section_line(
             report,
@@ -78,6 +79,7 @@ class TenenetPLReportHandler(models.AbstractModel):
             level=2,
             parent_line_id=line_dict_id,
             unfoldable=bool(values["national_rows"]),
+            monthly_values=values["national_income"],
         )
         lines = [
             international_line,

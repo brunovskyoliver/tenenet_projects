@@ -336,6 +336,8 @@ class TenenetPLReportingSupport(models.AbstractModel):
         return {
             "international_rows": international_rows,
             "national_rows": national_rows,
+            "international_income": international_income,
+            "national_income": national_income,
             "labor_project_rows": labor_project_rows,
             "trzby": trzby,
             "prijmy_spolu": prijmy_spolu,

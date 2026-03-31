@@ -46,6 +46,7 @@ and P&L reporting by program.
             'tenenet_projects/static/src/scss/tenenet_utilization_report.scss',
             'tenenet_projects/static/src/scss/tenenet_allocation_report.scss',
             'tenenet_projects/static/src/scss/tenenet_pl_report.scss',
+            'tenenet_projects/static/src/scss/tenenet_pl_program_override_grid.scss',
             'tenenet_projects/static/src/scss/timesheet_matrix.scss',
             'tenenet_projects/static/src/scss/hr_employee.scss',
         ],

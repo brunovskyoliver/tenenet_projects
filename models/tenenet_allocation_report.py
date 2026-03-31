@@ -53,6 +53,17 @@ class TenenetAllocationReportHandler(models.AbstractModel):
         lines = []
         emp_id = employee.id
 
+        gross_by_month = self._aggregate_field_by_month(timesheets, "gross_salary")
+        deductions_by_month = self._aggregate_field_by_month(timesheets, "deductions")
+        ccp_by_month = self._aggregate_field_by_month(timesheets, "total_labor_cost")
+
+        lines.append((0, self._build_report_line(
+            report, options,
+            "Celkové rozúčtovanie",
+            ccp_by_month, "monetary", 1,
+            f"alloc_{emp_id}_summary_header",
+        )))
+
         lines.append((0, self._build_report_line(
             report, options,
             "Hodiny za mesiac (vrátane sviatkov)",
@@ -65,10 +76,6 @@ class TenenetAllocationReportHandler(models.AbstractModel):
             net_capacity_by_month, "float", 2,
             f"alloc_{emp_id}_capacity_net",
         )))
-
-        gross_by_month = self._aggregate_field_by_month(timesheets, "gross_salary")
-        deductions_by_month = self._aggregate_field_by_month(timesheets, "deductions")
-        ccp_by_month = self._aggregate_field_by_month(timesheets, "total_labor_cost")
         hours_proj_by_month = self._aggregate_field_by_month(timesheets, "hours_project_total")
         hours_holidays_by_month = self._aggregate_field_by_month(timesheets, "hours_holidays")
         hours_vacation_by_month = self._aggregate_field_by_month(timesheets, "hours_vacation")
@@ -103,9 +110,12 @@ class TenenetAllocationReportHandler(models.AbstractModel):
             f"alloc_{emp_id}_hours_doctor",
         )))
 
+        # ── Project sections (collapsible) ───────────────────────────────────
         internal_expenses = self._get_employee_year_internal_expenses(employee, year)
+        internal_wage_by_project = self._group_internal_wage_by_project(
+            internal_expenses.filtered(lambda e: e.category == "wage")
+        )
         project_groups = self._group_timesheets_by_project(timesheets)
-        internal_wage_by_project = self._group_internal_wage_by_project(internal_expenses.filtered(lambda e: e.category == "wage"))
         sorted_projects = sorted(
             project_groups.keys(),
             key=lambda p: (p.name or "").lower(),
@@ -113,50 +123,38 @@ class TenenetAllocationReportHandler(models.AbstractModel):
 
         for project in sorted_projects:
             proj_timesheets = project_groups[project]
+            proj_ccp = self._aggregate_field_by_month(proj_timesheets, "total_labor_cost")
+            internal_wage = internal_wage_by_project.get(project.id, {})
+            internal_ccp = internal_wage.get("ccp", defaultdict(float))
+            proj_ccp_net = self._subtract_monthly_values(proj_ccp, internal_ccp)
+
+            proj_line_id = report._get_generic_line_id(
+                "tenenet.project", project.id,
+                markup=f"alloc_{emp_id}_proj_{project.id}",
+            )
+            is_unfolded = bool(
+                options.get("unfold_all")
+                or proj_line_id in (options.get("unfolded_lines") or [])
+            )
             lines.append((0, {
-                "id": report._get_generic_line_id(
-                    "tenenet.project", project.id,
-                    markup=f"alloc_{emp_id}_proj_header",
-                ),
+                "id": proj_line_id,
                 "name": project.display_name or project.name or "",
-                "columns": self._build_empty_columns(report, options),
+                "columns": self._build_allocation_columns(report, options, proj_ccp_net, "monetary"),
                 "level": 1,
+                "unfoldable": True,
+                "unfolded": is_unfolded,
+                "expand_function": "_report_expand_unfoldable_line_alloc_project",
             }))
 
-            proj_name = project.name or ""
-            proj_gross = self._aggregate_field_by_month(proj_timesheets, "gross_salary")
-            proj_deductions = self._aggregate_field_by_month(proj_timesheets, "deductions")
-            proj_ccp = self._aggregate_field_by_month(proj_timesheets, "total_labor_cost")
-            proj_hours = self._aggregate_field_by_month(proj_timesheets, "hours_project_total")
-            internal_wage = internal_wage_by_project.get(project.id, {})
-            internal_hm = internal_wage.get("hm", defaultdict(float))
-            internal_ccp = internal_wage.get("ccp", defaultdict(float))
-            internal_deductions = defaultdict(float, {
-                month: (internal_ccp.get(month, 0.0) - internal_hm.get(month, 0.0))
-                for month in range(1, 13)
-            })
-            proj_gross = self._subtract_monthly_values(proj_gross, internal_hm)
-            proj_deductions = self._subtract_monthly_values(proj_deductions, internal_deductions)
-            proj_ccp = self._subtract_monthly_values(proj_ccp, internal_ccp)
+        # ── Interné náklady section ──────────────────────────────────────────
 
-            lines.append((0, self._build_report_line(
-                report, options, f"{proj_name} - Hrubá mzda", proj_gross, "monetary", 3,
-                f"alloc_{emp_id}_proj_{project.id}_gross",
-            )))
-            lines.append((0, self._build_report_line(
-                report, options, f"{proj_name} - Odvody", proj_deductions, "monetary", 3,
-                f"alloc_{emp_id}_proj_{project.id}_deductions",
-            )))
-            lines.append((0, self._build_report_line(
-                report, options, f"{proj_name} - CCP", proj_ccp, "monetary", 3,
-                f"alloc_{emp_id}_proj_{project.id}_ccp",
-            )))
-            lines.append((0, self._build_report_line(
-                report, options, f"{proj_name} - Odpracované hodiny", proj_hours, "float", 3,
-                f"alloc_{emp_id}_proj_{project.id}_hours",
-            )))
+        lines.append((0, {
+            "id": report._get_generic_line_id(None, None, markup=f"alloc_{emp_id}_internal_header"),
+            "name": "Interné náklady",
+            "columns": self._build_empty_columns(report, options),
+            "level": 1,
+        }))
 
-        # ── Internal expenses section ────────────────────────────────────────
         leave_expenses = internal_expenses.filtered(lambda e: e.category == "leave")
         wage_expenses = internal_expenses.filtered(lambda e: e.category == "wage")
 
@@ -212,6 +210,69 @@ class TenenetAllocationReportHandler(models.AbstractModel):
 
         return lines
 
+    def _report_expand_unfoldable_line_alloc_project(
+        self, line_dict_id, groupby, options, progress, offset, unfold_all_batch_data=None
+    ):
+        report = self.env["account.report"].browse(options["report_id"])
+        employee = self._get_selected_employee(options)
+        year = self._get_selected_year(options)
+
+        project_id = report._get_res_id_from_line_id(line_dict_id, "tenenet.project")
+        if not project_id or not employee:
+            return {"lines": [], "offset_increment": 0, "has_more": False, "progress": progress}
+
+        project = self.env["tenenet.project"].browse(project_id)
+        lines = self._build_project_detail_lines(report, options, employee, year, project, line_dict_id)
+        return {"lines": lines, "offset_increment": len(lines), "has_more": False, "progress": progress}
+
+    def _build_project_detail_lines(self, report, options, employee, year, project, parent_line_id):
+        emp_id = employee.id
+        proj_timesheets = self._get_project_timesheets_for_employee(employee, project, year)
+        internal_expenses = self._get_employee_year_internal_expenses(employee, year)
+        internal_wage_by_project = self._group_internal_wage_by_project(
+            internal_expenses.filtered(lambda e: e.category == "wage")
+        )
+
+        proj_name = project.name or ""
+        proj_gross = self._aggregate_field_by_month(proj_timesheets, "gross_salary")
+        proj_deductions = self._aggregate_field_by_month(proj_timesheets, "deductions")
+        proj_ccp = self._aggregate_field_by_month(proj_timesheets, "total_labor_cost")
+        proj_hours = self._aggregate_field_by_month(proj_timesheets, "hours_project_total")
+
+        internal_wage = internal_wage_by_project.get(project.id, {})
+        internal_hm = internal_wage.get("hm", defaultdict(float))
+        internal_ccp = internal_wage.get("ccp", defaultdict(float))
+        internal_deductions = defaultdict(float, {
+            month: (internal_ccp.get(month, 0.0) - internal_hm.get(month, 0.0))
+            for month in range(1, 13)
+        })
+        proj_gross = self._subtract_monthly_values(proj_gross, internal_hm)
+        proj_deductions = self._subtract_monthly_values(proj_deductions, internal_deductions)
+        proj_ccp = self._subtract_monthly_values(proj_ccp, internal_ccp)
+
+        return [
+            self._build_report_line(
+                report, options, f"{proj_name} - Hrubá mzda", proj_gross, "monetary", 3,
+                f"alloc_{emp_id}_proj_{project.id}_gross",
+                parent_line_id=parent_line_id,
+            ),
+            self._build_report_line(
+                report, options, f"{proj_name} - Odvody", proj_deductions, "monetary", 3,
+                f"alloc_{emp_id}_proj_{project.id}_deductions",
+                parent_line_id=parent_line_id,
+            ),
+            self._build_report_line(
+                report, options, f"{proj_name} - CCP", proj_ccp, "monetary", 3,
+                f"alloc_{emp_id}_proj_{project.id}_ccp",
+                parent_line_id=parent_line_id,
+            ),
+            self._build_report_line(
+                report, options, f"{proj_name} - Odpracované hodiny", proj_hours, "float", 3,
+                f"alloc_{emp_id}_proj_{project.id}_hours",
+                parent_line_id=parent_line_id,
+            ),
+        ]
+
     def _get_selected_employee(self, options):
         employee_ids = (options or {}).get("employee_ids") or []
         employee_id = employee_ids[:1]
@@ -252,6 +313,19 @@ class TenenetAllocationReportHandler(models.AbstractModel):
                 ("project_id.is_tenenet_internal", "=", False),
             ],
             order="project_id, period",
+        )
+
+    def _get_project_timesheets_for_employee(self, employee, project, year):
+        year_start = date(year, 1, 1)
+        year_end = date(year, 12, 31)
+        return self.env["tenenet.project.timesheet"].search(
+            [
+                ("employee_id", "=", employee.id),
+                ("project_id", "=", project.id),
+                ("period", ">=", year_start),
+                ("period", "<=", year_end),
+            ],
+            order="period",
         )
 
     def _get_employee_year_internal_expenses(self, employee, year):
@@ -313,13 +387,16 @@ class TenenetAllocationReportHandler(models.AbstractModel):
             result[month] = max(0.0, (source_values.get(month, 0.0) - subtract_values.get(month, 0.0)))
         return result
 
-    def _build_report_line(self, report, options, name, monthly_values, figure_type, level, line_id_markup):
-        return {
-            "id": report._get_generic_line_id(None, None, markup=line_id_markup),
+    def _build_report_line(self, report, options, name, monthly_values, figure_type, level, line_id_markup, parent_line_id=None):
+        line = {
+            "id": report._get_generic_line_id(None, None, markup=line_id_markup, parent_line_id=parent_line_id),
             "name": name,
             "columns": self._build_allocation_columns(report, options, monthly_values, figure_type),
             "level": level,
         }
+        if parent_line_id:
+            line["parent_id"] = parent_line_id
+        return line
 
     def _build_allocation_columns(self, report, options, monthly_values, figure_type):
         columns = []

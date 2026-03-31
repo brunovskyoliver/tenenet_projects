@@ -21,6 +21,7 @@ class TenenetPLProgramOverride(models.Model):
     project_label = fields.Char(string="Projekt", readonly=True)
     sequence = fields.Integer(string="Poradie", default=100, readonly=True)
     is_editable = fields.Boolean(string="Upraviteľné", default=True, readonly=True)
+    is_separator = fields.Boolean(string="Oddeľovač", default=False, readonly=True)
     amount = fields.Monetary(string="Suma (€)", currency_field="currency_id", default=0.0)
     is_manual = fields.Boolean(string="Manuálne upravené", default=False, readonly=True)
     note = fields.Char(string="Poznámka")
@@ -77,6 +78,13 @@ class TenenetPLProgramOverride(models.Model):
         return {"type": "ir.actions.client", "tag": "reload"}
 
     @api.model
+    def _with_visible_domain(self, domain=None):
+        domain = list(domain or [])
+        if not self.env.context.get("include_separators"):
+            domain.append(("is_separator", "=", False))
+        return domain
+
+    @api.model
     def _auto_sync_grid_year(self):
         if self.env.context.get("_pl_program_override_autosync_done"):
             return
@@ -121,7 +129,10 @@ class TenenetPLProgramOverride(models.Model):
     @api.model
     def get_year_row_data(self, year):
         result = {}
-        records = self.with_context(_pl_program_override_autosync_done=True).search(
+        records = self.with_context(
+            _pl_program_override_autosync_done=True,
+            include_separators=True,
+        ).search(
             [("year", "=", year)],
             order="program_label, sequence, row_label, period",
         )
@@ -138,6 +149,7 @@ class TenenetPLProgramOverride(models.Model):
                     "project_label": record.project_label or "",
                     "sequence": record.sequence,
                     "is_editable": record.is_editable,
+                    "is_separator": record.is_separator,
                     "values": {},
                     "manual_months": {},
                 },
@@ -149,7 +161,7 @@ class TenenetPLProgramOverride(models.Model):
     @api.model
     def sync_year_rows(self, year, row_specs=None):
         row_specs = row_specs or self.env["tenenet.pl.reporting.support"]._get_editable_program_row_specs(year)
-        sync_self = self.with_context(_pl_program_override_autosync_done=True)
+        sync_self = self.with_context(_pl_program_override_autosync_done=True, include_separators=True)
         existing_records = sync_self.search([("year", "=", year)])
         records_by_key_month = {
             (record.program_id.id, record.row_key, record.month): record
@@ -170,6 +182,7 @@ class TenenetPLProgramOverride(models.Model):
                     "project_label": row.get("project_label") or "",
                     "sequence": row.get("sequence", 100),
                     "is_editable": row.get("is_editable", True),
+                    "is_separator": row.get("is_separator", False),
                     "amount": row.get("values", {}).get(month, existing.amount if existing else 0.0),
                     "currency_id": self.env.company.currency_id.id,
                     "is_manual": False,
@@ -205,13 +218,13 @@ class TenenetPLProgramOverride(models.Model):
     @api.model
     def search(self, domain, offset=0, limit=None, order=None):
         self._auto_sync_grid_year()
-        return super().search(domain, offset=offset, limit=limit, order=order)
+        return super().search(self._with_visible_domain(domain), offset=offset, limit=limit, order=order)
 
     @api.model
     def read_group(self, domain, fields, groupby, offset=0, limit=None, orderby=False, lazy=True):
         self._auto_sync_grid_year()
         return super().read_group(
-            domain,
+            self._with_visible_domain(domain),
             fields,
             groupby,
             offset=offset,

@@ -3,6 +3,7 @@
 import { registry } from "@web/core/registry";
 import { gridView } from "@web_grid/views/grid_view";
 import { GridModel } from "@web_grid/views/grid_model";
+import { GridRenderer } from "@web_grid/views/grid_renderer";
 
 export class TenenetPLProgramOverrideGridModel extends GridModel {
     // Include invisible row fields like sequence in the groupby so the server returns
@@ -48,7 +49,33 @@ export class TenenetPLProgramOverrideGridModel extends GridModel {
     }
 }
 
+export class TenenetPLProgramOverrideGridRenderer extends GridRenderer {
+    _isCostStartRow(row) {
+        const rowKey = row.initialRecordValues?.row_key || "";
+        const sequence = row.initialRecordValues?.sequence;
+        return (
+            sequence === 400 ||
+            (rowKey.startsWith("labor_project:") && sequence === 401)
+        );
+    }
+
+    getCellsClasses(column, row, section, isEven) {
+        return {
+            ...super.getCellsClasses(column, row, section, isEven),
+            o_tenenet_pl_grid_cost_start_cell: this._isCostStartRow(row),
+        };
+    }
+
+    getTotalCellsTextClasses(row, grandTotal) {
+        return {
+            ...super.getTotalCellsTextClasses(row, grandTotal),
+            o_tenenet_pl_grid_cost_start_total: this._isCostStartRow(row),
+        };
+    }
+}
+
 registry.category("views").add("tenenet_pl_program_override_grid", {
     ...gridView,
     Model: TenenetPLProgramOverrideGridModel,
+    Renderer: TenenetPLProgramOverrideGridRenderer,
 });

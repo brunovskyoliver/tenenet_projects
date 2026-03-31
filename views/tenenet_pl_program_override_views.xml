@@ -53,6 +53,7 @@
                       form_view_id="%(view_tenenet_pl_program_override_form)d">
                     <field name="program_id" type="row"/>
                     <field name="sequence" type="row" invisible="1"/>
+                    <field name="is_separator" type="row" invisible="1"/>
                     <field name="row_label" type="row"/>
                     <field name="period" type="col">
                         <range name="year" string="Rok" span="year" step="month" default="1"/>
