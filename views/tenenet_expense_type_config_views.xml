@@ -29,7 +29,7 @@
                         <group string="Popis">
                             <field name="description" nolabel="1"/>
                         </group>
-                        <group string="HR kategórie výdavkov">
+                        <group string="HR kategórie výdavkov" col="1">
                             <field name="expense_category_line_ids" nolabel="1">
                                 <list editable="bottom">
                                     <field name="sequence" widget="handle"/>
