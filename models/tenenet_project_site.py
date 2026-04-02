@@ -1,5 +1,11 @@
+import re
+
 from odoo import Command, api, fields, models
 from odoo.exceptions import ValidationError
+from odoo.tools import email_normalize
+
+
+NON_DIGIT_RE = re.compile(r"\D+")
 
 
 class TenenetProjectSite(models.Model):
@@ -25,6 +31,7 @@ class TenenetProjectSite(models.Model):
     )
     email = fields.Char(string="Email")
     phone = fields.Char(string="Telefón")
+    kraj = fields.Char(string="Kraj")
     street = fields.Char(string="Ulica")
     street2 = fields.Char(string="Ulica 2")
     zip = fields.Char(string="PSČ")
@@ -44,8 +51,24 @@ class TenenetProjectSite(models.Model):
         string="Priradené projekty",
         readonly=True,
     )
+    program_ids = fields.Many2many(
+        "tenenet.program",
+        "tenenet_project_site_program_rel",
+        "site_id",
+        "program_id",
+        string="Programy",
+    )
+    legacy_program_text = fields.Text(string="Pôvodný text programov")
     contact_summary = fields.Char(string="Kontakt", compute="_compute_contact_summary")
     address_display = fields.Char(string="Adresa", compute="_compute_address_display")
+
+    @api.constrains("email", "phone")
+    def _check_contact_details(self):
+        for rec in self:
+            if rec.email and not email_normalize(rec.email):
+                raise ValidationError("E-mail prevádzky nemá platný formát.")
+            if rec.phone:
+                rec._format_slovak_phone(rec.phone)
 
     @api.depends("email", "phone", "responsible_employee_id.name")
     def _compute_contact_summary(self):
@@ -74,3 +97,51 @@ class TenenetProjectSite(models.Model):
             raise ValidationError("Projekt pre odpojenie prevádzky neexistuje.")
         project.write({"site_ids": [Command.unlink(self.id)]})
         return {"type": "ir.actions.client", "tag": "reload"}
+
+    @classmethod
+    def _format_slovak_phone(cls, raw_phone):
+        cleaned = (raw_phone or "").strip()
+        if not cleaned:
+            return False
+
+        normalized = cleaned.replace("00", "+", 1) if cleaned.startswith("00") else cleaned
+        if normalized.startswith("+"):
+            digits = "+" + NON_DIGIT_RE.sub("", normalized[1:])
+        else:
+            digits = NON_DIGIT_RE.sub("", normalized)
+            if digits.startswith("0"):
+                digits = "421" + digits[1:]
+            elif not digits.startswith("421"):
+                raise ValidationError("Telefón musí byť slovenské číslo vo formáte 09xx..., 0xx/... alebo +421...")
+            digits = "+" + digits
+
+        national = digits[1:]
+        if not national.startswith("421") or len(national) != 12:
+            raise ValidationError("Telefón musí byť platné slovenské číslo.")
+
+        rest = national[3:]
+        if rest.startswith("9"):
+            return f"+421 {rest[:3]} {rest[3:6]} {rest[6:]}"
+        if rest.startswith("2"):
+            return f"+421 2 {rest[1:5]} {rest[5:]}"
+        return f"+421 {rest[:2]} {rest[2:5]} {rest[5:]}"
+
+    @classmethod
+    def _normalize_contact_vals(cls, vals):
+        normalized = dict(vals)
+        if "email" in normalized:
+            normalized["email"] = email_normalize(normalized["email"]) or False
+            if vals.get("email") and not normalized["email"]:
+                raise ValidationError("E-mail prevádzky nemá platný formát.")
+        if "phone" in normalized:
+            normalized["phone"] = cls._format_slovak_phone(normalized["phone"]) if normalized["phone"] else False
+        return normalized
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        vals_list = [self._normalize_contact_vals(vals) for vals in vals_list]
+        return super().create(vals_list)
+
+    def write(self, vals):
+        vals = self._normalize_contact_vals(vals)
+        return super().write(vals)
