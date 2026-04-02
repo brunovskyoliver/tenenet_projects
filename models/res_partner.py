@@ -6,6 +6,7 @@ class ResPartner(models.Model):
 
     is_tenenet_client = fields.Boolean(string="Klient")
     is_tenenet_partner = fields.Boolean(string="Partner")
+    is_tenenet_landlord = fields.Boolean(string="Prenajímateľ")
     is_tenenet_employee_contact = fields.Boolean(
         string="Kontakt zamestnanca",
         compute="_compute_tenenet_contact_roles",
@@ -17,7 +18,7 @@ class ResPartner(models.Model):
         store=True,
     )
 
-    @api.depends("is_tenenet_client", "is_tenenet_partner", "employee_ids")
+    @api.depends("is_tenenet_client", "is_tenenet_partner", "is_tenenet_landlord", "employee_ids")
     def _compute_tenenet_contact_roles(self):
         for rec in self:
             roles = []
@@ -29,4 +30,6 @@ class ResPartner(models.Model):
                 roles.append("Klient")
             if rec.is_tenenet_partner:
                 roles.append("Partner")
+            if rec.is_tenenet_landlord:
+                roles.append("Prenajímateľ")
             rec.tenenet_contact_role_summary = ", ".join(roles) if roles else False

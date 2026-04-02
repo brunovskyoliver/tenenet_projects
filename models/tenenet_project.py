@@ -1,6 +1,6 @@
 import logging
 
-from odoo import _, api, fields, models
+from odoo import _, Command, api, fields, models
 from odoo.exceptions import AccessError, ValidationError
 
 _logger = logging.getLogger(__name__)
@@ -47,6 +47,13 @@ class TenenetProject(models.Model):
         "project_id",
         "program_id",
         string="Programy",
+    )
+    site_ids = fields.Many2many(
+        "tenenet.project.site",
+        "tenenet_project_site_rel",
+        "project_id",
+        "site_id",
+        string="Prevádzky / centrá / terén",
     )
     donor_id = fields.Many2one("tenenet.donor", string="Donor", ondelete="restrict")
     international = fields.Boolean(
@@ -260,7 +267,12 @@ class TenenetProject(models.Model):
         return records
 
     def write(self, vals):
+        previous_site_ids = {}
+        if "site_ids" in vals:
+            previous_site_ids = {project.id: set(project.site_ids.ids) for project in self}
         result = super().write(vals)
+        if previous_site_ids:
+            self._cleanup_assignment_sites_after_project_unlink(previous_site_ids)
         if "date_start" in vals or "date_end" in vals:
             self.mapped("assignment_ids")._sync_precreated_timesheets()
         if "default_max_monthly_wage_hm" in vals:
@@ -268,6 +280,16 @@ class TenenetProject(models.Model):
         if "odborny_garant_id" in vals or "project_manager_id" in vals or "active" in vals:
             self._sync_garant_pm_group()
         return result
+
+    def _cleanup_assignment_sites_after_project_unlink(self, previous_site_ids):
+        for project in self:
+            removed_site_ids = previous_site_ids.get(project.id, set()) - set(project.site_ids.ids)
+            if not removed_site_ids:
+                continue
+            for assignment in project.assignment_ids.filtered(lambda rec: rec.site_ids):
+                next_site_ids = [site.id for site in assignment.site_ids if site.id not in removed_site_ids]
+                if len(next_site_ids) != len(assignment.site_ids):
+                    assignment.write({"site_ids": [Command.set(next_site_ids)]})
 
     @api.model
     def action_open_garant_projects(self):
@@ -326,6 +348,17 @@ class TenenetProject(models.Model):
             "name": "Pridať priradenie zamestnanca",
             "type": "ir.actions.act_window",
             "res_model": "tenenet.project.assignment.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {"default_project_id": self.id},
+        }
+
+    def action_open_site_wizard(self):
+        self.ensure_one()
+        return {
+            "name": "Pridať prevádzky, centrá alebo terén",
+            "type": "ir.actions.act_window",
+            "res_model": "tenenet.project.site.wizard",
             "view_mode": "form",
             "target": "new",
             "context": {"default_project_id": self.id},

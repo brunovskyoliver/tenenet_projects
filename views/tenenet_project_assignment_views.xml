@@ -81,6 +81,10 @@
                                 <field name="date_start"/>
                                 <field name="date_end"/>
                                 <field name="allocation_ratio"/>
+                                <field name="site_ids"
+                                       widget="many2many_tags"
+                                       domain="[('project_ids', 'in', project_id)]"
+                                       options="{'no_create': True}"/>
                                 <field name="wage_hm"/>
                                 <field name="wage_ccp" readonly="1"/>
                                 <field name="max_monthly_wage_hm"/>

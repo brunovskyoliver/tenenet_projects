@@ -17,13 +17,19 @@ class TestTenenetContactClassification(TransactionCase):
             "is_tenenet_client": True,
             "is_tenenet_partner": True,
         })
+        landlord = self.env["res.partner"].create({
+            "name": "Prenajímateľ",
+            "is_tenenet_landlord": True,
+        })
         neutral = self.env["res.partner"].create({"name": "Neutral"})
 
         client_domain = eval(self.env.ref("tenenet_projects.action_tenenet_clients").domain)
         partner_domain = eval(self.env.ref("tenenet_projects.action_tenenet_partners").domain)
+        landlord_domain = [("is_tenenet_landlord", "=", True)]
 
         client_records = self.env["res.partner"].search(client_domain)
         partner_records = self.env["res.partner"].search(partner_domain)
+        landlord_records = self.env["res.partner"].search(landlord_domain)
 
         self.assertIn(client, client_records)
         self.assertNotIn(client, partner_records)
@@ -31,8 +37,19 @@ class TestTenenetContactClassification(TransactionCase):
         self.assertNotIn(partner, client_records)
         self.assertIn(both, client_records)
         self.assertIn(both, partner_records)
+        self.assertIn(landlord, landlord_records)
+        self.assertNotIn(client, landlord_records)
         self.assertNotIn(neutral, client_records)
         self.assertNotIn(neutral, partner_records)
+
+    def test_landlord_flag_is_included_in_role_summary(self):
+        landlord = self.env["res.partner"].create({
+            "name": "Prenajímateľ",
+            "is_tenenet_landlord": True,
+        })
+
+        self.assertTrue(landlord.is_tenenet_landlord)
+        self.assertIn("Prenajímateľ", landlord.tenenet_contact_role_summary)
 
     def test_employee_contact_flag_is_computed_from_work_contact(self):
         partner = self.env["res.partner"].create({"name": "Employee Contact"})

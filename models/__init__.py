@@ -1,5 +1,6 @@
 from . import tenenet_program
 from . import tenenet_donor
+from . import tenenet_project_site
 from . import res_partner
 from . import hr_employee
 from . import hr_employee_public
@@ -17,6 +18,7 @@ from . import tenenet_pl_program_override
 from . import tenenet_project_assignment
 from . import tenenet_project_assignment_wizard
 from . import tenenet_project_assignment_remove_wizard
+from . import tenenet_project_site_wizard
 from . import tenenet_project_milestone_wizard
 from . import tenenet_project_leave_rule
 from . import tenenet_project_allowed_expense_type

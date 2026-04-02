@@ -156,6 +156,34 @@
                                     </list>
                                 </field>
                             </page>
+                            <page string="Prevádzky">
+                                <div class="mb-2">
+                                    <button name="action_open_site_wizard"
+                                            type="object"
+                                            string="Pridať prevádzku, centrum alebo terén"
+                                            class="btn btn-primary"
+                                            invisible="not id"/>
+                                </div>
+                                <field name="site_ids" nolabel="1">
+                                    <list string="Prevádzky / centrá / terén"
+                                          create="false"
+                                          delete="false"
+                                          edit="false">
+                                        <field name="name"/>
+                                        <field name="site_type"/>
+                                        <field name="responsible_employee_id" optional="show"/>
+                                        <field name="contact_summary" optional="show"/>
+                                        <field name="address_display" optional="show"/>
+                                        <field name="landlord_partner_id" optional="show"/>
+                                        <button name="action_unlink_from_project"
+                                                type="object"
+                                                string="Odpojiť"
+                                                icon="fa-chain-broken"
+                                                class="btn-link"
+                                                context="{'unlink_project_id': parent.id}"/>
+                                    </list>
+                                </field>
+                            </page>
                             <page string="Pravidlá">
                                 <group string="Mzdový strop pre priradenia">
                                     <group>

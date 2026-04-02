@@ -49,6 +49,13 @@ class TenenetProjectAssignment(models.Model):
         required=True,
         ondelete="cascade",
     )
+    site_ids = fields.Many2many(
+        "tenenet.project.site",
+        "tenenet_project_assignment_site_rel",
+        "assignment_id",
+        "site_id",
+        string="Prevádzky / centrá / terén",
+    )
     date_start = fields.Date(string="Začiatok priradenia")
     date_end = fields.Date(string="Koniec priradenia")
     allocation_ratio = fields.Float(
@@ -349,7 +356,15 @@ class TenenetProjectAssignment(models.Model):
             self.date_end or self.project_id.date_end,
         )
 
-    @api.constrains("active", "employee_id", "project_id", "date_start", "date_end", "allocation_ratio")
+    @api.constrains(
+        "active",
+        "employee_id",
+        "project_id",
+        "date_start",
+        "date_end",
+        "allocation_ratio",
+        "site_ids",
+    )
     def _check_dates(self):
         for rec in self:
             if rec.date_start and rec.date_end and rec.date_start > rec.date_end:
@@ -378,4 +393,9 @@ class TenenetProjectAssignment(models.Model):
                 raise ValidationError(
                     "Súčet projektových úväzkov nesmie prekročiť úväzok zamestnanca (%s %%)."
                     % (f"{max_ratio:.2f}")
+                )
+            invalid_sites = rec.site_ids - rec.project_id.site_ids
+            if invalid_sites:
+                raise ValidationError(
+                    "Priradenie môže obsahovať iba prevádzky, centrá alebo terén pripojené k projektu."
                 )

@@ -9,6 +9,7 @@
                     <group string="TENENET">
                         <field name="is_tenenet_client"/>
                         <field name="is_tenenet_partner"/>
+                        <field name="is_tenenet_landlord"/>
                         <field name="is_tenenet_employee_contact" readonly="1"/>
                         <field name="tenenet_contact_role_summary" readonly="1"/>
                     </group>
@@ -26,6 +27,7 @@
                     <field name="phone"/>
                     <field name="is_tenenet_client"/>
                     <field name="is_tenenet_partner"/>
+                    <field name="is_tenenet_landlord"/>
                     <field name="is_tenenet_employee_contact" optional="hide"/>
                     <field name="tenenet_contact_role_summary"/>
                 </list>
@@ -40,6 +42,7 @@
                 <xpath expr="//search" position="inside">
                     <filter string="Klienti" name="tenenet_clients" domain="[('is_tenenet_client', '=', True)]"/>
                     <filter string="Partneri" name="tenenet_partners" domain="[('is_tenenet_partner', '=', True)]"/>
+                    <filter string="Prenajímatelia" name="tenenet_landlords" domain="[('is_tenenet_landlord', '=', True)]"/>
                     <filter string="Klienti a partneri" name="tenenet_clients_or_partners" domain="['|', ('is_tenenet_client', '=', True), ('is_tenenet_partner', '=', True)]"/>
                 </xpath>
             </field>

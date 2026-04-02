@@ -141,6 +141,24 @@
                   action="action_tenenet_program"
                   sequence="10"/>
 
+        <menuitem id="menu_tenenet_project_sites_prevadzka"
+                  name="Prevádzky"
+                  parent="menu_tenenet_configuration"
+                  action="action_tenenet_project_site_prevadzka"
+                  sequence="15"/>
+
+        <menuitem id="menu_tenenet_project_sites_centrum"
+                  name="Centrá"
+                  parent="menu_tenenet_configuration"
+                  action="action_tenenet_project_site_centrum"
+                  sequence="16"/>
+
+        <menuitem id="menu_tenenet_project_sites_teren"
+                  name="Terén"
+                  parent="menu_tenenet_configuration"
+                  action="action_tenenet_project_site_teren"
+                  sequence="17"/>
+
         <menuitem id="menu_tenenet_donors"
                   name="Donori"
                   parent="menu_tenenet_configuration"

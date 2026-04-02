@@ -1,0 +1,103 @@
+<odoo>
+    <data>
+        <record id="view_tenenet_project_site_list" model="ir.ui.view">
+            <field name="name">tenenet.project.site.list</field>
+            <field name="model">tenenet.project.site</field>
+            <field name="arch" type="xml">
+                <list string="Prevádzky / centrá / terén">
+                    <field name="name"/>
+                    <field name="site_type"/>
+                    <field name="responsible_employee_id"/>
+                    <field name="email" optional="show"/>
+                    <field name="phone" optional="show"/>
+                    <field name="city" optional="show"/>
+                    <field name="landlord_partner_id" optional="show" domain="[('is_tenenet_landlord', '=', True)]"/>
+                    <field name="active"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_tenenet_project_site_form" model="ir.ui.view">
+            <field name="name">tenenet.project.site.form</field>
+            <field name="model">tenenet.project.site</field>
+            <field name="arch" type="xml">
+                <form string="Prevádzka / centrum / terén">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name"/>
+                                <field name="site_type"/>
+                                <field name="active"/>
+                                <field name="responsible_employee_id"/>
+                            </group>
+                            <group>
+                                <field name="email"/>
+                                <field name="phone"/>
+                                <field name="landlord_partner_id" domain="[('is_tenenet_landlord', '=', True)]"/>
+                            </group>
+                        </group>
+                        <group string="Adresa">
+                            <group>
+                                <field name="street"/>
+                                <field name="street2"/>
+                                <field name="zip"/>
+                            </group>
+                            <group>
+                                <field name="city"/>
+                                <field name="country_id"/>
+                            </group>
+                        </group>
+                        <group string="Priradené projekty">
+                            <field name="project_ids" widget="many2many_tags" readonly="1"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_tenenet_project_site_search" model="ir.ui.view">
+            <field name="name">tenenet.project.site.search</field>
+            <field name="model">tenenet.project.site</field>
+            <field name="arch" type="xml">
+                <search string="Prevádzky / centrá / terén">
+                    <field name="name"/>
+                    <field name="site_type"/>
+                    <field name="responsible_employee_id"/>
+                    <filter string="Aktívne" name="active" domain="[('active', '=', True)]"/>
+                    <filter string="Prevádzky" name="prevadzka" domain="[('site_type', '=', 'prevadzka')]"/>
+                    <filter string="Centrá" name="centrum" domain="[('site_type', '=', 'centrum')]"/>
+                    <filter string="Terén" name="teren" domain="[('site_type', '=', 'teren')]"/>
+                    <filter string="Typ" name="group_type" context="{'group_by': 'site_type'}"/>
+                    <filter string="Zodpovedná osoba" name="group_responsible" context="{'group_by': 'responsible_employee_id'}"/>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_tenenet_project_site_prevadzka" model="ir.actions.act_window">
+            <field name="name">Prevádzky</field>
+            <field name="res_model">tenenet.project.site</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_tenenet_project_site_search"/>
+            <field name="domain">[('site_type', '=', 'prevadzka')]</field>
+            <field name="context">{'default_site_type': 'prevadzka', 'search_default_active': 1}</field>
+        </record>
+
+        <record id="action_tenenet_project_site_centrum" model="ir.actions.act_window">
+            <field name="name">Centrá</field>
+            <field name="res_model">tenenet.project.site</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_tenenet_project_site_search"/>
+            <field name="domain">[('site_type', '=', 'centrum')]</field>
+            <field name="context">{'default_site_type': 'centrum', 'search_default_active': 1}</field>
+        </record>
+
+        <record id="action_tenenet_project_site_teren" model="ir.actions.act_window">
+            <field name="name">Terén</field>
+            <field name="res_model">tenenet.project.site</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_tenenet_project_site_search"/>
+            <field name="domain">[('site_type', '=', 'teren')]</field>
+            <field name="context">{'default_site_type': 'teren', 'search_default_active': 1}</field>
+        </record>
+    </data>
+</odoo>
