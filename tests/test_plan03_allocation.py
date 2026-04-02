@@ -11,7 +11,6 @@ class TestTenenetPlan03Allocation(TransactionCase):
             {
                 "name": "Program Alokácie",
                 "code": "PG_ALLOC",
-                "headcount": 1.0,
             }
         )
         self.donor = self.env["tenenet.donor"].create(

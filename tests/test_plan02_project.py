@@ -23,7 +23,6 @@ class TestTenenetPlan02Project(TransactionCase):
             {
                 "name": "Program Test",
                 "code": "PG_TEST",
-                "headcount": 1.0,
             }
         )
         self.donor = self.env["tenenet.donor"].create(

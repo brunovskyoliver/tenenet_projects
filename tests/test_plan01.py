@@ -10,7 +10,6 @@ class TestTenenetPlan01(TransactionCase):
             {
                 "name": "Test Program A",
                 "code": "TPA",
-                "headcount": 1.0,
             }
         )
 
@@ -20,7 +19,6 @@ class TestTenenetPlan01(TransactionCase):
                     {
                         "name": "Test Program B",
                         "code": "TPA",
-                        "headcount": 2.0,
                     }
                 )
 
@@ -29,20 +27,32 @@ class TestTenenetPlan01(TransactionCase):
             {
                 "name": "Program 1",
                 "code": "P1",
-                "headcount": 8.0,
             }
         )
         p2 = self.env["tenenet.program"].create(
             {
                 "name": "Program 2",
                 "code": "P2",
-                "headcount": 2.0,
             }
         )
+        employee_a = self.env["hr.employee"].create({"name": "Employee A"})
+        employee_b = self.env["hr.employee"].create({"name": "Employee B"})
+        employee_c = self.env["hr.employee"].create({"name": "Employee C"})
+        project_1 = self.env["tenenet.project"].create({"name": "Project 1", "program_ids": [(4, p1.id)]})
+        project_2 = self.env["tenenet.project"].create({"name": "Project 2", "program_ids": [(4, p1.id)]})
+        project_3 = self.env["tenenet.project"].create({"name": "Project 3", "program_ids": [(4, p2.id)]})
+        self.env["tenenet.project.assignment"].create([
+            {"employee_id": employee_a.id, "project_id": project_1.id},
+            {"employee_id": employee_b.id, "project_id": project_1.id},
+            {"employee_id": employee_c.id, "project_id": project_2.id},
+            {"employee_id": employee_a.id, "project_id": project_3.id},
+        ])
 
         total_headcount = sum(self.env["tenenet.program"].search([]).mapped("headcount"))
         self.assertAlmostEqual(p1.allocation_pct, p1.headcount / total_headcount, places=4)
         self.assertAlmostEqual(p2.allocation_pct, p2.headcount / total_headcount, places=4)
+        self.assertEqual(p1.headcount, 3.0)
+        self.assertEqual(p2.headcount, 1.0)
 
     def test_donor_creation_with_selection(self):
         partner = self.env["res.partner"].create(
@@ -117,7 +127,6 @@ class TestTenenetPlan01(TransactionCase):
             {
                 "name": "Program With Project",
                 "code": "PWP",
-                "headcount": 1.0,
             }
         )
         project = self.env["tenenet.project"].create(

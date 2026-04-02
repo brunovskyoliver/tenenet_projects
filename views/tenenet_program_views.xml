@@ -27,7 +27,7 @@
                                 <field name="active"/>
                             </group>
                             <group>
-                                <field name="headcount"/>
+                                <field name="headcount" readonly="1"/>
                                 <field name="allocation_pct_percentage" readonly="1"/>
                             </group>
                         </group>

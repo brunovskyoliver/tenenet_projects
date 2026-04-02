@@ -10,18 +10,23 @@ class TenenetProgram(models.Model):
     code = fields.Char(string="Kód programu", required=True)
     description = fields.Text(string="Popis")
     active = fields.Boolean(string="Aktívny", default=True)
-    headcount = fields.Float(string="Počet ľudí (FTE)", digits=(10, 2))
+    headcount = fields.Float(
+        string="Počet ľudí (FTE)",
+        digits=(10, 2),
+        compute="_compute_headcount",
+        store=True,
+        readonly=True,
+        help="Počet aktívnych priradení zamestnancov na aktívnych projektoch patriacich do programu.",
+    )
     allocation_pct = fields.Float(
         string="Alokačné %",
         digits=(6, 4),
         compute="_compute_allocation_pct",
-        store=True,
     )
     allocation_pct_percentage = fields.Float(
         string="Alokačné percento",
         digits=(6, 4),
         compute="_compute_allocation_pct_percentage",
-        store=True,
     )
     project_ids = fields.Many2many(
         "tenenet.project",
@@ -34,40 +39,29 @@ class TenenetProgram(models.Model):
 
     _unique_code = models.Constraint("UNIQUE(code)", "Kód programu musí byť jedinečný.")
 
+    @api.depends(
+        "project_ids",
+        "project_ids.active",
+        "project_ids.assignment_ids",
+        "project_ids.assignment_ids.active",
+    )
+    def _compute_headcount(self):
+        assignment_model = self.env["tenenet.project.assignment"].with_context(active_test=False)
+        for program in self:
+            program.headcount = float(assignment_model.search_count([
+                ("active", "=", True),
+                ("project_id.active", "=", True),
+                ("project_id.program_ids", "in", program.id),
+            ]))
+
     @api.depends("headcount")
     def _compute_allocation_pct(self):
-        totals_data = self._read_group([], [], ["headcount:sum"])
-        total_headcount = totals_data[0][0] if totals_data else 0.0
+        total_headcount = sum(self.search([]).mapped("headcount"))
         for program in self:
             program.allocation_pct = (program.headcount / total_headcount) if total_headcount else 0.0
-            
+
     @api.depends("headcount")
     def _compute_allocation_pct_percentage(self):
-        totals_data = self._read_group([], [], ["headcount:sum"])
-        total_headcount = totals_data[0][0] if totals_data else 0.0
+        total_headcount = sum(self.search([]).mapped("headcount"))
         for program in self:
             program.allocation_pct_percentage = ((program.headcount / total_headcount) * 100) if total_headcount else 0.0
-
-    @api.model
-    def _recompute_allocation_pct_all(self):
-        programs = self.search([])
-        if programs:
-            programs._compute_allocation_pct()
-            programs._compute_allocation_pct_percentage()
-
-    @api.model_create_multi
-    def create(self, vals_list):
-        records = super().create(vals_list)
-        self._recompute_allocation_pct_all()
-        return records
-
-    def write(self, vals):
-        result = super().write(vals)
-        if "headcount" in vals:
-            self._recompute_allocation_pct_all()
-        return result
-
-    def unlink(self):
-        result = super().unlink()
-        self.env["tenenet.program"]._recompute_allocation_pct_all()
-        return result

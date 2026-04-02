@@ -1,5 +1,16 @@
 <odoo>
     <data>
+        <record id="hr_expense.hr_expense_actions_my_all" model="ir.actions.act_window">
+            <field name="help" type="html">
+                <div class="o_view_nocontent_expense_receipt o_view_pink_overlay">
+                    <p class="o_view_nocontent_expense_receipt_image"/>
+                    <h2 class="d-md-block">
+                        Upload or drop an expense receipt
+                    </h2>
+                </div>
+            </field>
+        </record>
+
         <record id="view_hr_expense_form_tenenet" model="ir.ui.view">
             <field name="name">hr.expense.form.tenenet</field>
             <field name="model">hr.expense</field>

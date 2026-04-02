@@ -13,20 +13,28 @@ class TestTenenetPlan05PLReporting(TransactionCase):
             {
                 "name": "Program A",
                 "code": "PG_A",
-                "headcount": 3.0,
             }
         )
         self.program_b = self.env["tenenet.program"].create(
             {
                 "name": "Program B",
                 "code": "PG_B",
-                "headcount": 1.0,
             }
         )
         self.employee = self.env["hr.employee"].create({"name": "Zamestnanec P&L"})
+        self.employee_b = self.env["hr.employee"].create({"name": "Zamestnanec P&L B"})
+        self.employee_c = self.env["hr.employee"].create({"name": "Zamestnanec P&L C"})
         self.project_a = self.env["tenenet.project"].create({
             "name": "Projekt PL A",
             "program_ids": [(4, self.program_a.id)],
+        })
+        self.project_a_2 = self.env["tenenet.project"].create({
+            "name": "Projekt PL A 2",
+            "program_ids": [(4, self.program_a.id)],
+        })
+        self.project_b = self.env["tenenet.project"].create({
+            "name": "Projekt PL B",
+            "program_ids": [(4, self.program_b.id)],
         })
         self.assignment = self.env["tenenet.project.assignment"].create({
             "employee_id": self.employee.id,
@@ -34,6 +42,26 @@ class TestTenenetPlan05PLReporting(TransactionCase):
             "wage_hm": 0.0,
             "wage_ccp": 1.0,
         })
+        self.env["tenenet.project.assignment"].create([
+            {
+                "employee_id": self.employee_b.id,
+                "project_id": self.project_a.id,
+                "wage_hm": 0.0,
+                "wage_ccp": 1.0,
+            },
+            {
+                "employee_id": self.employee_c.id,
+                "project_id": self.project_a_2.id,
+                "wage_hm": 0.0,
+                "wage_ccp": 1.0,
+            },
+            {
+                "employee_id": self.employee_b.id,
+                "project_id": self.project_b.id,
+                "wage_hm": 0.0,
+                "wage_ccp": 1.0,
+            },
+        ])
         self.company = self.env.company
         base_user_group = self.env.ref("base.group_user")
         tenenet_user_group = self.env.ref("tenenet_projects.group_tenenet_user")
