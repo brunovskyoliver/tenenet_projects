@@ -40,6 +40,7 @@ EMPLOYEE_HEADERS = [
     "x_program_normalized",
     "x_raw_contract_position",
     "x_raw_position",
+    "x_raw_manager",
     "x_normalization_status",
     "x_review_note",
 ]
@@ -541,6 +542,7 @@ def export_outputs(cleaned_rows: list[CleanedRow], output_dir: Path) -> dict[str
             "x_program_normalized": row.program_code or row.program_name,
             "x_raw_contract_position": row.raw_contract_position,
             "x_raw_position": row.raw_position,
+            "x_raw_manager": row.raw_manager,
             "x_normalization_status": row.status,
             "x_review_note": row.review_note,
         }
