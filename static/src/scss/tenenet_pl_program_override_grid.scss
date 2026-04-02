@@ -1,3 +1,16 @@
+.o_content.o_component_with_search_panel > .o_tenenet_pl_program_override_renderer {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: auto;
+    width: 100%;
+}
+
+.o_tenenet_pl_program_override_renderer {
+    .o_grid_grid {
+        min-width: 100%;
+    }
+}
+
 .o_tenenet_pl_grid_cost_start_cell,
 .o_tenenet_pl_grid_cost_start_total {
     position: relative;

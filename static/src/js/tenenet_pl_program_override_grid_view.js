@@ -4,6 +4,7 @@ import { registry } from "@web/core/registry";
 import { gridView } from "@web_grid/views/grid_view";
 import { GridModel } from "@web_grid/views/grid_model";
 import { GridRenderer } from "@web_grid/views/grid_renderer";
+import { onMounted } from "@odoo/owl";
 
 export class TenenetPLProgramOverrideGridModel extends GridModel {
     // Include invisible row fields like sequence in the groupby so the server returns
@@ -50,6 +51,20 @@ export class TenenetPLProgramOverrideGridModel extends GridModel {
 }
 
 export class TenenetPLProgramOverrideGridRenderer extends GridRenderer {
+    setup() {
+        super.setup();
+        onMounted(() => {
+            this.rendererRef.el?.classList.add(
+                "o_renderer",
+                "o_tenenet_pl_program_override_renderer"
+            );
+        });
+    }
+
+    get gridTemplateColumns() {
+        return `auto repeat(${this.props.columns.length}, minmax(8ch, 1fr)) minmax(10ch, 12em)`;
+    }
+
     _isCostStartRow(row) {
         const rowKey = row.initialRecordValues?.row_key || "";
         const sequence = row.initialRecordValues?.sequence;
