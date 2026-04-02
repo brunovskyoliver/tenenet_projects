@@ -5,8 +5,8 @@ from odoo.exceptions import ValidationError
 class TenenetAlertAllowedModel(models.Model):
     _name = "tenenet.alert.allowed.model"
     _description = "Povolený model pre upozornenia"
-    _order = "model_name"
-    _rec_name = "model_name"
+    _order = "model_model"
+    _rec_name = "model_label"
 
     model_id = fields.Many2one(
         "ir.model",
@@ -14,6 +14,13 @@ class TenenetAlertAllowedModel(models.Model):
         required=True,
         ondelete="cascade",
         domain=[("transient", "=", False)],
+    )
+    model_label = fields.Char(
+        string="Názov modelu",
+        compute="_compute_model_label",
+        search="_search_model_label",
+        readonly=True,
+        translate=False,
     )
     model_name = fields.Char(string="Názov modelu", related="model_id.name", store=True, readonly=True, translate=False)
     model_model = fields.Char(string="Technický názov", related="model_id.model", store=True, readonly=True)
@@ -25,6 +32,15 @@ class TenenetAlertAllowedModel(models.Model):
         "UNIQUE(model_id)",
         "Každý model môže byť v zozname povolených modelov iba raz.",
     )
+
+    @api.depends("model_id", "model_id.name")
+    def _compute_model_label(self):
+        for rec in self:
+            rec.model_label = rec.model_id.name or False
+
+    @api.model
+    def _search_model_label(self, operator, value):
+        return [("model_id.name", operator, value)]
 
     @api.model
     def _sync_default_allowed_models(self):

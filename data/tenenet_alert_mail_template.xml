@@ -9,7 +9,7 @@
                 <div>
                     <p>Pravidlo <strong><t t-out="object.name"/></strong> našlo zhodné záznamy.</p>
                     <p>
-                        Model: <t t-out="object.allowed_model_id.model_name"/><br/>
+                        Model: <t t-out="object.allowed_model_id.model_label"/><br/>
                         Čas vyhodnotenia: <t t-out="object.last_run_at or ''"/><br/>
                         Počet záznamov: <t t-out="object._get_digest_match_count()"/>
                     </p>

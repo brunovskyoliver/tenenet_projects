@@ -215,6 +215,10 @@ class TestTenenetPlan14Alerts(TransactionCase):
                     "model_id": self.allowed_model.model_id.id,
                 })
 
+    def test_allowed_model_label_is_plain_string(self):
+        self.assertIsInstance(self.allowed_model.model_label, str)
+        self.assertTrue(self.allowed_model.model_label)
+
     def test_sync_default_allowed_models_reuses_existing_records(self):
         project_model = self.env["ir.model"].search([("model", "=", "tenenet.project")], limit=1)
         project_allowed_model = self.env["tenenet.alert.allowed.model"].search([

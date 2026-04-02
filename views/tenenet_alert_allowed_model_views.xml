@@ -5,7 +5,7 @@
             <field name="model">tenenet.alert.allowed.model</field>
             <field name="arch" type="xml">
                 <list string="Povolené modely">
-                    <field name="model_name"/>
+                    <field name="model_label"/>
                     <field name="model_model"/>
                     <field name="active"/>
                 </list>
@@ -24,7 +24,7 @@
                                 <field name="active"/>
                             </group>
                             <group>
-                                <field name="model_name" readonly="1"/>
+                                <field name="model_label" readonly="1"/>
                                 <field name="model_model" readonly="1"/>
                             </group>
                         </group>
@@ -41,7 +41,7 @@
             <field name="model">tenenet.alert.allowed.model</field>
             <field name="arch" type="xml">
                 <search string="Povolené modely">
-                    <field name="model_name"/>
+                    <field name="model_label"/>
                     <field name="model_model"/>
                     <filter string="Aktívne" name="active" domain="[('active', '=', True)]"/>
                 </search>
