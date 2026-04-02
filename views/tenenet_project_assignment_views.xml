@@ -5,26 +5,39 @@
             <field name="model">tenenet.project.assignment</field>
             <field name="arch" type="xml">
                 <kanban default_order="employee_id">
-                    <field name="active"/>
-                    <field name="allocation_ratio"/>
-                    <field name="date_start"/>
-                    <field name="date_end"/>
-                    <field name="state"/>
+                    <field name="active" />
+                    <field name="allocation_ratio" />
+                    <field name="date_start" />
+                    <field name="date_end" />
+                    <field name="settlement_only" />
+                    <field name="state" />
                     <templates>
                         <t t-name="card">
                             <strong class="d-block mb-1">
-                                <field name="employee_id"/>
+                                <field name="employee_id" />
                             </strong>
                             <div class="small text-muted mb-1">
-                                <field name="project_id"/> • <field name="allocation_ratio"/> %
+                                <field name="project_id" /> • <field
+                                    name="allocation_ratio"
+                                /> %
                             </div>
                             <div class="small text-muted mb-2">
-                                <t t-out="record.date_start.value"/> – <t t-out="record.date_end.value"/>
+                                <t t-out="record.date_start.value" /> – <t
+                                    t-out="record.date_end.value"
+                                />
                             </div>
-                            <field name="state" widget="badge"/>
-                            <button type="object"
-                                    name="action_open_timesheet_matrix_current_year"
-                                    class="btn btn-sm btn-outline-primary">
+                            <div
+                                t-if="record.settlement_only.raw_value"
+                                class="small text-warning mb-2"
+                            >
+                                Iba na zúčtovanie
+                            </div>
+                            <field name="state" widget="badge" />
+                            <button
+                                type="object"
+                                name="action_open_timesheet_matrix_current_year"
+                                class="btn btn-sm btn-outline-primary"
+                            >
                                 Otvoriť maticu
                             </button>
                         </t>
@@ -38,22 +51,29 @@
             <field name="model">tenenet.project.assignment</field>
             <field name="arch" type="xml">
                 <list string="Priradenia zamestnancov k projektom">
-                    <field name="employee_id"/>
-                    <field name="project_id"/>
-                    <field name="allocation_ratio"/>
-                    <field name="date_start"/>
-                    <field name="date_end"/>
-                    <field name="wage_hm"/>
-                    <field name="wage_ccp" readonly="1" optional="hide"/>
-                    <field name="max_monthly_wage_hm" optional="hide"/>
-                    <field name="max_monthly_wage_ccp" readonly="1" optional="hide"/>
-                    <field name="state" widget="badge"/>
-                    <field name="active"/>
-                    <field name="timesheet_count" optional="hide"/>
-                    <button name="action_open_timesheet_matrix_current_year"
-                            type="object"
-                            string="Otvoriť maticu"
-                            class="btn-link"/>
+                    <field name="employee_id" />
+                    <field name="project_id" />
+                    <field name="allocation_ratio" />
+                    <field name="settlement_only" />
+                    <field name="date_start" />
+                    <field name="date_end" />
+                    <field name="wage_hm" />
+                    <field name="wage_ccp" readonly="1" optional="hide" />
+                    <field name="max_monthly_wage_hm" optional="hide" />
+                    <field
+                        name="max_monthly_wage_ccp"
+                        readonly="1"
+                        optional="hide"
+                    />
+                    <field name="state" widget="badge" />
+                    <field name="active" />
+                    <field name="timesheet_count" optional="hide" />
+                    <button
+                        name="action_open_timesheet_matrix_current_year"
+                        type="object"
+                        string="Otvoriť maticu"
+                        class="btn-link"
+                    />
                 </list>
             </field>
         </record>
@@ -64,43 +84,58 @@
             <field name="arch" type="xml">
                 <form string="Priradenie zamestnanca k projektu">
                     <header>
-                        <button name="action_open_timesheet_matrix_current_year"
-                                type="object"
-                                string="Otvoriť maticu"
-                                class="btn-primary"/>
+                        <button
+                            name="action_open_timesheet_matrix_current_year"
+                            type="object"
+                            string="Otvoriť maticu"
+                            class="btn-primary"
+                        />
                     </header>
                     <sheet>
                         <group>
                             <group>
-                                <field name="employee_id"/>
-                                <field name="project_id"/>
-                                <field name="active"/>
-                                <field name="state" readonly="1" widget="badge"/>
+                                <field name="employee_id" />
+                                <field name="project_id" />
+                                <field name="active" />
+                                <field
+                                    name="state"
+                                    readonly="1"
+                                    widget="badge"
+                                />
                             </group>
                             <group>
-                                <field name="date_start"/>
-                                <field name="date_end"/>
-                                <field name="allocation_ratio"/>
-                                <field name="site_ids"
-                                       widget="many2many_tags"
-                                       domain="[('project_ids', 'in', project_id)]"
-                                       options="{'no_create': True}"/>
-                                <field name="wage_hm"/>
-                                <field name="wage_ccp" readonly="1"/>
-                                <field name="max_monthly_wage_hm"/>
-                                <field name="max_monthly_wage_ccp" readonly="1"/>
+                                <field name="date_start" />
+                                <field name="date_end" />
+                                <field name="allocation_ratio" />
+                                <field
+                                    name="site_ids"
+                                    widget="many2many_tags"
+                                    domain="[('project_ids', 'in', project_id)]"
+                                    options="{'no_create': True}"
+                                />
+                                <field name="settlement_only" />
+                                <field name="wage_hm" />
+                                <field name="wage_ccp" readonly="1" />
+                                <field name="max_monthly_wage_hm" />
+                                <field
+                                    name="max_monthly_wage_ccp"
+                                    readonly="1"
+                                />
                             </group>
                         </group>
                         <notebook>
                             <page string="Timesheety">
                                 <field name="timesheet_ids" readonly="1">
-                                    <list string="Timesheety" decoration-info="hours_project_total == 0">
-                                        <field name="period"/>
-                                        <field name="hours_project_total"/>
-                                        <field name="hours_leave_total"/>
-                                        <field name="hours_total"/>
-                                        <field name="gross_salary"/>
-                                        <field name="total_labor_cost"/>
+                                    <list
+                                        string="Timesheety"
+                                        decoration-info="hours_project_total == 0"
+                                    >
+                                        <field name="period" />
+                                        <field name="hours_project_total" />
+                                        <field name="hours_leave_total" />
+                                        <field name="hours_total" />
+                                        <field name="gross_salary" />
+                                        <field name="total_labor_cost" />
                                     </list>
                                 </field>
                             </page>
@@ -115,31 +150,73 @@
             <field name="model">tenenet.project.assignment</field>
             <field name="arch" type="xml">
                 <search string="Priradenia zamestnancov">
-                    <field name="employee_id"/>
-                    <field name="project_id"/>
-                    <filter string="Aktívne" name="active" domain="[('state', '=', 'active')]"/>
-                    <filter string="Budúce" name="planned" domain="[('state', '=', 'planned')]"/>
-                    <filter string="Ukončené" name="finished" domain="[('state', '=', 'finished')]"/>
-                    <filter string="Projekt" name="group_project" context="{'group_by': 'project_id'}"/>
-                    <filter string="Zamestnanec" name="group_employee" context="{'group_by': 'employee_id'}"/>
-                    <filter string="Stav" name="group_state" context="{'group_by': 'state'}"/>
+                    <field name="employee_id" />
+                    <field name="project_id" />
+                    <field name="settlement_only" />
+                    <filter
+                        string="Aktívne"
+                        name="active"
+                        domain="[('state', '=', 'active')]"
+                    />
+                    <filter
+                        string="Budúce"
+                        name="planned"
+                        domain="[('state', '=', 'planned')]"
+                    />
+                    <filter
+                        string="Ukončené"
+                        name="finished"
+                        domain="[('state', '=', 'finished')]"
+                    />
+                    <filter
+                        string="Iba na zúčtovanie"
+                        name="settlement_only"
+                        domain="[('settlement_only', '=', True)]"
+                    />
+                    <filter
+                        string="Projekt"
+                        name="group_project"
+                        context="{'group_by': 'project_id'}"
+                    />
+                    <filter
+                        string="Zamestnanec"
+                        name="group_employee"
+                        context="{'group_by': 'employee_id'}"
+                    />
+                    <filter
+                        string="Stav"
+                        name="group_state"
+                        context="{'group_by': 'state'}"
+                    />
                 </search>
             </field>
         </record>
 
-        <record id="action_tenenet_project_assignment" model="ir.actions.act_window">
+        <record
+            id="action_tenenet_project_assignment"
+            model="ir.actions.act_window"
+        >
             <field name="name">Priradenia zamestnancov</field>
             <field name="res_model">tenenet.project.assignment</field>
             <field name="view_mode">list,form</field>
-            <field name="search_view_id" ref="view_tenenet_project_assignment_search"/>
+            <field
+                name="search_view_id"
+                ref="view_tenenet_project_assignment_search"
+            />
         </record>
 
-        <record id="action_tenenet_my_project_assignment" model="ir.actions.act_window">
+        <record
+            id="action_tenenet_my_project_assignment"
+            model="ir.actions.act_window"
+        >
             <field name="name">Moje projekty pre timesheety</field>
             <field name="res_model">tenenet.project.assignment</field>
             <field name="view_mode">list,form</field>
             <field name="domain">[('employee_id.user_id', '=', uid)]</field>
-            <field name="search_view_id" ref="view_tenenet_project_assignment_search"/>
+            <field
+                name="search_view_id"
+                ref="view_tenenet_project_assignment_search"
+            />
             <field name="context">{'search_default_active': 1}</field>
         </record>
     </data>

@@ -71,8 +71,7 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
 
     def _dynamic_lines_generator(self, report, options, all_column_groups_expression_totals, warnings=None):
         period = self._get_selected_month_start(report, options)
-        utilization_records = self.env["tenenet.utilization"].sudo()._sync_for_period(period)
-        utilization_records._compute_from_timesheets()
+        self.env["tenenet.utilization"].sudo()._refresh_for_period(period)
         utilization_records = self._get_utilization_records(
             period,
             search_term=options.get("filter_search_bar"),
@@ -151,8 +150,7 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
         )
 
     def _get_month_assignment_details(self, period):
-        utilization_records = self.env["tenenet.utilization"].sudo()._sync_for_period(period)
-        utilization_records._compute_from_timesheets()
+        utilization_records = self.env["tenenet.utilization"].sudo()._refresh_for_period(period)
         utilization_by_employee = {
             utilization.employee_id.id: utilization
             for utilization in utilization_records

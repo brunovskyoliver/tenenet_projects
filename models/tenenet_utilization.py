@@ -232,6 +232,14 @@ class TenenetUtilization(models.Model):
         return self._sync_for_period(self._current_period())
 
     @api.model
+    def _refresh_for_period(self, period, employee_ids=None):
+        """Ensure selected-period utilization rows exist and recompute them from current timesheets."""
+        records = self._sync_for_period(period, employee_ids=employee_ids)
+        if records:
+            records._compute_from_timesheets()
+        return records
+
+    @api.model
     def _recompute_for_employee_periods(self, employee_period_pairs):
         """Ensure a utilization record exists for each (employee_id, period) pair and
         force-recompute its hour totals from the current timesheet state.

@@ -136,6 +136,7 @@
                                         <field name="date_start" optional="show"/>
                                         <field name="date_end" optional="show"/>
                                         <field name="allocation_ratio" optional="show"/>
+                                        <field name="settlement_only" optional="show"/>
                                         <field name="wage_hm" optional="hide"/>
                                         <field name="wage_ccp" optional="hide" readonly="1"/>
                                         <field name="state" widget="badge"

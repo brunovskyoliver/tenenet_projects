@@ -64,6 +64,11 @@ class TenenetProjectAssignment(models.Model):
         default=100.0,
         help="Percento úväzku zamestnanca vyhradené pre tento projekt.",
     )
+    settlement_only = fields.Boolean(
+        string="Iba na zúčtovanie",
+        default=False,
+        help="Priradenie slúži iba na zúčtovanie alebo financovanie z iných zdrojov.",
+    )
     effective_work_ratio = fields.Float(
         string="Skutočný úväzok (%)",
         digits=(5, 2),

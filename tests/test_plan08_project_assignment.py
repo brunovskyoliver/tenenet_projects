@@ -59,8 +59,35 @@ class TestTenenetPlan08ProjectAssignment(TransactionCase):
         self.assertEqual(assignment.employee_id, self.employee)
         self.assertEqual(assignment.project_id, self.project)
         self.assertAlmostEqual(assignment.allocation_ratio, 100.0)
+        self.assertFalse(assignment.settlement_only)
         self.assertAlmostEqual(assignment.wage_hm, 10.0)
         self.assertAlmostEqual(assignment.wage_ccp, 13.62)
+
+    def test_assignment_can_be_marked_settlement_only(self):
+        assignment = self.env["tenenet.project.assignment"].create(
+            self._assignment_vals(settlement_only=True)
+        )
+        self.assertTrue(assignment.settlement_only)
+
+    def test_assignment_wizard_view_contains_settlement_only_field(self):
+        arch = self.env["tenenet.project.assignment.wizard"].get_view(
+            view_id=self.env.ref("tenenet_projects.view_tenenet_project_assignment_wizard_form").id,
+            view_type="form",
+        )["arch"]
+        self.assertIn('name="settlement_only"', arch)
+
+    def test_project_assignment_views_contain_settlement_only_field(self):
+        project_arch = self.env["tenenet.project"].get_view(
+            view_id=self.env.ref("tenenet_projects.view_tenenet_project_form").id,
+            view_type="form",
+        )["arch"]
+        assignment_arch = self.env["tenenet.project.assignment"].get_view(
+            view_id=self.env.ref("tenenet_projects.view_tenenet_project_assignment_form").id,
+            view_type="form",
+        )["arch"]
+
+        self.assertIn('name="settlement_only"', project_arch)
+        self.assertIn('name="settlement_only"', assignment_arch)
 
     def test_non_overlapping_same_project_periods_are_allowed(self):
         a1 = self.env["tenenet.project.assignment"].create(

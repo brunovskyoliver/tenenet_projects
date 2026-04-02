@@ -162,6 +162,19 @@ class TestTenenetPlan11UtilizationReport(TransactionCase):
         self.assertAlmostEqual(january_columns["hours_pp"], 10.0, places=2)
         self.assertAlmostEqual(february_columns["hours_pp"], 20.0, places=2)
 
+    def test_report_refreshes_same_month_data_on_reopen(self):
+        timesheet = self._create_timesheet(self.assignment_a, "2026-07-01", hours_pp=10.0)
+
+        first_lines, _options = self._get_lines("2026-07-18")
+        first_columns = self._column_map(self._find_employee_line(first_lines, "Adam Zamestnanec"))
+        self.assertAlmostEqual(first_columns["hours_pp"], 10.0, places=2)
+
+        timesheet.with_context(from_hr_leave_sync=True).write({"hours_pp": 24.0})
+
+        second_lines, _options = self._get_lines("2026-07-18")
+        second_columns = self._column_map(self._find_employee_line(second_lines, "Adam Zamestnanec"))
+        self.assertAlmostEqual(second_columns["hours_pp"], 24.0, places=2)
+
     def test_report_sorts_by_manager_then_employee(self):
         self.employee_a.parent_id = self.manager_b
         self.employee_b.parent_id = self.manager_a

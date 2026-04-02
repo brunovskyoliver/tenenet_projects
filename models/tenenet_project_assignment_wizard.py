@@ -23,6 +23,11 @@ class TenenetProjectAssignmentWizard(models.TransientModel):
         digits=(5, 2),
         default=100.0,
     )
+    settlement_only = fields.Boolean(
+        string="Iba na zúčtovanie",
+        default=False,
+        help="Priradenie slúži iba na zúčtovanie alebo financovanie z iných zdrojov.",
+    )
     wage_hm = fields.Float(
         string="Hodinová mzda HM (brutto)",
         digits=(10, 4),
@@ -43,6 +48,7 @@ class TenenetProjectAssignmentWizard(models.TransientModel):
             "date_start": self.date_start,
             "date_end": self.date_end,
             "allocation_ratio": self.allocation_ratio,
+            "settlement_only": self.settlement_only,
             "wage_hm": self.wage_hm,
         })
         return {"type": "ir.actions.act_window_close"}
