@@ -6,7 +6,7 @@
         </xpath>
     </t>
 
-    <t t-name="tenenet_projects.TenenetCashflowReportFilterYear">
+    <t t-name="tenenet_projects.TenenetCashflowReportFilterYear" owl="1">
         <Dropdown menuClass="'account_report_filter date'" navigationOptions="dateNavigationOptions">
             <button class="btn btn-secondary">
                 <i class="fa fa-calendar me-1"/>

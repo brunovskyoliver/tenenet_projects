@@ -11,7 +11,7 @@
         </xpath>
     </t>
 
-    <t t-name="tenenet_projects.TenenetAllocationReportFilterEmployee">
+    <t t-name="tenenet_projects.TenenetAllocationReportFilterEmployee" owl="1">
         <Dropdown menuClass="'account_report_filter employee'">
             <button class="btn btn-secondary">
                 <i class="fa fa-user me-1"/>
@@ -27,7 +27,7 @@
         </Dropdown>
     </t>
 
-    <t t-name="tenenet_projects.TenenetAllocationReportFilterYear">
+    <t t-name="tenenet_projects.TenenetAllocationReportFilterYear" owl="1">
         <Dropdown menuClass="'account_report_filter date'" navigationOptions="dateNavigationOptions">
             <button class="btn btn-secondary">
                 <i class="fa fa-calendar me-1"/>
