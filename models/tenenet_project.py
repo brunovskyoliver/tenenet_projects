@@ -37,7 +37,7 @@ class TenenetProject(models.Model):
     portal = fields.Char(string="Portál")
 
     semaphore = fields.Selection(
-        [("green", "Zelená"), ("yellow", "Žltá"), ("red", "Červená")],
+        [("green", "Zelená"), ("orange", "oranžová"), ("red", "Červená")],
         string="Semafor",
     )
 
@@ -59,7 +59,7 @@ class TenenetProject(models.Model):
     international = fields.Boolean(
         string="Medzinárodný",
         default=False,
-        help="Určuje, či sa projekt v reportoch a alokáciách klasifikuje ako medzinárodný.",
+        help="Legacy príznak. Klasifikácia medzinárodného projektu sa v reportoch odvodzuje z typu donora.",
     )
 
     odborny_garant_id = fields.Many2one("hr.employee", string="Odborný garant")
@@ -128,7 +128,6 @@ class TenenetProject(models.Model):
         store=True,
         help="Predvolený mesačný strop CCP = max. mzda HM × 1.362",
     )
-    comments = fields.Text(string="Komentáre")
     donor_contact = fields.Text(string="Kontakt donor", compute="_compute_donor_contact", store=True)
     partner_contact = fields.Text(string="Kontakt partner", compute="_compute_partner_contact", store=True)
     allowed_expense_type_ids = fields.One2many(
@@ -213,6 +212,10 @@ class TenenetProject(models.Model):
         for rec in self:
             rec.partner_contact = rec._format_partner_contact(rec.partner_id)
 
+    def _is_international_by_donor(self):
+        self.ensure_one()
+        return bool(self.donor_id and self.donor_id.donor_type in {"international", "eu"})
+
     @api.depends("receipt_line_ids", "receipt_line_ids.amount")
     def _compute_budget_total(self):
         for rec in self:
@@ -220,7 +223,7 @@ class TenenetProject(models.Model):
 
     @api.depends("semaphore")
     def _compute_kanban_color(self):
-        color_map = {"green": 10, "yellow": 3, "red": 1}
+        color_map = {"green": 10, "orange": 3, "red": 1}
         for rec in self:
             rec.kanban_color = color_map.get(rec.semaphore, 0)
 

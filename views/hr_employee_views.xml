@@ -176,6 +176,67 @@
                             </field>
                         </div>
                     </page>
+                    <page string="Firemný majetok">
+                        <group>
+                            <group>
+                                <field name="asset_total_value" readonly="1"/>
+                            </group>
+                        </group>
+                        <separator string="Majetok"/>
+                        <field
+                            name="asset_ids"
+                            nolabel="1"
+                            context="{'default_employee_id': id}"
+                            colspan="2"
+                        >
+                            <list string="Firemný majetok" editable="bottom">
+                                <field name="asset_type_id"/>
+                                <field name="currency_id" column_invisible="1"/>
+                                <field name="cost" optional="show"/>
+                                <field name="note" optional="show"/>
+                                <field name="active"/>
+                            </list>
+                            <form string="Položka majetku">
+                                <sheet>
+                                    <group>
+                                        <field name="employee_id" invisible="1"/>
+                                        <field name="asset_type_id"/>
+                                        <field name="currency_id"/>
+                                        <field name="cost"/>
+                                        <field name="active"/>
+                                    </group>
+                                    <group>
+                                        <field name="note"/>
+                                    </group>
+                                </sheet>
+                            </form>
+                        </field>
+                        <separator string="Kľúče"/>
+                        <field
+                            name="site_key_ids"
+                            nolabel="1"
+                            context="{'default_employee_id': id}"
+                            colspan="2"
+                        >
+                            <list string="Kľúče" editable="bottom">
+                                <field name="site_id" domain="[('site_type', 'in', ['prevadzka', 'centrum'])]"/>
+                                <field name="note" optional="show"/>
+                                <field name="active"/>
+                            </list>
+                            <form string="Kľúč">
+                                <sheet>
+                                    <group>
+                                        <field name="employee_id" invisible="1"/>
+                                        <field name="site_id" domain="[('site_type', 'in', ['prevadzka', 'centrum'])]"/>
+                                        <field name="active"/>
+                                    </group>
+                                    <group>
+                                        <field name="note"/>
+                                    </group>
+                                </sheet>
+                            </form>
+                        </field>
+                    </page>
                 </xpath>
 
                 <xpath

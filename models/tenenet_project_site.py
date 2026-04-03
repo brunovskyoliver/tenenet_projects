@@ -59,6 +59,11 @@ class TenenetProjectSite(models.Model):
         string="Programy",
     )
     legacy_program_text = fields.Text(string="Pôvodný text programov")
+    site_key_ids = fields.One2many(
+        "tenenet.employee.site.key",
+        "site_id",
+        string="Držitelia kľúčov",
+    )
     contact_summary = fields.Char(string="Kontakt", compute="_compute_contact_summary")
     address_display = fields.Char(string="Adresa", compute="_compute_address_display")
 

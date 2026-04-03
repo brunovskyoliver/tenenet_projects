@@ -70,6 +70,27 @@ class HrEmployee(models.Model):
         "employee_id",
         string="Školenia",
     )
+    asset_ids = fields.One2many(
+        "tenenet.employee.asset",
+        "employee_id",
+        string="Firemný majetok",
+    )
+    asset_currency_id = fields.Many2one(
+        "res.currency",
+        string="Mena majetku",
+        default=lambda self: self.env.ref("base.EUR"),
+    )
+    asset_total_value = fields.Monetary(
+        string="Hodnota majetku spolu (€)",
+        currency_field="asset_currency_id",
+        compute="_compute_asset_total_value",
+        store=True,
+    )
+    site_key_ids = fields.One2many(
+        "tenenet.employee.site.key",
+        "employee_id",
+        string="Kľúče",
+    )
     service_ids = fields.One2many(
         "tenenet.employee.service",
         "employee_id",
@@ -198,6 +219,11 @@ class HrEmployee(models.Model):
         synced_vals["position_catalog_id"] = job.id or False
         synced_vals["job_id"] = job.id or False
         return synced_vals
+
+    @api.depends("asset_ids", "asset_ids.cost", "asset_ids.active")
+    def _compute_asset_total_value(self):
+        for employee in self:
+            employee.asset_total_value = sum(employee.asset_ids.filtered("active").mapped("cost"))
 
     @api.model_create_multi
     def create(self, vals_list):

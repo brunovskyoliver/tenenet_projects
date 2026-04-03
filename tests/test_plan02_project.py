@@ -79,11 +79,11 @@ class TestTenenetPlan02Project(TransactionCase):
                 "name": "Projekt D",
                 "program_ids": [(4, self.program.id)],
                 "donor_id": self.donor.id,
-                "semaphore": "yellow",
+                "semaphore": "orange",
             }
         )
 
-        self.assertEqual(project.semaphore, "yellow")
+        self.assertEqual(project.semaphore, "orange")
 
     def test_project_active_year_range_from_dates(self):
         project = self.env["tenenet.project"].create(
@@ -98,3 +98,48 @@ class TestTenenetPlan02Project(TransactionCase):
 
         self.assertEqual(project.active_year_from, 2024)
         self.assertEqual(project.active_year_to, 2026)
+
+    def test_project_write_still_works_without_removed_notes_field(self):
+        project = self.env["tenenet.project"].create(
+            {
+                "name": "Projekt F",
+                "program_ids": [(4, self.program.id)],
+                "donor_id": self.donor.id,
+            }
+        )
+
+        project.write(
+            {
+                "partner_id": self.project_partner.id,
+                "portal": "https://portal.test",
+            }
+        )
+
+        self.assertEqual(project.partner_id, self.project_partner)
+        self.assertEqual(project.portal, "https://portal.test")
+
+    def test_project_international_classification_comes_from_donor_type(self):
+        eu_donor = self.env["tenenet.donor"].create(
+            {
+                "name": "EU Donor",
+                "donor_type": "eu",
+            }
+        )
+        local_project = self.env["tenenet.project"].create(
+            {
+                "name": "Lokálny bez donora",
+                "program_ids": [(4, self.program.id)],
+                "international": True,
+            }
+        )
+        eu_project = self.env["tenenet.project"].create(
+            {
+                "name": "EU projekt",
+                "program_ids": [(4, self.program.id)],
+                "donor_id": eu_donor.id,
+                "international": False,
+            }
+        )
+
+        self.assertFalse(local_project._is_international_by_donor())
+        self.assertTrue(eu_project._is_international_by_donor())

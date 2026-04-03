@@ -54,6 +54,27 @@
                         <group string="Priradené projekty">
                             <field name="project_ids" widget="many2many_tags" readonly="1"/>
                         </group>
+                        <group string="Držitelia kľúčov" invisible="site_type == 'teren'">
+                            <field name="site_key_ids" nolabel="1" context="{'default_site_id': id}">
+                                <list string="Držitelia kľúčov" editable="bottom">
+                                    <field name="employee_id"/>
+                                    <field name="note" optional="show"/>
+                                    <field name="active"/>
+                                </list>
+                                <form string="Držiteľ kľúča">
+                                    <sheet>
+                                        <group>
+                                            <field name="site_id" invisible="1"/>
+                                            <field name="employee_id"/>
+                                            <field name="active"/>
+                                        </group>
+                                        <group>
+                                            <field name="note"/>
+                                        </group>
+                                    </sheet>
+                                </form>
+                            </field>
+                        </group>
                         <group string="Importované programy">
                             <field name="legacy_program_text"/>
                         </group>

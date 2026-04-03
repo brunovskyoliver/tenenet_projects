@@ -14,6 +14,8 @@ from . import test_contact_classification
 from . import test_employee_availability
 from . import test_project_assignment_overlap
 from . import test_employee_training
+from . import test_employee_assets
+from . import test_home_menu_utilization_metric
 from . import test_employee_service
 from . import test_project_milestone
 from . import test_project_sites

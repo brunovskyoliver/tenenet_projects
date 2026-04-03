@@ -186,7 +186,7 @@ class TenenetPLReportingSupport(models.AbstractModel):
             project = income_row["project"]
             if program not in project.program_ids:
                 continue
-            target = international_rows if project.international else national_rows
+            target = international_rows if project._is_international_by_donor() else national_rows
             target.append({
                 "project": project,
                 "name": self._get_project_line_name(project),

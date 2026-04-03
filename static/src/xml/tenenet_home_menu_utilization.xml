@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates xml:space="preserve">
+
+    <t
+        t-name="tenenet_projects.HomeMenuUtilization"
+        t-inherit="web_enterprise.HomeMenu"
+        t-inherit-mode="extension"
+        t-translation="off"
+    >
+        <xpath expr="//div[@t-if='displayedApps.length']" position="before">
+            <t t-if="tenenetPreviousMonthUtilization.data">
+                <t t-set="utilization" t-value="tenenetPreviousMonthUtilization.data"/>
+                <div class="o_tenenet_home_utilization mt-4 mb-3">
+                    <div class="o_tenenet_home_utilization_card mx-auto">
+                        <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+                            <div>
+                                <div class="o_tenenet_home_utilization_title">
+                                    Vyťaženosť za minulý mesiac
+                                </div>
+                                <div class="o_tenenet_home_utilization_subtitle">
+                                    <span t-esc="utilization.employee_name"/>
+                                    <span class="mx-1">•</span>
+                                    <span t-esc="utilization.period_label"/>
+                                </div>
+                            </div>
+                            <div
+                                class="o_tenenet_home_utilization_value"
+                                t-att-class="{
+                                    'is-ok': utilization.utilization_status === 'ok',
+                                    'is-warning': utilization.utilization_status === 'warning',
+                                }"
+                                t-esc="utilization.utilization_percentage_display"
+                            />
+                        </div>
+                        <div class="o_tenenet_home_utilization_meter mt-3">
+                            <div
+                                class="o_tenenet_home_utilization_meter_fill"
+                                t-att-class="{
+                                    'is-ok': utilization.utilization_status === 'ok',
+                                    'is-warning': utilization.utilization_status === 'warning',
+                                }"
+                                t-attf-style="width: {{ utilization.progress_width }}%;"
+                            />
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </xpath>
+    </t>
+
+</templates>

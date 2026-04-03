@@ -30,9 +30,14 @@ class TestTenenetPlan11UtilizationReport(TransactionCase):
             "name": "Medzinárodný donor",
             "donor_type": "international",
         })
+        self.donor_eu = self.env["tenenet.donor"].create({
+            "name": "EU donor",
+            "donor_type": "eu",
+        })
         self.project = self.env["tenenet.project"].create({
             "name": "Národný projekt",
             "donor_id": self.donor_national.id,
+            "project_manager_id": self.manager_a.id,
         })
         self.assignment_a = self.env["tenenet.project.assignment"].create(
             {
@@ -51,6 +56,7 @@ class TestTenenetPlan11UtilizationReport(TransactionCase):
             }
         )
         self.report = self.env.ref("tenenet_projects.tenenet_utilization_report")
+        self.project_report = self.env.ref("tenenet_projects.tenenet_utilization_project_report")
 
         base_user_group = self.env.ref("base.group_user")
         tenenet_user_group = self.env.ref("tenenet_projects.group_tenenet_user")
@@ -71,8 +77,9 @@ class TestTenenetPlan11UtilizationReport(TransactionCase):
             timesheet.with_context(from_hr_leave_sync=True).write(hours)
         return timesheet
 
-    def _get_lines(self, date_to, user=None, unfolded_lines=None):
-        report = self.report.with_user(user) if user else self.report
+    def _get_lines(self, date_to, user=None, unfolded_lines=None, report=None):
+        report = report or self.report
+        report = report.with_user(user) if user else report
         options_data = {
             "date": {
                 "mode": "single",
@@ -191,6 +198,12 @@ class TestTenenetPlan11UtilizationReport(TransactionCase):
         self.assertIn("Adam Zamestnanec", line_names)
         self.assertIn("Beata Zamestnanec", line_names)
 
+    def test_utilization_reports_are_standalone_without_variant_link(self):
+        self.assertEqual(self.report.name, "Vyťaženosť report podľa zamestnanca")
+        self.assertEqual(self.project_report.name, "Vyťaženosť report podľa projektu")
+        self.assertFalse(self.report.root_report_id)
+        self.assertFalse(self.project_report.root_report_id)
+
     def test_employee_unfold_shows_projects_with_aggregated_assignments(self):
         self.assignment_a.write({
             "allocation_ratio": 50.0,
@@ -198,8 +211,7 @@ class TestTenenetPlan11UtilizationReport(TransactionCase):
         })
         international_project = self.env["tenenet.project"].create({
             "name": "Medzinárodný projekt",
-            "donor_id": self.donor_national.id,
-            "international": True,
+            "donor_id": self.donor_international.id,
         })
         assignment_int_a = self.env["tenenet.project.assignment"].create({
             "employee_id": self.employee_a.id,
@@ -260,8 +272,7 @@ class TestTenenetPlan11UtilizationReport(TransactionCase):
         self.employee_a.work_ratio = 130.0
         international_project = self.env["tenenet.project"].create({
             "name": "Medzinárodný projekt 2",
-            "donor_id": self.donor_national.id,
-            "international": True,
+            "donor_id": self.donor_eu.id,
         })
         assignment_int = self.env["tenenet.project.assignment"].create({
             "employee_id": self.employee_a.id,
@@ -330,25 +341,37 @@ class TestTenenetPlan11UtilizationReport(TransactionCase):
         self.assertAlmostEqual(project_columns["hours_pp"], 0.0, places=2)
         self.assertEqual(assignment_support.employee_id, self.employee_b)
 
-    def test_project_checkbox_overrides_donor_classification_in_report(self):
+    def test_donor_type_drives_project_classification_in_report(self):
         self.employee_a.work_ratio = 120.0
-        project = self.env["tenenet.project"].create({
-            "name": "Lokálny podľa checkboxu",
+        donor_driven_international = self.env["tenenet.project"].create({
+            "name": "Medzinárodný podľa donora",
             "donor_id": self.donor_international.id,
             "international": False,
         })
-        assignment = self.env["tenenet.project.assignment"].create({
+        donor_driven_local = self.env["tenenet.project"].create({
+            "name": "Národný bez donora",
+            "international": True,
+        })
+        assignment_international = self.env["tenenet.project.assignment"].create({
             "employee_id": self.employee_a.id,
-            "project_id": project.id,
+            "project_id": donor_driven_international.id,
             "allocation_ratio": 20.0,
             "wage_hm": 10.0,
             "wage_ccp": 13.62,
         })
-        self._create_timesheet(assignment, "2026-08-01", hours_pp=10.0)
+        assignment_local = self.env["tenenet.project.assignment"].create({
+            "employee_id": self.employee_a.id,
+            "project_id": donor_driven_local.id,
+            "allocation_ratio": 20.0,
+            "wage_hm": 10.0,
+            "wage_ccp": 13.62,
+        })
+        self._create_timesheet(assignment_international, "2026-08-01", hours_pp=10.0)
+        self._create_timesheet(assignment_local, "2026-08-01", hours_pp=8.0)
 
         top_lines, options = self._get_lines("2026-08-18")
         adam_line = self._find_employee_line(top_lines, "Adam Zamestnanec")
-        self.assertEqual(self._column_map(adam_line)["project_type"], "N: 2 / M: 0")
+        self.assertEqual(self._column_map(adam_line)["project_type"], "N: 2 / M: 1")
 
         project_lines = self.report.get_expanded_lines(
             options,
@@ -359,8 +382,49 @@ class TestTenenetPlan11UtilizationReport(TransactionCase):
             0,
             adam_line.get("horizontal_split_side"),
         )
-        project_line = self._find_line(project_lines, "Lokálny podľa checkboxu")
-        self.assertEqual(self._column_map(project_line)["project_type"], "Národný")
+        international_line = self._find_line(project_lines, "Medzinárodný podľa donora")
+        local_line = self._find_line(project_lines, "Národný bez donora")
+        self.assertEqual(self._column_map(international_line)["project_type"], "Medzinárodný")
+        self.assertEqual(self._column_map(local_line)["project_type"], "Národný")
+
+    def test_inactive_assignment_is_hidden_from_report_details(self):
+        self.assignment_a.write({
+            "allocation_ratio": 60.0,
+            "date_start": "2026-01-01",
+            "active": False,
+        })
+        second_project = self.env["tenenet.project"].create({
+            "name": "Aktívny projekt",
+            "donor_id": self.donor_national.id,
+        })
+        active_assignment = self.env["tenenet.project.assignment"].create({
+            "employee_id": self.employee_a.id,
+            "project_id": second_project.id,
+            "allocation_ratio": 50.0,
+            "date_start": "2026-01-01",
+            "wage_hm": 10.0,
+            "wage_ccp": 13.62,
+        })
+        self._create_timesheet(active_assignment, "2026-08-01", hours_pp=12.0)
+
+        top_lines, options = self._get_lines("2026-08-18")
+        adam_line = self._find_employee_line(top_lines, "Adam Zamestnanec")
+        adam_columns = self._column_map(adam_line)
+
+        self.assertEqual(adam_columns["project_type"], "N: 1 / M: 0")
+
+        project_lines = self.report.get_expanded_lines(
+            options,
+            adam_line["id"],
+            adam_line.get("groupby"),
+            adam_line["expand_function"],
+            adam_line.get("progress"),
+            0,
+            adam_line.get("horizontal_split_side"),
+        )
+        visible_projects = [line["name"] for line in project_lines if not line["name"].startswith("Total ")]
+        self.assertEqual(visible_projects, ["Aktívny projekt"])
+        self.assertNotIn(self.project.name, visible_projects)
 
     def test_report_hides_total_rows(self):
         top_lines, options = self._get_lines("2026-03-18")
@@ -378,3 +442,185 @@ class TestTenenetPlan11UtilizationReport(TransactionCase):
             adam_line.get("horizontal_split_side"),
         )
         self.assertFalse(any(line["name"].startswith("Total ") for line in project_lines))
+
+    def test_project_report_lists_projects_and_aggregates_employee_metrics(self):
+        self.assignment_a.write({
+            "allocation_ratio": 60.0,
+            "date_start": "2026-03-01",
+        })
+        self.assignment_b.write({
+            "allocation_ratio": 40.0,
+            "date_start": "2026-03-01",
+        })
+        self._create_timesheet(
+            self.assignment_a,
+            "2026-03-01",
+            hours_pp=80.0,
+            hours_np=10.0,
+            hours_travel=4.0,
+            hours_training=2.0,
+            hours_vacation=8.0,
+            hours_doctor=2.0,
+            hours_sick=1.0,
+            hours_holidays=5.0,
+        )
+        self._create_timesheet(
+            self.assignment_b,
+            "2026-03-01",
+            hours_pp=40.0,
+            hours_np=6.0,
+            hours_training=3.0,
+            hours_ambulance=4.0,
+            hours_holidays=2.0,
+        )
+
+        lines, options = self._get_lines("2026-03-18", report=self.project_report)
+        project_line = self._find_line(lines, "Národný projekt")
+        columns = self._column_map(project_line)
+
+        self.assertNotIn("Adam Zamestnanec", self._line_names(lines))
+        self.assertEqual(columns["manager_name"], "Manager A")
+        self.assertEqual(columns["project_type"], "Národný")
+        self.assertAlmostEqual(columns["work_ratio"], 100.0, places=2)
+        self.assertAlmostEqual(columns["capacity_hours"], 160.0, places=2)
+        self.assertAlmostEqual(columns["hours_pp"], 120.0, places=2)
+        self.assertAlmostEqual(columns["hours_np"], 16.0, places=2)
+        self.assertAlmostEqual(columns["hours_ballast"], 36.0, places=2)
+        self.assertAlmostEqual(columns["monthly_project_income"], 1670.0, places=2)
+        self.assertAlmostEqual(columns["project_insurance_income"], 2274.54, places=2)
+        self.assertAlmostEqual(columns["utilization_percentage"], 80.0, places=2)
+        self.assertEqual(columns["utilization_status"], "ok")
+        self.assertAlmostEqual(columns["non_project_percentage"], 22.5, places=2)
+        self.assertEqual(columns["non_project_status"], "ok")
+
+        employee_lines = self.project_report.get_expanded_lines(
+            options,
+            project_line["id"],
+            project_line.get("groupby"),
+            project_line["expand_function"],
+            project_line.get("progress"),
+            0,
+            project_line.get("horizontal_split_side"),
+        )
+        self.assertEqual(
+            [line["name"] for line in employee_lines if not line["name"].startswith("Total ")],
+            ["Adam Zamestnanec", "Beata Zamestnanec"],
+        )
+
+        adam_columns = self._column_map(self._find_line(employee_lines, "Adam Zamestnanec"))
+        self.assertEqual(adam_columns["manager_name"], "Manager A")
+        self.assertAlmostEqual(adam_columns["hours_pp"], 80.0, places=2)
+        self.assertAlmostEqual(adam_columns["monthly_project_income"], 1120.0, places=2)
+        self.assertAlmostEqual(adam_columns["project_insurance_income"], 1525.44, places=2)
+
+    def test_project_report_employee_row_aggregates_multiple_assignments(self):
+        self.assignment_a.write({
+            "allocation_ratio": 30.0,
+            "date_start": "2026-04-01",
+        })
+        followup_assignment = self.env["tenenet.project.assignment"].create({
+            "employee_id": self.employee_a.id,
+            "project_id": self.project.id,
+            "allocation_ratio": 20.0,
+            "date_start": "2026-04-01",
+            "wage_hm": 12.0,
+            "wage_ccp": 16.34,
+        })
+
+        self._create_timesheet(self.assignment_a, "2026-04-01", hours_pp=20.0, hours_np=4.0)
+        self._create_timesheet(followup_assignment, "2026-04-01", hours_pp=10.0, hours_training=2.0)
+
+        lines, options = self._get_lines("2026-04-18", report=self.project_report)
+        project_line = self._find_line(lines, "Národný projekt")
+        employee_lines = self.project_report.get_expanded_lines(
+            options,
+            project_line["id"],
+            project_line.get("groupby"),
+            project_line["expand_function"],
+            project_line.get("progress"),
+            0,
+            project_line.get("horizontal_split_side"),
+        )
+
+        adam_columns = self._column_map(self._find_line(employee_lines, "Adam Zamestnanec"))
+        self.assertAlmostEqual(adam_columns["work_ratio"], 50.0, places=2)
+        self.assertAlmostEqual(adam_columns["capacity_hours"], 80.0, places=2)
+        self.assertAlmostEqual(adam_columns["hours_pp"], 30.0, places=2)
+        self.assertAlmostEqual(adam_columns["hours_np"], 4.0, places=2)
+        self.assertAlmostEqual(adam_columns["hours_training"], 2.0, places=2)
+        self.assertAlmostEqual(adam_columns["monthly_project_income"], 392.0, places=2)
+        self.assertAlmostEqual(adam_columns["project_insurance_income"], 536.08, places=2)
+
+    def test_project_report_hides_inactive_assignment_and_keeps_zero_timesheet_employee(self):
+        self.assignment_a.write({
+            "allocation_ratio": 40.0,
+            "date_start": "2026-06-01",
+            "active": False,
+        })
+        self.assignment_b.write({
+            "allocation_ratio": 100.0,
+            "date_start": "2026-06-01",
+        })
+
+        self._create_timesheet(self.assignment_a, "2026-06-01", hours_pp=99.0)
+
+        lines, options = self._get_lines("2026-06-18", report=self.project_report)
+        project_line = self._find_line(lines, "Národný projekt")
+        employee_lines = self.project_report.get_expanded_lines(
+            options,
+            project_line["id"],
+            project_line.get("groupby"),
+            project_line["expand_function"],
+            project_line.get("progress"),
+            0,
+            project_line.get("horizontal_split_side"),
+        )
+
+        visible_names = [line["name"] for line in employee_lines if not line["name"].startswith("Total ")]
+        self.assertEqual(visible_names, ["Beata Zamestnanec"])
+
+        beata_columns = self._column_map(self._find_line(employee_lines, "Beata Zamestnanec"))
+        self.assertAlmostEqual(beata_columns["work_ratio"], 100.0, places=2)
+        self.assertAlmostEqual(beata_columns["capacity_hours"], 160.0, places=2)
+        self.assertAlmostEqual(beata_columns["hours_pp"], 0.0, places=2)
+        self.assertAlmostEqual(beata_columns["monthly_project_income"], 0.0, places=2)
+        self.assertAlmostEqual(beata_columns["project_insurance_income"], 0.0, places=2)
+
+    def test_project_report_search_by_employee_keeps_matching_project_and_child(self):
+        self.assignment_a.write({
+            "allocation_ratio": 100.0,
+            "date_start": "2026-07-01",
+        })
+        self._create_timesheet(self.assignment_a, "2026-07-01", hours_pp=24.0)
+
+        lines, _options = self._get_lines("2026-07-18", report=self.project_report)
+        project_line = self._find_line(lines, "Národný projekt")
+
+        filtered_options = self.project_report.get_options({
+            "date": {
+                "mode": "single",
+                "filter": "custom",
+                "date_to": "2026-07-18",
+            },
+            "filter_search_bar": "Adam",
+            "unfolded_lines": [project_line["id"]],
+        })
+        filtered_lines = self.project_report._get_lines(filtered_options)
+        filtered_project = self._find_line(filtered_lines, "Národný projekt")
+        employee_lines = self.project_report.get_expanded_lines(
+            filtered_options,
+            filtered_project["id"],
+            filtered_project.get("groupby"),
+            filtered_project["expand_function"],
+            filtered_project.get("progress"),
+            0,
+            filtered_project.get("horizontal_split_side"),
+        )
+        visible_names = [line["name"] for line in employee_lines if not line["name"].startswith("Total ")]
+        self.assertEqual(visible_names, ["Adam Zamestnanec"])
+
+    def test_readonly_tenenet_user_can_open_project_report(self):
+        lines, _options = self._get_lines("2026-05-10", user=self.user_user, report=self.project_report)
+
+        line_names = self._line_names(lines)
+        self.assertIn("Národný projekt", line_names)

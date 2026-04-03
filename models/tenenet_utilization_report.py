@@ -4,16 +4,14 @@ from odoo import fields, models
 from odoo.tools import format_date
 
 
-class TenenetUtilizationReportHandler(models.AbstractModel):
-    _name = "tenenet.utilization.report.handler"
-    _inherit = ["account.report.custom.handler"]
-    _description = "TENENET Utilization Report Handler"
+class TenenetUtilizationReportBaseMixin:
+    _report_variant = "employee"
 
     _PROJECT_TYPE_LABELS = {
         "national": "Národný",
         "international": "Medzinárodný",
     }
-    _PLACEHOLDER_COLUMNS = {
+    _MONETARY_COLUMNS = {
         "monthly_project_income",
         "project_insurance_income",
     }
@@ -36,10 +34,6 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
         "hours_non_project_total",
         "hours_diff",
     }
-    _PERCENTAGE_COLUMNS = {
-        "utilization_percentage",
-        "non_project_percentage",
-    }
 
     def _custom_options_initializer(self, report, options, previous_options=None):
         super()._custom_options_initializer(report, options, previous_options=previous_options)
@@ -48,7 +42,9 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
         custom_display_config["css_custom_class"] = (
             custom_display_config.get("css_custom_class", "") + " tenenet_utilization_report"
         ).strip()
-        custom_display_config.setdefault("components", {})["AccountReportFilters"] = "TenenetUtilizationReportFilters"
+        custom_display_config.setdefault("components", {})["AccountReportFilters"] = (
+            "TenenetUtilizationReportFilters"
+        )
 
         period = self._get_selected_month_start(report, options)
         options["date"]["filter"] = "this_month"
@@ -64,20 +60,30 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
                 cg_data["string"] = month_str
 
         options["tenenet_filter_warnings"] = (
-            previous_options.get("tenenet_filter_warnings", False)
-            if previous_options
-            else False
+            previous_options.get("tenenet_filter_warnings", False) if previous_options else False
         )
 
     def _dynamic_lines_generator(self, report, options, all_column_groups_expression_totals, warnings=None):
         period = self._get_selected_month_start(report, options)
         self.env["tenenet.utilization"].sudo()._refresh_for_period(period)
+        report_data = self._get_month_report_data(period)
+        search_term = options.get("filter_search_bar")
+        only_warnings = options.get("tenenet_filter_warnings", False)
+
+        if self._report_variant == "project":
+            project_rows = self._get_project_rows(
+                report_data,
+                search_term=search_term,
+                only_warnings=only_warnings,
+            )
+            return [(0, self._get_project_line(report, options, row)) for row in project_rows]
+
         utilization_records = self._get_utilization_records(
             period,
-            search_term=options.get("filter_search_bar"),
-            only_warnings=options.get("tenenet_filter_warnings", False),
+            search_term=search_term,
+            only_warnings=only_warnings,
         )
-        detail_by_employee = self._get_month_assignment_details(period)
+        detail_by_employee = report_data["by_employee"]
         return [
             (0, self._get_employee_line(report, options, utilization, detail_by_employee.get(utilization.employee_id.id)))
             for utilization in utilization_records
@@ -96,7 +102,7 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
         if not employee:
             return {"lines": []}
 
-        detail = self._get_month_assignment_details(period).get(employee.id) or {}
+        detail = self._get_month_report_data(period)["by_employee"].get(employee.id) or {}
         project_lines = []
         for project_detail in detail.get("projects", []):
             project = project_detail["project"]
@@ -115,6 +121,53 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
         return {
             "lines": project_lines,
             "offset_increment": len(project_lines),
+            "has_more": False,
+            "progress": progress,
+        }
+
+    def _report_expand_unfoldable_line_tenenet_utilization_project(
+        self, line_dict_id, groupby, options, progress, offset, unfold_all_batch_data=None
+    ):
+        report = self.env["account.report"].browse(options["report_id"])
+        markup, model, record_id = report._parse_line_id(line_dict_id)[-1]
+        if model != "tenenet.project" or markup != "tenenet_utilization_project":
+            return {"lines": []}
+
+        period = self._get_selected_month_start(report, options)
+        project = self.env["tenenet.project"].browse(record_id).exists()
+        if not project:
+            return {"lines": []}
+
+        search_term = options.get("filter_search_bar")
+        project_detail = self._get_month_report_data(period)["by_project"].get(project.id)
+        if not project_detail:
+            return {"lines": []}
+
+        top_level_match = self._project_matches_top_level_search(search_term, project_detail)
+        employee_lines = []
+        for employee_detail in project_detail.get("employees", []):
+            if search_term and not top_level_match and not self._employee_detail_matches_search(
+                search_term, employee_detail
+            ):
+                continue
+
+            employee = employee_detail["employee"]
+            employee_lines.append({
+                "id": report._get_generic_line_id(
+                    "hr.employee",
+                    employee.id,
+                    parent_line_id=line_dict_id,
+                    markup=f"tenenet_utilization_project_employee_{project.id}_{employee.id}",
+                ),
+                "name": employee.name or "",
+                "columns": self._build_columns(report, options, employee_detail["metrics"]),
+                "level": 3,
+                "parent_id": line_dict_id,
+            })
+
+        return {
+            "lines": employee_lines,
+            "offset_increment": len(employee_lines),
             "has_more": False,
             "progress": progress,
         }
@@ -149,16 +202,17 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
             )
         )
 
-    def _get_month_assignment_details(self, period):
+    def _get_month_report_data(self, period):
         utilization_records = self.env["tenenet.utilization"].sudo()._refresh_for_period(period)
         utilization_by_employee = {
             utilization.employee_id.id: utilization
             for utilization in utilization_records
             if utilization.employee_id
         }
-        assignments = self.env["tenenet.project.assignment"].with_context(active_test=False).search(
+        assignments = self.env["tenenet.project.assignment"].search(
             [
                 ("project_id.is_tenenet_internal", "=", False),
+                ("active", "=", True),
             ],
             order="employee_id, project_id, date_start, id",
         )
@@ -173,7 +227,9 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
             for timesheet in timesheets
             if timesheet.assignment_id
         }
+
         details_by_employee = {}
+        details_by_project = {}
         for assignment in assignments:
             employee = assignment.employee_id
             project = assignment.project_id
@@ -181,8 +237,11 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
                 continue
             if not assignment._is_period_in_scope(period):
                 continue
+
             timesheet = timesheets_by_assignment.get(assignment.id)
             utilization = utilization_by_employee.get(employee.id)
+            metrics = self._get_assignment_metrics(employee, assignment, timesheet, utilization=utilization)
+            project_type_key = self._get_project_type_key(project)
 
             employee_detail = details_by_employee.setdefault(employee.id, {
                 "employee": employee,
@@ -190,19 +249,34 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
                 "projects": {},
                 "type_counts": defaultdict(int),
             })
-            project_detail = employee_detail["projects"].setdefault(project.id, {
+            employee_project_detail = employee_detail["projects"].setdefault(project.id, {
                 "project": project,
                 "assignments": [],
-                "type_key": self._get_project_type_key(project),
+                "type_key": project_type_key,
             })
-
-            metrics = self._get_assignment_metrics(employee, assignment, timesheet, utilization=utilization)
-            project_detail["assignments"].append({
+            employee_project_detail["assignments"].append({
                 "assignment": assignment,
                 "timesheet": timesheet,
                 "metrics": metrics,
             })
-            employee_detail["type_counts"][project_detail["type_key"]] += 1
+            employee_detail["type_counts"][project_type_key] += 1
+
+            project_detail = details_by_project.setdefault(project.id, {
+                "project": project,
+                "manager_name": project.project_manager_id.name or "",
+                "employees": {},
+                "type_key": project_type_key,
+            })
+            project_employee_detail = project_detail["employees"].setdefault(employee.id, {
+                "employee": employee,
+                "employee_manager_name": employee.parent_id.name or "",
+                "assignments": [],
+            })
+            project_employee_detail["assignments"].append({
+                "assignment": assignment,
+                "timesheet": timesheet,
+                "metrics": metrics,
+            })
 
         for employee_detail in details_by_employee.values():
             project_rows = []
@@ -223,7 +297,74 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
                 project_rows,
                 key=lambda row: (row["project"].name or "").lower(),
             )
-        return details_by_employee
+
+        for project_detail in details_by_project.values():
+            employee_rows = []
+            for employee_detail in project_detail["employees"].values():
+                employee_detail["assignments"].sort(
+                    key=lambda row: (
+                        row["assignment"].date_start or fields.Date.today(),
+                        row["assignment"].id,
+                    )
+                )
+                employee_detail["metrics"] = self._aggregate_metrics(
+                    [row["metrics"] for row in employee_detail["assignments"]],
+                    manager_name=project_detail["manager_name"],
+                    project_type=self._PROJECT_TYPE_LABELS[project_detail["type_key"]],
+                )
+                employee_rows.append(employee_detail)
+            project_detail["employees"] = sorted(
+                employee_rows,
+                key=lambda row: (row["employee"].name or "").lower(),
+            )
+            project_detail["metrics"] = self._aggregate_metrics(
+                [row["metrics"] for row in project_detail["employees"]],
+                manager_name=project_detail["manager_name"],
+                project_type=self._PROJECT_TYPE_LABELS[project_detail["type_key"]],
+            )
+
+        return {
+            "by_employee": details_by_employee,
+            "by_project": details_by_project,
+        }
+
+    def _get_project_rows(self, report_data, search_term=None, only_warnings=False):
+        rows = list(report_data["by_project"].values())
+        if search_term:
+            rows = [
+                row
+                for row in rows
+                if self._project_matches_top_level_search(search_term, row)
+                or any(self._employee_detail_matches_search(search_term, employee_detail) for employee_detail in row["employees"])
+            ]
+        if only_warnings:
+            rows = [
+                row
+                for row in rows
+                if row["metrics"]["utilization_status"] == "warning"
+                or row["metrics"]["non_project_status"] == "warning"
+            ]
+        return sorted(rows, key=lambda row: (row["project"].name or "").lower())
+
+    def _project_matches_top_level_search(self, search_term, project_detail):
+        if not search_term:
+            return True
+        lowered_search_term = search_term.lower()
+        project = project_detail["project"]
+        return (
+            lowered_search_term in (project.name or "").lower()
+            or lowered_search_term in (project.display_name or "").lower()
+            or lowered_search_term in (project_detail.get("manager_name") or "").lower()
+        )
+
+    def _employee_detail_matches_search(self, search_term, employee_detail):
+        if not search_term:
+            return True
+        lowered_search_term = search_term.lower()
+        return (
+            lowered_search_term in (employee_detail["employee"].name or "").lower()
+            or lowered_search_term in (employee_detail.get("employee_manager_name") or "").lower()
+        )
 
     def _get_employee_line(self, report, options, utilization, detail):
         type_counts = detail.get("type_counts", {}) if detail else {}
@@ -244,6 +385,26 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
                 or employee_line_id in (options.get("unfolded_lines") or [])
             ),
             "expand_function": "_report_expand_unfoldable_line_tenenet_utilization_employee",
+        }
+
+    def _get_project_line(self, report, options, project_detail):
+        project = project_detail["project"]
+        line_id = report._get_generic_line_id(
+            "tenenet.project",
+            project.id,
+            markup="tenenet_utilization_project",
+        )
+        return {
+            "id": line_id,
+            "name": project.display_name or project.name or "",
+            "columns": self._build_columns(report, options, project_detail["metrics"]),
+            "level": 2,
+            "unfoldable": bool(project_detail.get("employees")),
+            "unfolded": bool(
+                options.get("unfold_all")
+                or line_id in (options.get("unfolded_lines") or [])
+            ),
+            "expand_function": "_report_expand_unfoldable_line_tenenet_utilization_project",
         }
 
     def _get_employee_values(self, utilization, type_counts):
@@ -281,8 +442,12 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
         values = {
             "manager_name": employee.parent_id.name or "",
             "project_type": self._PROJECT_TYPE_LABELS[self._get_project_type_key(assignment.project_id)],
-            "monthly_project_income": 0.0,
-            "project_insurance_income": 0.0,
+            "monthly_project_income": (
+                timesheet.gross_salary if timesheet and self._report_variant == "project" else 0.0
+            ),
+            "project_insurance_income": (
+                timesheet.total_labor_cost if timesheet and self._report_variant == "project" else 0.0
+            ),
             "work_ratio": allocation_ratio,
             "capacity_hours": capacity_hours,
             "hours_pp": timesheet.hours_pp if timesheet else 0.0,
@@ -297,9 +462,7 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
             "hours_sick": timesheet.hours_sick if timesheet else 0.0,
             "hours_holidays": timesheet.hours_holidays if timesheet else 0.0,
         }
-        values["leaves_kpi_hours"] = (
-            values["hours_vacation"] + values["hours_doctor"] + values["hours_sick"]
-        )
+        values["leaves_kpi_hours"] = values["hours_vacation"] + values["hours_doctor"] + values["hours_sick"]
         values["hours_ballast"] = (
             values["hours_np"]
             + values["hours_travel"]
@@ -338,13 +501,10 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
         aggregate = {
             "manager_name": manager_name or "",
             "project_type": project_type or "",
-            "monthly_project_income": 0.0,
-            "project_insurance_income": 0.0,
             "utilization_status": "warning",
             "non_project_status": "warning",
         }
-        sum_labels = self._TIME_FLOAT_COLUMNS | self._PERCENTAGE_COLUMNS | self._PLACEHOLDER_COLUMNS
-        for label in sum_labels:
+        for label in self._TIME_FLOAT_COLUMNS | self._MONETARY_COLUMNS:
             aggregate[label] = sum(metric.get(label, 0.0) for metric in metrics_list)
 
         available_hours = aggregate["capacity_hours"] - aggregate["leaves_kpi_hours"]
@@ -359,6 +519,14 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
         aggregate["non_project_percentage"] = non_project_rate * 100.0
         aggregate["non_project_status"] = (
             "ok" if aggregate["capacity_hours"] > 0 and non_project_rate <= 0.25 else "warning"
+        )
+        aggregate["hours_diff"] = (
+            aggregate["hours_project_total"]
+            + aggregate["hours_vacation"]
+            + aggregate["hours_doctor"]
+            + aggregate["hours_sick"]
+            + aggregate["hours_holidays"]
+            - aggregate["capacity_hours"]
         )
         return aggregate
 
@@ -377,10 +545,13 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
         return columns
 
     def _get_column_value(self, values, label):
-        return values.get(label, "" if label in {"manager_name", "project_type", "utilization_status", "non_project_status"} else 0.0)
+        return values.get(
+            label,
+            "" if label in {"manager_name", "project_type", "utilization_status", "non_project_status"} else 0.0,
+        )
 
     def _get_project_type_key(self, project):
-        if project and project.international:
+        if project and project._is_international_by_donor():
             return "international"
         return "national"
 
@@ -388,3 +559,17 @@ class TenenetUtilizationReportHandler(models.AbstractModel):
         national = int(type_counts.get("national", 0))
         international = int(type_counts.get("international", 0))
         return f"N: {national} / M: {international}"
+
+
+class TenenetUtilizationReportHandler(TenenetUtilizationReportBaseMixin, models.AbstractModel):
+    _name = "tenenet.utilization.report.handler"
+    _inherit = ["account.report.custom.handler"]
+    _description = "TENENET Utilization Report Handler"
+    _report_variant = "employee"
+
+
+class TenenetUtilizationProjectReportHandler(TenenetUtilizationReportBaseMixin, models.AbstractModel):
+    _name = "tenenet.utilization.project.report.handler"
+    _inherit = ["account.report.custom.handler"]
+    _description = "TENENET Utilization Project Report Handler"
+    _report_variant = "project"

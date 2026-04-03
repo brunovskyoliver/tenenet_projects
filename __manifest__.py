@@ -13,10 +13,10 @@ and P&L reporting by program.
     'website': "https://www.tenenet.sk",
 
     'category': 'Project',
-    'version': '19.0.5.7.2',
+    'version': '19.0.5.8.0',
     'license': 'LGPL-3',
 
-    'depends': ['base', 'hr', 'hr_holidays', 'hr_skills', 'hr_expense', 'account_reports', 'mail', 'web_gantt', 'web_grid'],
+    'depends': ['base', 'hr', 'hr_holidays', 'hr_skills', 'hr_expense', 'account_reports', 'mail', 'web_enterprise', 'web_gantt', 'web_grid'],
 
 
     'assets': {
@@ -39,6 +39,8 @@ and P&L reporting by program.
             'tenenet_projects/static/src/xml/tenenet_pl_report_filters.xml',
             'tenenet_projects/static/src/xml/tenenet_my_timesheets_action.xml',
             'tenenet_projects/static/src/xml/tenenet_garant_timesheets_action.xml',
+            'tenenet_projects/static/src/js/tenenet_home_menu_utilization.js',
+            'tenenet_projects/static/src/xml/tenenet_home_menu_utilization.xml',
             'tenenet_projects/static/src/xml/hr_holidays_overrides.xml',
             'tenenet_projects/static/src/scss/tenenet_internal_expense_report.scss',
             'tenenet_projects/static/src/scss/tenenet_project_yearly_labor_report.scss',
@@ -48,6 +50,7 @@ and P&L reporting by program.
             'tenenet_projects/static/src/scss/tenenet_pl_report.scss',
             'tenenet_projects/static/src/scss/tenenet_pl_program_override_grid.scss',
             'tenenet_projects/static/src/scss/timesheet_matrix.scss',
+            'tenenet_projects/static/src/scss/tenenet_home_menu_utilization.scss',
             'tenenet_projects/static/src/scss/hr_employee.scss',
         ],
         'web.assets_backend_lazy': [

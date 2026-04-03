@@ -14,21 +14,27 @@ class TestTenenetPlan13PLReport(TransactionCase):
         self.program_b = self.env["tenenet.program"].create({"name": "Program B", "code": "PGB"})
         self.employee_a = self.env["hr.employee"].create({"name": "Adam Zamestnanec", "work_ratio": 100.0})
         self.employee_b = self.env["hr.employee"].create({"name": "Beata Zamestnanec", "work_ratio": 100.0})
+        self.international_donor = self.env["tenenet.donor"].create({
+            "name": "International Donor",
+            "donor_type": "international",
+        })
+        self.eu_donor = self.env["tenenet.donor"].create({
+            "name": "EU Donor",
+            "donor_type": "eu",
+        })
 
         self.project_a_int = self.env["tenenet.project"].create({
             "name": "International Alpha",
             "program_ids": [(6, 0, self.program_a.ids)],
-            "international": True,
+            "donor_id": self.international_donor.id,
         })
         self.project_a_nat = self.env["tenenet.project"].create({
             "name": "National Beta",
             "program_ids": [(6, 0, self.program_a.ids)],
-            "international": False,
         })
         self.project_b_nat = self.env["tenenet.project"].create({
             "name": "Program B Project",
             "program_ids": [(6, 0, self.program_b.ids)],
-            "international": False,
         })
 
         self.assignment_a_int = self.env["tenenet.project.assignment"].create({
@@ -245,23 +251,41 @@ class TestTenenetPlan13PLReport(TransactionCase):
         self.assertAlmostEqual(pre_admin_columns["month_03"], 1200.0, places=2)
         self.assertAlmostEqual(final_columns["month_03"], 1150.0, places=2)
 
-    def test_international_split_uses_project_checkbox(self):
+    def test_international_split_uses_donor_type(self):
         year = fields.Date.context_today(self).year + 1
-        donor = self.env["tenenet.donor"].create({"name": "International Donor", "donor_type": "international"})
-        project = self.env["tenenet.project"].create({
-            "name": "Lokálny podľa checkboxu",
+        international_project = self.env["tenenet.project"].create({
+            "name": "Medzinárodný podľa EU donora",
             "program_ids": [(6, 0, self.program_a.ids)],
-            "donor_id": donor.id,
+            "donor_id": self.eu_donor.id,
             "international": False,
         })
-        self._create_receipt(project, f"{year}-03-01", 500.0)
-        self._set_income_override(year, project, 3, 500.0)
+        local_project = self.env["tenenet.project"].create({
+            "name": "Národný bez donora",
+            "program_ids": [(6, 0, self.program_a.ids)],
+            "international": True,
+        })
+        self._create_receipt(international_project, f"{year}-03-01", 500.0)
+        self._create_receipt(local_project, f"{year}-03-01", 300.0)
+        self._set_income_override(year, international_project, 3, 500.0)
+        self._set_income_override(year, local_project, 3, 300.0)
 
         lines = self._get_detail_lines(year, self.program_a, unfold_all=True)
         line_names = [line["name"] for line in lines]
-        self.assertIn("Lokálny podľa checkboxu", line_names)
-        self.assertGreater(line_names.index("Lokálny podľa checkboxu"), line_names.index("Projekty národné"))
-        self.assertLess(line_names.index("Lokálny podľa checkboxu"), line_names.index("Tržby"))
+        self.assertIn("Medzinárodný podľa EU donora", line_names)
+        self.assertIn("Národný bez donora", line_names)
+        self.assertGreater(
+            line_names.index("Medzinárodný podľa EU donora"),
+            line_names.index("Projekty medzinárodné"),
+        )
+        self.assertLess(
+            line_names.index("Medzinárodný podľa EU donora"),
+            line_names.index("Projekty národné"),
+        )
+        self.assertGreater(
+            line_names.index("Národný bez donora"),
+            line_names.index("Projekty národné"),
+        )
+        self.assertLess(line_names.index("Národný bez donora"), line_names.index("Tržby"))
 
     def test_summary_report_shows_both_blocks_and_totals(self):
         year = fields.Date.context_today(self).year + 1

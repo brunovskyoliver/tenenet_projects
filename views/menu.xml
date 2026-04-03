@@ -50,10 +50,16 @@
                   sequence="15"/>
 
         <menuitem id="menu_tenenet_utilization_report"
-                  name="Vyťaženosť report"
+                  name="Vyťaženosť report podľa zamestnanca"
                   parent="menu_tenenet_reporting"
                   action="action_tenenet_utilization_report"
                   sequence="5"/>
+
+        <menuitem id="menu_tenenet_utilization_project_report"
+                  name="Vyťaženosť report podľa projektu"
+                  parent="menu_tenenet_reporting"
+                  action="action_tenenet_utilization_project_report"
+                  sequence="6"/>
 
         <menuitem id="menu_tenenet_project_yearly_labor_report"
                   name="Ročný report projektu"

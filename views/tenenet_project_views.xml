@@ -8,13 +8,12 @@
                     <field name="semaphore"
                            widget="badge"
                            decoration-success="semaphore == 'green'"
-                           decoration-warning="semaphore == 'yellow'"
+                           decoration-warning="semaphore == 'orange'"
                            decoration-danger="semaphore == 'red'"
                            class="o_tenenet_project_semaphore_dot"/>
                     <field name="name"/>
                     <field name="program_ids" widget="many2many_tags"/>
                     <field name="donor_id"/>
-                    <field name="international" optional="show"/>
                     <field name="budget_total"/>
                     <field name="date_start"/>
                     <field name="date_end"/>
@@ -39,7 +38,6 @@
                             <group>
                                 <field name="program_ids" widget="many2many_tags"/>
                                 <field name="donor_id"/>
-                                <field name="international"/>
                                 <field name="recipient_partner_id"/>
                                 <field name="partner_id"/>
                             </group>
@@ -157,7 +155,7 @@
                                     </list>
                                 </field>
                             </page>
-                            <page string="Prevádzky">
+                            <page string="Pôsobiská">
                                 <div class="mb-2">
                                     <button name="action_open_site_wizard"
                                             type="object"
@@ -241,11 +239,6 @@
                                     <field name="partner_contact" readonly="1"/>
                                 </group>
                             </page>
-                            <page string="Poznámky">
-                                <group>
-                                    <field name="comments"/>
-                                </group>
-                            </page>
                         </notebook>
                     </sheet>
                     <chatter/>
@@ -262,7 +255,7 @@
                     <field name="program_ids"/>
                     <field name="donor_id"/>
                     <filter string="Aktívne" name="active" domain="[('active', '=', True)]"/>
-                    <filter string="Medzinárodné" name="international" domain="[('international', '=', True)]"/>
+                    <filter string="Medzinárodné" name="international" domain="[('donor_id.donor_type', 'in', ['international', 'eu'])]"/>
                     <filter string="Donor" name="group_donor" context="{'group_by': 'donor_id'}"/>
                 </search>
             </field>
@@ -283,9 +276,20 @@
                     <field name="date_end"/>
                     <templates>
                         <t t-name="card">
-                            <strong class="d-block mb-2">
-                                <field name="name"/>
-                            </strong>
+                            <div class="o_tenenet_project_kanban_header d-flex align-items-start justify-content-between gap-2 mb-2">
+                                <strong class="d-block flex-grow-1 min-w-0">
+                                    <field name="name"/>
+                                </strong>
+                                <span t-if="record.semaphore.raw_value == 'green'"
+                                      class="o_tenenet_project_kanban_semaphore is-green flex-shrink-0"
+                                      title="Zelená"/>
+                                <span t-elif="record.semaphore.raw_value == 'orange'"
+                                      class="o_tenenet_project_kanban_semaphore is-orange flex-shrink-0"
+                                      title="Oranžová"/>
+                                <span t-elif="record.semaphore.raw_value == 'red'"
+                                      class="o_tenenet_project_kanban_semaphore is-red flex-shrink-0"
+                                      title="Červená"/>
+                            </div>
                             <div class="small text-muted">
                                 <span>Garant: </span><field name="odborny_garant_id"/>
                             </div>
@@ -334,9 +338,20 @@
                             <button type="object"
                                     name="action_open_assignments_kanban"
                                     class="d-block w-100 text-start border-0 bg-transparent p-0">
-                                <strong class="d-block mb-2">
-                                    <field name="name"/>
-                                </strong>
+                                <div class="o_tenenet_project_kanban_header d-flex align-items-start justify-content-between gap-2 mb-2">
+                                    <strong class="d-block flex-grow-1 min-w-0">
+                                        <field name="name"/>
+                                    </strong>
+                                    <span t-if="record.semaphore.raw_value == 'green'"
+                                          class="o_tenenet_project_kanban_semaphore is-green flex-shrink-0"
+                                          title="Zelená"/>
+                                    <span t-elif="record.semaphore.raw_value == 'orange'"
+                                          class="o_tenenet_project_kanban_semaphore is-orange flex-shrink-0"
+                                          title="Oranžová"/>
+                                    <span t-elif="record.semaphore.raw_value == 'red'"
+                                          class="o_tenenet_project_kanban_semaphore is-red flex-shrink-0"
+                                          title="Červená"/>
+                                </div>
                                 <div class="small text-muted">
                                     <span>Garant: </span><field name="odborny_garant_id"/>
                                 </div>
