@@ -9,6 +9,7 @@ from odoo.tests import TransactionCase, tagged
 class TestTenenetPlan05PLReporting(TransactionCase):
     def setUp(self):
         super().setUp()
+        self.base_wage_hm = 1.0 / 1.362
         self.program_a = self.env["tenenet.program"].create(
             {
                 "name": "Program A",
@@ -27,39 +28,41 @@ class TestTenenetPlan05PLReporting(TransactionCase):
         self.project_a = self.env["tenenet.project"].create({
             "name": "Projekt PL A",
             "program_ids": [(4, self.program_a.id)],
+            "reporting_program_id": self.program_a.id,
         })
         self.project_a_2 = self.env["tenenet.project"].create({
             "name": "Projekt PL A 2",
             "program_ids": [(4, self.program_a.id)],
+            "reporting_program_id": self.program_a.id,
         })
         self.project_b = self.env["tenenet.project"].create({
             "name": "Projekt PL B",
             "program_ids": [(4, self.program_b.id)],
+            "reporting_program_id": self.program_b.id,
         })
         self.assignment = self.env["tenenet.project.assignment"].create({
             "employee_id": self.employee.id,
             "project_id": self.project_a.id,
-            "wage_hm": 0.0,
-            "wage_ccp": 1.0,
+            "wage_hm": self.base_wage_hm,
         })
         self.env["tenenet.project.assignment"].create([
             {
                 "employee_id": self.employee_b.id,
                 "project_id": self.project_a.id,
-                "wage_hm": 0.0,
-                "wage_ccp": 1.0,
+                "allocation_ratio": 50.0,
+                "wage_hm": self.base_wage_hm,
             },
             {
                 "employee_id": self.employee_c.id,
                 "project_id": self.project_a_2.id,
-                "wage_hm": 0.0,
-                "wage_ccp": 1.0,
+                "allocation_ratio": 100.0,
+                "wage_hm": self.base_wage_hm,
             },
             {
                 "employee_id": self.employee_b.id,
                 "project_id": self.project_b.id,
-                "wage_hm": 0.0,
-                "wage_ccp": 1.0,
+                "allocation_ratio": 50.0,
+                "wage_hm": self.base_wage_hm,
             },
         ])
         self.company = self.env.company
@@ -123,12 +126,22 @@ class TestTenenetPlan05PLReporting(TransactionCase):
         self.assertAlmostEqual(line_next_year.annual_total, 75.0, places=2)
 
     def test_program_allocation_pct_sums_to_one(self):
-        self.program_a.invalidate_recordset(["allocation_pct"])
-        self.program_b.invalidate_recordset(["allocation_pct"])
-        total = self.program_a.allocation_pct + self.program_b.allocation_pct
-        self.assertAlmostEqual(self.program_a.allocation_pct, 0.75, places=4)
-        self.assertAlmostEqual(self.program_b.allocation_pct, 0.25, places=4)
+        programs = self.env["tenenet.program"].search([])
+        programs.invalidate_recordset(["allocation_pct"])
+        total = sum(programs.mapped("allocation_pct"))
         self.assertAlmostEqual(total, 1.0, places=4)
+
+    def test_reporting_fte_uses_reporting_program_assignments(self):
+        self.program_a.invalidate_recordset(["reporting_fte", "operating_allocation_pct"])
+        self.program_b.invalidate_recordset(["reporting_fte", "operating_allocation_pct"])
+
+        self.assertAlmostEqual(self.program_a.reporting_fte, 2.5, places=2)
+        self.assertAlmostEqual(self.program_b.reporting_fte, 0.5, places=2)
+        self.assertAlmostEqual(
+            self.program_a.operating_allocation_pct + self.program_b.operating_allocation_pct,
+            1.0,
+            places=4,
+        )
 
     def test_pl_line_unique_constraint(self):
         self.env["tenenet.pl.line"].create({

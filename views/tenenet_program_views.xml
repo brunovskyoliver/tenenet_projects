@@ -7,7 +7,10 @@
                 <list string="Programy">
                     <field name="name"/>
                     <field name="code"/>
+                    <field name="program_kind"/>
                     <field name="headcount"/>
+                    <field name="reporting_fte"/>
+                    <field name="operating_allocation_pct"/>
                     <field name="allocation_pct_percentage"/>
                     <field name="active"/>
                 </list>
@@ -24,10 +27,13 @@
                             <group>
                                 <field name="name"/>
                                 <field name="code"/>
+                                <field name="program_kind"/>
                                 <field name="active"/>
                             </group>
                             <group>
                                 <field name="headcount" readonly="1"/>
+                                <field name="reporting_fte" readonly="1"/>
+                                <field name="operating_allocation_pct" readonly="1"/>
                                 <field name="allocation_pct_percentage" readonly="1"/>
                             </group>
                         </group>

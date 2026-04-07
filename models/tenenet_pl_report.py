@@ -59,39 +59,48 @@ class TenenetPLReportHandler(models.AbstractModel):
     ):
         report = self.env["account.report"].browse(options["report_id"])
         values = self._get_selected_program_report_values(options)
-        international_line = self._build_unfoldable_section_line(
+        projects_line = self._build_unfoldable_section_line(
             report,
             options,
-            "Projekty medzinárodné",
-            "tenenet_pl_international_section",
-            "_report_expand_unfoldable_line_tenenet_pl_international_section",
+            "Projekty",
+            "tenenet_pl_projects_section",
+            "_report_expand_unfoldable_line_tenenet_pl_projects_section",
             level=2,
             parent_line_id=line_dict_id,
-            unfoldable=bool(values["international_rows"]),
-            monthly_values=values["international_income"],
+            unfoldable=bool(values["project_rows"]),
+            monthly_values=values["projects_total"],
         )
-        national_line = self._build_unfoldable_section_line(
+        sales_line = self._build_unfoldable_section_line(
             report,
             options,
-            "Projekty národné",
-            "tenenet_pl_national_section",
-            "_report_expand_unfoldable_line_tenenet_pl_national_section",
+            "Tržby",
+            "tenenet_pl_sales_section",
+            "_report_expand_unfoldable_line_tenenet_pl_sales_section",
             level=2,
             parent_line_id=line_dict_id,
-            unfoldable=bool(values["national_rows"]),
-            monthly_values=values["national_income"],
+            unfoldable=True,
+            monthly_values=values["sales_total"],
+        )
+        fundraising_line = self._build_unfoldable_section_line(
+            report,
+            options,
+            "Zbierky",
+            "tenenet_pl_fundraising_section",
+            "_report_expand_unfoldable_line_tenenet_pl_fundraising_section",
+            level=2,
+            parent_line_id=line_dict_id,
+            unfoldable=bool(values["fundraising_rows"]),
+            monthly_values=values["fundraising_total"],
         )
         lines = [
-            international_line,
-            national_line,
-            self._build_value_line(
-                report, options, "Tržby", values["trzby"], "tenenet_pl_trzby", level=2, parent_line_id=line_dict_id
-            ),
+            projects_line,
+            sales_line,
+            fundraising_line,
             self._build_value_line(
                 report,
                 options,
                 "Príjmy spolu",
-                values["prijmy_spolu"],
+                values["income_total"],
                 "tenenet_pl_income_total",
                 level=2,
                 parent_line_id=line_dict_id,
@@ -99,7 +108,7 @@ class TenenetPLReportHandler(models.AbstractModel):
         ]
         return self._build_expand_result(lines, progress)
 
-    def _report_expand_unfoldable_line_tenenet_pl_international_section(
+    def _report_expand_unfoldable_line_tenenet_pl_projects_section(
         self, line_dict_id, groupby, options, progress, offset, unfold_all_batch_data=None
     ):
         report = self.env["account.report"].browse(options["report_id"])
@@ -110,17 +119,53 @@ class TenenetPLReportHandler(models.AbstractModel):
                 options,
                 row["name"],
                 row["values"],
-                markup=f"tenenet_pl_project_international_{row['project'].id}",
+                markup=f"tenenet_pl_project_income_{row['project'].id}",
                 level=3,
                 parent_line_id=line_dict_id,
                 model="tenenet.project",
                 record_id=row["project"].id,
             )
-            for row in values["international_rows"]
+            for row in values["project_rows"]
         ]
         return self._build_expand_result(lines, progress)
 
-    def _report_expand_unfoldable_line_tenenet_pl_national_section(
+    def _report_expand_unfoldable_line_tenenet_pl_sales_section(
+        self, line_dict_id, groupby, options, progress, offset, unfold_all_batch_data=None
+    ):
+        report = self.env["account.report"].browse(options["report_id"])
+        values = self._get_selected_program_report_values(options)
+        lines = [
+            self._build_value_line(
+                report,
+                options,
+                "Tržby z registračky",
+                values["sales_cash_register"],
+                "tenenet_pl_sales_cash_register",
+                level=3,
+                parent_line_id=line_dict_id,
+            ),
+            self._build_value_line(
+                report,
+                options,
+                "Tržby z faktúr",
+                values["sales_invoice"],
+                "tenenet_pl_sales_invoice",
+                level=3,
+                parent_line_id=line_dict_id,
+            ),
+            self._build_value_line(
+                report,
+                options,
+                "Tržby - neklasifikované",
+                values["sales_legacy_unclassified"],
+                "tenenet_pl_sales_legacy_unclassified",
+                level=3,
+                parent_line_id=line_dict_id,
+            ),
+        ]
+        return self._build_expand_result(lines, progress)
+
+    def _report_expand_unfoldable_line_tenenet_pl_fundraising_section(
         self, line_dict_id, groupby, options, progress, offset, unfold_all_batch_data=None
     ):
         report = self.env["account.report"].browse(options["report_id"])
@@ -131,13 +176,13 @@ class TenenetPLReportHandler(models.AbstractModel):
                 options,
                 row["name"],
                 row["values"],
-                markup=f"tenenet_pl_project_national_{row['project'].id}",
+                markup=f"tenenet_pl_fundraising_{row['campaign'].id}",
                 level=3,
                 parent_line_id=line_dict_id,
-                model="tenenet.project",
-                record_id=row["project"].id,
+                model="tenenet.fundraising.campaign",
+                record_id=row["campaign"].id,
             )
-            for row in values["national_rows"]
+            for row in values["fundraising_rows"]
         ]
         return self._build_expand_result(lines, progress)
 
@@ -170,17 +215,18 @@ class TenenetPLReportHandler(models.AbstractModel):
             self._build_value_line(
                 report,
                 options,
-                "Zisk/strata - vykrytie mzdových nákladov",
-                values["pre_admin_result"],
-                "tenenet_pl_pre_admin_result",
+                "Pokrytie mzdových nákladov",
+                values["labor_coverage"],
+                "tenenet_pl_labor_coverage",
                 level=2,
                 parent_line_id=line_dict_id,
             ),
-            self._build_section_line(
+            self._build_value_line(
                 report,
                 options,
-                "Admin a MNG náklady",
-                "tenenet_pl_admin_section",
+                "Výsledok po mzdových nákladoch",
+                values["pre_admin_result"],
+                "tenenet_pl_pre_admin_result",
                 level=2,
                 parent_line_id=line_dict_id,
             ),
@@ -214,7 +260,7 @@ class TenenetPLReportHandler(models.AbstractModel):
             self._build_value_line(
                 report,
                 options,
-                "Zisk/strata - za program",
+                "Výsledok programu",
                 values["final_result"],
                 "tenenet_pl_final_result",
                 level=2,
@@ -325,7 +371,7 @@ class TenenetPLReportHandler(models.AbstractModel):
                 value = ""
                 column_figure_type = "string"
             elif expression_label == "year_total":
-                value = sum(monthly_values.get(month_index, 0.0) for month_index in range(1, 13))
+                value = round(sum(monthly_values.get(month_index, 0.0) for month_index in range(1, 13)), 2)
                 column_figure_type = figure_type
             else:
                 month_number = int(expression_label.split("_")[1])
@@ -425,7 +471,7 @@ class TenenetPLSummaryReportHandler(models.AbstractModel):
                 value = ""
                 column_figure_type = "string"
             elif expression_label == "year_total":
-                value = sum(monthly_values.get(month_index, 0.0) for month_index in range(1, 13))
+                value = round(sum(monthly_values.get(month_index, 0.0) for month_index in range(1, 13)), 2)
                 column_figure_type = figure_type
             else:
                 month_number = int(expression_label.split("_")[1])

@@ -1,0 +1,62 @@
+<odoo>
+    <data>
+        <record id="view_tenenet_program_sales_entry_list" model="ir.ui.view">
+            <field name="name">tenenet.program.sales.entry.list</field>
+            <field name="model">tenenet.program.sales.entry</field>
+            <field name="arch" type="xml">
+                <list string="Tržby programov">
+                    <field name="program_id"/>
+                    <field name="period"/>
+                    <field name="sale_type"/>
+                    <field name="amount"/>
+                    <field name="site_id"/>
+                    <field name="source_ref"/>
+                    <field name="note"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_tenenet_program_sales_entry_form" model="ir.ui.view">
+            <field name="name">tenenet.program.sales.entry.form</field>
+            <field name="model">tenenet.program.sales.entry</field>
+            <field name="arch" type="xml">
+                <form string="Tržba programu">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="program_id"/>
+                                <field name="period"/>
+                                <field name="sale_type"/>
+                                <field name="amount"/>
+                            </group>
+                            <group>
+                                <field name="site_id"/>
+                                <field name="source_ref"/>
+                                <field name="note"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_tenenet_program_sales_entry_search" model="ir.ui.view">
+            <field name="name">tenenet.program.sales.entry.search</field>
+            <field name="model">tenenet.program.sales.entry</field>
+            <field name="arch" type="xml">
+                <search string="Tržby programov">
+                    <field name="program_id"/>
+                    <field name="sale_type"/>
+                    <field name="period"/>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_tenenet_program_sales_entry" model="ir.actions.act_window">
+            <field name="name">Tržby programov</field>
+            <field name="res_model">tenenet.program.sales.entry</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_tenenet_program_sales_entry_search"/>
+        </record>
+    </data>
+</odoo>

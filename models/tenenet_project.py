@@ -48,6 +48,15 @@ class TenenetProject(models.Model):
         "program_id",
         string="Programy",
     )
+    reporting_program_id = fields.Many2one(
+        "tenenet.program",
+        string="Reporting program",
+        ondelete="restrict",
+        compute="_compute_reporting_program_id",
+        store=True,
+        readonly=False,
+        help="Kanónický program používaný pre P&L reporting, cashflow a alokácie prevádzkových nákladov.",
+    )
     site_ids = fields.Many2many(
         "tenenet.project.site",
         "tenenet_project_site_rel",
@@ -173,6 +182,13 @@ class TenenetProject(models.Model):
             else:
                 rec.active_year_from = False
                 rec.active_year_to = False
+
+    @api.depends("program_ids")
+    def _compute_reporting_program_id(self):
+        for rec in self:
+            if rec.reporting_program_id and rec.reporting_program_id in rec.program_ids:
+                continue
+            rec.reporting_program_id = rec.program_ids[:1]
 
     CCP_MULTIPLIER = 1.362
 

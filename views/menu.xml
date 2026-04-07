@@ -197,11 +197,32 @@
                   sequence="25"
                   groups="tenenet_projects.group_tenenet_manager"/>
 
+        <menuitem id="menu_tenenet_program_sales_entry"
+                  name="Tržby programov"
+                  parent="menu_tenenet_projects"
+                  action="action_tenenet_program_sales_entry"
+                  sequence="26"
+                  groups="tenenet_projects.group_tenenet_manager"/>
+
+        <menuitem id="menu_tenenet_fundraising_campaign"
+                  name="Fundraisingové zbierky"
+                  parent="menu_tenenet_projects"
+                  action="action_tenenet_fundraising_campaign"
+                  sequence="27"
+                  groups="tenenet_projects.group_tenenet_manager"/>
+
         <menuitem id="menu_tenenet_internal_expenses"
                   name="Interné náklady"
                   parent="menu_tenenet_configuration"
                   action="action_tenenet_internal_expense"
                   sequence="40"
+                  groups="tenenet_projects.group_tenenet_manager"/>
+
+        <menuitem id="menu_tenenet_operating_cost_pool"
+                  name="Pool prevádzkových nákladov"
+                  parent="menu_tenenet_configuration"
+                  action="action_tenenet_operating_cost_pool"
+                  sequence="41"
                   groups="tenenet_projects.group_tenenet_manager"/>
 
         <menuitem id="menu_tenenet_cashflow_global_override"

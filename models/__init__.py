@@ -17,6 +17,11 @@ from . import tenenet_project_milestone
 from . import tenenet_project_receipt
 from . import tenenet_project_cashflow
 from . import tenenet_cashflow_global_override
+from . import tenenet_program_sales_entry
+from . import tenenet_fundraising_campaign
+from . import tenenet_fundraising_entry
+from . import tenenet_operating_cost_pool
+from . import tenenet_operating_cost_allocation
 from . import tenenet_pl_reporting_support
 from . import tenenet_pl_program_override
 from . import tenenet_project_assignment
