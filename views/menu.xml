@@ -27,9 +27,22 @@
                   web_icon="tenenet_projects,static/description/icon.png"/>
 
         <menuitem id="menu_tenenet_garant_projects"
-                  name="Garant Timesheet"
+                  name="Výkazy hodín"
                   parent="menu_tenenet_root"
                   sequence="8"
+                  groups="tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"/>
+
+        <menuitem id="menu_tenenet_garant_projects_overview"
+                  name="Rozpis všetkých podriadených"
+                  parent="menu_tenenet_garant_projects"
+                  sequence="1"
+                  action="action_tenenet_garant_timesheets_client"
+                  groups="tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"/>
+
+        <menuitem id="menu_tenenet_garant_projects_kanban"
+                  name="Kanban projektov"
+                  parent="menu_tenenet_garant_projects"
+                  sequence="2"
                   action="action_tenenet_garant_projects_server"
                   groups="tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"/>
 
