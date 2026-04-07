@@ -25,7 +25,11 @@ class TenenetEmployeeSiteKey(models.Model):
         ondelete="cascade",
         domain="[('site_type', 'in', ['prevadzka', 'centrum'])]",
     )
-    note = fields.Text(string="Poznámka")
+    work_phone = fields.Char(
+        string="Telefón",
+        related="employee_id.work_phone",
+        readonly=True,
+    )
     active = fields.Boolean(string="Aktívne", default=True)
 
     @api.constrains("site_id")
@@ -33,4 +37,3 @@ class TenenetEmployeeSiteKey(models.Model):
         for rec in self:
             if rec.site_id and rec.site_id.site_type not in {"prevadzka", "centrum"}:
                 raise ValidationError("Kľúč možno priradiť len k prevádzke alebo centru.")
-

@@ -23,7 +23,7 @@
             <field name="name">tenenet.project.site.form</field>
             <field name="model">tenenet.project.site</field>
             <field name="arch" type="xml">
-                <form string="Prevádzka / centrum / terén">
+                <form string="Prevádzka / centrum / terén" class="o_tenenet_project_site_form">
                     <sheet>
                         <group>
                             <group>
@@ -54,11 +54,17 @@
                         <group string="Priradené projekty">
                             <field name="project_ids" widget="many2many_tags" readonly="1"/>
                         </group>
-                        <group string="Držitelia kľúčov" invisible="site_type == 'teren'">
-                            <field name="site_key_ids" nolabel="1" context="{'default_site_id': id}">
+                        <group string="Držitelia kľúčov"
+                               class="o_tenenet_project_site_key_holders"
+                               invisible="site_type == 'teren'">
+                            <field name="site_key_ids"
+                                   nolabel="1"
+                                   colspan="2"
+                                   class="o_tenenet_project_site_key_holders_field"
+                                   context="{'default_site_id': id}">
                                 <list string="Držitelia kľúčov" editable="bottom">
                                     <field name="employee_id"/>
-                                    <field name="note" optional="show"/>
+                                    <field name="work_phone" optional="show" readonly="1"/>
                                     <field name="active"/>
                                 </list>
                                 <form string="Držiteľ kľúča">
@@ -66,10 +72,8 @@
                                         <group>
                                             <field name="site_id" invisible="1"/>
                                             <field name="employee_id"/>
+                                            <field name="work_phone" readonly="1"/>
                                             <field name="active"/>
-                                        </group>
-                                        <group>
-                                            <field name="note"/>
                                         </group>
                                     </sheet>
                                 </form>

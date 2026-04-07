@@ -1,0 +1,62 @@
+<odoo>
+    <data>
+        <record id="view_tenenet_project_contact_list" model="ir.ui.view">
+            <field name="name">tenenet.project.contact.list</field>
+            <field name="model">tenenet.project.contact</field>
+            <field name="arch" type="xml">
+                <list string="Kontakty projektu">
+                    <field name="name"/>
+                    <field name="email" optional="show"/>
+                    <field name="phone" optional="show"/>
+                    <field name="website" optional="show"/>
+                    <field name="project_ids" widget="many2many_tags" optional="show"/>
+                    <field name="active"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_tenenet_project_contact_form" model="ir.ui.view">
+            <field name="name">tenenet.project.contact.form</field>
+            <field name="model">tenenet.project.contact</field>
+            <field name="arch" type="xml">
+                <form string="Kontakt projektu">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name"/>
+                                <field name="active"/>
+                            </group>
+                            <group>
+                                <field name="email"/>
+                                <field name="phone"/>
+                                <field name="website"/>
+                            </group>
+                        </group>
+                        <group string="Poznámka">
+                            <field name="note"/>
+                        </group>
+                        <group string="Priradené projekty">
+                            <field name="project_ids" widget="many2many_tags" readonly="1"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_tenenet_project_contact_search" model="ir.ui.view">
+            <field name="name">tenenet.project.contact.search</field>
+            <field name="model">tenenet.project.contact</field>
+            <field name="arch" type="xml">
+                <search string="Kontakty projektu">
+                    <field name="name"/>
+                    <field name="email"/>
+                    <field name="phone"/>
+                    <field name="website"/>
+                    <field name="project_ids"/>
+                    <filter string="Aktívne" name="active" domain="[('active', '=', True)]"/>
+                    <filter string="Projekt" name="group_project" context="{'group_by': 'project_ids'}"/>
+                </search>
+            </field>
+        </record>
+    </data>
+</odoo>

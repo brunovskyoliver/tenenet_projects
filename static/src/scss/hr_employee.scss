@@ -34,6 +34,30 @@
     display: none;
 }
 
+.o_form_view .o_tenenet_project_site_key_holders {
+    width: 100%;
+}
+
+.o_form_view .o_tenenet_project_site_key_holders > .o_form_label {
+    display: block;
+    width: 100%;
+}
+
+.o_form_view .o_tenenet_project_site_key_holders_field {
+    width: 100%;
+}
+
+.o_form_view .o_tenenet_project_site_key_holders_field .o_field_x2many,
+.o_form_view .o_tenenet_project_site_key_holders_field .o_list_renderer {
+    width: 100%;
+}
+
+.o_form_view .o_tenenet_project_site_form .o_tenenet_project_site_key_holders .o_group_col_6 {
+    width: 100%;
+    flex: 0 0 100%;
+    max-width: 100%;
+}
+
 .o_tenenet_project_list {
     th[data-name="semaphore"],
     td[name="semaphore"] {

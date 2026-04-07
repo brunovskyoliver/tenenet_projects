@@ -22,7 +22,7 @@ class TenenetProjectAllowedExpenseTypeWizard(models.TransientModel):
         related="project_id.currency_id",
     )
     max_amount = fields.Monetary(
-        string="Max. povolená suma",
+        string="Max. povolená suma na projekt",
         currency_field="currency_id",
         default=0.0,
         help="0 = bez limitu",

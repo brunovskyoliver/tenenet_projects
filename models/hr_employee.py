@@ -154,7 +154,6 @@ class HrEmployee(models.Model):
         compute="_compute_tenenet_assignment_availability",
         store=True,
     )
-
     @api.model
     def _compose_display_name(self, title_academic, first_name, last_name):
         parts = [part.strip() for part in [title_academic, first_name, last_name] if part and part.strip()]

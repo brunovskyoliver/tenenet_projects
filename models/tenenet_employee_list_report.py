@@ -6,6 +6,17 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
     _inherit = ["account.report.custom.handler"]
     _description = "TENENET Zoznam zamestnancov"
 
+    _AVAILABILITY_SELECTION = [
+        ("free", "Voľný"),
+        ("partial", "Čiastočne alokovaný"),
+        ("full", "Plne alokovaný"),
+        ("overbooked", "Preťažený"),
+    ]
+    _GROUPING_SELECTION = [
+        ("none", "Bez zoskupenia"),
+        ("profession", "Podľa profesie"),
+        ("availability", "Podľa vyťaženosti"),
+    ]
     _FLOAT_COLUMNS = {"work_hours"}
     _STRING_COLUMNS = {
         "employee_name",
@@ -15,6 +26,7 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
         "first_name",
         "position",
         "study_field",
+        "work_phone",
         "manager_name",
     }
 
@@ -24,16 +36,72 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
         custom_display_config["css_custom_class"] = (
             custom_display_config.get("css_custom_class", "") + " tenenet_pl_report"
         ).strip()
+        custom_display_config.setdefault("components", {})["AccountReportFilters"] = (
+            "TenenetEmployeeListReportFilters"
+        )
 
-    def _dynamic_lines_generator(self, report, options, all_column_groups_expression_totals, warnings=None):
-        employees = self._get_employee_records(search_term=options.get("filter_search_bar"))
-        return [
-            (0, self._get_report_line(report, options, employee))
-            for employee in employees
+        language_skill_type = self._get_language_skill_type()
+        selected_jobs = self._get_selected_jobs(previous_options)
+        selected_language_skills = self._get_selected_language_skills(previous_options, language_skill_type)
+        selected_availability_states = self._get_selected_availability_states(previous_options)
+        grouping_mode = self._get_grouping_mode(previous_options)
+
+        options["job_ids"] = selected_jobs.ids
+        options["selected_job_names"] = selected_jobs.mapped("display_name")
+        options["language_skill_ids"] = selected_language_skills.ids
+        options["selected_language_names"] = selected_language_skills.mapped("name")
+        options["language_skill_domain"] = (
+            [["skill_type_id", "=", language_skill_type.id]]
+            if language_skill_type
+            else [["id", "=", 0]]
+        )
+        options["availability_filter_selection"] = [
+            {"id": key, "name": label, "selected": key in selected_availability_states}
+            for key, label in self._AVAILABILITY_SELECTION
+        ]
+        options["grouping_mode"] = grouping_mode
+        options["grouping_mode_selection"] = [
+            {"id": key, "name": label, "selected": key == grouping_mode}
+            for key, label in self._GROUPING_SELECTION
         ]
 
-    def _get_employee_records(self, search_term=None):
+    def _dynamic_lines_generator(self, report, options, all_column_groups_expression_totals, warnings=None):
+        employees = self._get_employee_records(
+            options,
+            search_term=options.get("filter_search_bar"),
+        )
+        grouping_mode = options.get("grouping_mode", "none")
+        if grouping_mode == "profession":
+            return self._get_grouped_lines(report, options, employees, grouping_mode)
+        if grouping_mode == "availability":
+            return self._get_grouped_lines(report, options, employees, grouping_mode)
+        return [(0, self._get_report_line(report, options, employee)) for employee in employees]
+
+    def _get_employee_records(self, options, search_term=None):
         employees = self.env["hr.employee"].search([], order="tenenet_number, last_name, first_name, name")
+        language_skill_type = self._get_language_skill_type()
+        selected_job_ids = set(options.get("job_ids") or [])
+        selected_language_skill_ids = set(options.get("language_skill_ids") or [])
+        selected_availability_states = {
+            item["id"]
+            for item in options.get("availability_filter_selection", [])
+            if item.get("selected")
+        }
+
+        if selected_job_ids:
+            employees = employees.filtered(lambda rec: rec.job_id.id in selected_job_ids)
+        if selected_availability_states:
+            employees = employees.filtered(
+                lambda rec: rec.tenenet_availability_state in selected_availability_states
+            )
+        if selected_language_skill_ids:
+            employees = employees.filtered(
+                lambda rec: bool(
+                    self._get_current_language_skills(rec, language_skill_type).filtered(
+                        lambda skill_line: skill_line.skill_id.id in selected_language_skill_ids
+                    )
+                )
+            )
         if search_term:
             lowered_search_term = search_term.lower()
             employees = employees.filtered(
@@ -42,12 +110,85 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
                 or lowered_search_term in (rec.first_name or "").lower()
                 or lowered_search_term in (rec.last_name or "").lower()
                 or lowered_search_term in (rec.position or "").lower()
+                or lowered_search_term in (rec.job_id.name or "").lower()
                 or lowered_search_term in (rec.study_field or "").lower()
+                or lowered_search_term in (rec.work_phone or "").lower()
                 or lowered_search_term in (rec.parent_id.name or "").lower()
             )
         return employees
 
-    def _get_report_line(self, report, options, employee):
+    def _get_grouped_lines(self, report, options, employees, grouping_mode):
+        lines = []
+        for section_key, section_label, section_employees in self._group_employees(employees, grouping_mode):
+            lines.append((0, self._get_section_line(report, options, grouping_mode, section_key, section_label)))
+            lines.extend(
+                (0, self._get_report_line(report, options, employee, level=2))
+                for employee in section_employees
+            )
+        return lines
+
+    def _group_employees(self, employees, grouping_mode):
+        grouped = []
+        if grouping_mode == "profession":
+            sections = {}
+            for employee in employees:
+                group_key = employee.job_id.id or 0
+                sections.setdefault(group_key, self.env["hr.employee"])
+                sections[group_key] |= employee
+            for group_key, section_employees in sorted(
+                sections.items(),
+                key=lambda item: self._get_profession_group_label(item[1][:1]).lower(),
+            ):
+                grouped.append((
+                    group_key,
+                    self._get_profession_group_label(section_employees[:1]),
+                    section_employees,
+                ))
+            return grouped
+
+        availability_map = {key: [] for key, _label in self._AVAILABILITY_SELECTION}
+        other_employees = []
+        for employee in employees:
+            state = employee.tenenet_availability_state
+            if state in availability_map:
+                availability_map[state].append(employee.id)
+            else:
+                other_employees.append(employee.id)
+
+        for state, label in self._AVAILABILITY_SELECTION:
+            employee_ids = availability_map[state]
+            if employee_ids:
+                grouped.append((
+                    state,
+                    label,
+                    self.env["hr.employee"].browse(employee_ids),
+                ))
+        if other_employees:
+            grouped.append((
+                "other",
+                "Nezaradené",
+                self.env["hr.employee"].browse(other_employees),
+            ))
+        return grouped
+
+    def _get_profession_group_label(self, employee):
+        employee.ensure_one()
+        return employee.job_id.name or employee.position or "Bez profesie"
+
+    def _get_section_line(self, report, options, grouping_mode, section_key, section_label):
+        return {
+            "id": report._get_generic_line_id(
+                None,
+                None,
+                markup=f"tenenet_employee_list_{grouping_mode}_{section_key}",
+            ),
+            "name": section_label,
+            "columns": self._build_empty_columns(report, options),
+            "level": 1,
+            "unfoldable": False,
+        }
+
+    def _get_report_line(self, report, options, employee, level=2):
         columns = []
         for column in options["columns"]:
             label = column["expression_label"]
@@ -64,7 +205,7 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
             "id": report._get_generic_line_id("hr.employee", employee.id, markup="tenenet_employee_list"),
             "name": "",
             "columns": columns,
-            "level": 2,
+            "level": level,
         }
 
     def _get_column_value(self, employee, label):
@@ -79,3 +220,76 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
         if label in self._FLOAT_COLUMNS:
             return employee[label] or 0.0
         return ""
+
+    def _build_empty_columns(self, report, options):
+        columns = []
+        for column in options["columns"]:
+            columns.append(
+                report._build_column_dict(
+                    "",
+                    {**column, "figure_type": "string"},
+                    options=options,
+                )
+            )
+        return columns
+
+    def _get_selected_jobs(self, previous_options):
+        job_ids = self._sanitize_ids(previous_options and previous_options.get("job_ids"))
+        return self.env["hr.job"].browse(job_ids).exists()
+
+    def _get_selected_language_skills(self, previous_options, language_skill_type):
+        skill_ids = self._sanitize_ids(previous_options and previous_options.get("language_skill_ids"))
+        domain = [("id", "in", skill_ids)]
+        if language_skill_type:
+            domain.append(("skill_type_id", "=", language_skill_type.id))
+        else:
+            domain.append(("id", "=", 0))
+        return self.env["hr.skill"].search(domain)
+
+    def _get_selected_availability_states(self, previous_options):
+        selection_items = previous_options and previous_options.get("availability_filter_selection")
+        if not selection_items:
+            return set()
+        valid_states = {key for key, _label in self._AVAILABILITY_SELECTION}
+        return {
+            item.get("id")
+            for item in selection_items
+            if item.get("selected") and item.get("id") in valid_states
+        }
+
+    def _get_grouping_mode(self, previous_options):
+        grouping_mode = previous_options and previous_options.get("grouping_mode")
+        if isinstance(grouping_mode, dict):
+            grouping_mode = grouping_mode.get("id")
+        elif isinstance(grouping_mode, list):
+            selected_grouping = next(
+                (item for item in grouping_mode if item.get("selected")),
+                {},
+            )
+            grouping_mode = selected_grouping.get("id")
+        valid_modes = {key for key, _label in self._GROUPING_SELECTION}
+        return grouping_mode if grouping_mode in valid_modes else "none"
+
+    def _sanitize_ids(self, values):
+        sanitized = []
+        for value in values or []:
+            try:
+                sanitized.append(int(value))
+            except (TypeError, ValueError):
+                continue
+        return sanitized
+
+    def _get_language_skill_type(self):
+        skill_type = self.env.ref("hr_skills.hr_skill_type_lang", raise_if_not_found=False)
+        if skill_type:
+            return skill_type
+        return self.env["hr.skill.type"].search(
+            ["|", ("name", "ilike", "language"), ("name", "ilike", "jazyk")],
+            limit=1,
+        )
+
+    def _get_current_language_skills(self, employee, language_skill_type):
+        skill_lines = employee.current_employee_skill_ids
+        if language_skill_type:
+            skill_lines = skill_lines.filtered(lambda rec: rec.skill_type_id == language_skill_type)
+        return skill_lines

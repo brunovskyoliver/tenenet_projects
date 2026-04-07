@@ -1,0 +1,29 @@
+<odoo>
+    <data>
+        <record id="view_tenenet_project_contact_wizard_form" model="ir.ui.view">
+            <field name="name">tenenet.project.contact.wizard.form</field>
+            <field name="model">tenenet.project.contact.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Pridať kontakty projektu">
+                    <sheet>
+                        <group>
+                            <field name="project_id" readonly="1"/>
+                            <field name="available_contact_ids" invisible="1"/>
+                            <field name="contact_ids"
+                                   widget="many2many_tags"
+                                   domain="[('id', 'in', available_contact_ids)]"
+                                   options="{'no_create': True}"/>
+                        </group>
+                    </sheet>
+                    <footer>
+                        <button name="action_confirm"
+                                type="object"
+                                string="Pridať"
+                                class="btn-primary"/>
+                        <button string="Zrušiť" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+    </data>
+</odoo>

@@ -25,7 +25,7 @@ class TenenetProjectAllowedExpenseType(models.Model):
         store=True,
     )
     max_amount = fields.Monetary(
-        string="Max. povolená suma",
+        string="Max. povolená suma na projekt",
         currency_field="currency_id",
         default=0.0,
         help="Maximálna suma výdavkov tohto typu na projekte. 0 = bez limitu.",

@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates>
+    <t t-name="tenenet_projects.TenenetEmployeeListReportFilters" t-inherit="account_reports.AccountReportFiltersCustomizable">
+        <xpath expr="//div[@id='filter_rounding_unit']" position="before">
+            <div id="filter_employee_jobs" class="filter_employee_jobs">
+                <t t-call="tenenet_projects.TenenetEmployeeListReportFilterJobs"/>
+            </div>
+            <div id="filter_employee_languages" class="filter_employee_languages">
+                <t t-call="tenenet_projects.TenenetEmployeeListReportFilterLanguages"/>
+            </div>
+            <div id="filter_employee_availability" class="filter_employee_availability">
+                <t t-call="tenenet_projects.TenenetEmployeeListReportFilterAvailability"/>
+            </div>
+            <div id="filter_employee_grouping" class="filter_employee_grouping">
+                <t t-call="tenenet_projects.TenenetEmployeeListReportFilterGrouping"/>
+            </div>
+        </xpath>
+    </t>
+
+    <t t-name="tenenet_projects.TenenetEmployeeListReportFilterJobs" owl="1">
+        <Dropdown menuClass="'account_report_filter employee_jobs'">
+            <button class="btn btn-secondary">
+                <i class="fa fa-briefcase me-1"/>
+                <t t-out="selectedJobLabel"/>
+            </button>
+
+            <t t-set-slot="content">
+                <div class="dropdown-item gap-2 align-items-center">
+                    <label>Profesie</label>
+                    <MultiRecordSelector t-props="jobSelectorProps"/>
+                </div>
+            </t>
+        </Dropdown>
+    </t>
+
+    <t t-name="tenenet_projects.TenenetEmployeeListReportFilterLanguages" owl="1">
+        <Dropdown menuClass="'account_report_filter employee_languages'">
+            <button class="btn btn-secondary">
+                <i class="fa fa-language me-1"/>
+                <t t-out="selectedLanguageLabel"/>
+            </button>
+
+            <t t-set-slot="content">
+                <div class="dropdown-item gap-2 align-items-center">
+                    <label>Jazyky</label>
+                    <MultiRecordSelector t-props="languageSelectorProps"/>
+                </div>
+            </t>
+        </Dropdown>
+    </t>
+
+    <t t-name="tenenet_projects.TenenetEmployeeListReportFilterAvailability" owl="1">
+        <Dropdown menuClass="'account_report_filter employee_availability'">
+            <button class="btn btn-secondary">
+                <i class="fa fa-signal me-1"/>
+                <t t-out="selectedAvailabilityLabel"/>
+            </button>
+
+            <t t-set-slot="content">
+                <t
+                    t-foreach="controller.cachedFilterOptions.availability_filter_selection || []"
+                    t-as="availability"
+                    t-key="availability.id"
+                >
+                    <DropdownItem
+                        class="{ 'selected': availability.selected }"
+                        onSelected="() => this.filterClicked({ optionKey: 'availability_filter_selection.' + availability_index + '.selected', reload: true })"
+                        closingMode="'none'"
+                        t-out="availability.name"
+                    />
+                </t>
+            </t>
+        </Dropdown>
+    </t>
+
+    <t t-name="tenenet_projects.TenenetEmployeeListReportFilterGrouping" owl="1">
+        <Dropdown menuClass="'account_report_filter employee_grouping'">
+            <button class="btn btn-secondary">
+                <i class="fa fa-list-ul me-1"/>
+                <t t-out="selectedGroupingLabel"/>
+            </button>
+
+            <t t-set-slot="content">
+                <t
+                    t-foreach="controller.cachedFilterOptions.grouping_mode_selection || []"
+                    t-as="groupingOption"
+                    t-key="groupingOption.id"
+                >
+                    <DropdownItem
+                        class="{ 'selected': groupingOption.selected }"
+                        onSelected="() => this.selectGroupingMode(groupingOption.id)"
+                        closingMode="'all'"
+                        t-out="groupingOption.name"
+                    />
+                </t>
+            </t>
+        </Dropdown>
+    </t>
+</templates>

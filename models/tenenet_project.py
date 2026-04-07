@@ -55,6 +55,13 @@ class TenenetProject(models.Model):
         "site_id",
         string="Prevádzky / centrá / terén",
     )
+    contact_ids = fields.Many2many(
+        "tenenet.project.contact",
+        "tenenet_project_contact_rel",
+        "project_id",
+        "contact_id",
+        string="Kontakty projektu",
+    )
     donor_id = fields.Many2one("tenenet.donor", string="Donor", ondelete="restrict")
     international = fields.Boolean(
         string="Medzinárodný",
@@ -362,6 +369,17 @@ class TenenetProject(models.Model):
             "name": "Pridať prevádzky, centrá alebo terén",
             "type": "ir.actions.act_window",
             "res_model": "tenenet.project.site.wizard",
+            "view_mode": "form",
+            "target": "new",
+            "context": {"default_project_id": self.id},
+        }
+
+    def action_open_contact_wizard(self):
+        self.ensure_one()
+        return {
+            "name": "Pridať kontakty projektu",
+            "type": "ir.actions.act_window",
+            "res_model": "tenenet.project.contact.wizard",
             "view_mode": "form",
             "target": "new",
             "context": {"default_project_id": self.id},

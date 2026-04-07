@@ -184,7 +184,7 @@
                                 </field>
                             </page>
                             <page string="Pravidlá">
-                                <group string="Mzdový strop pre priradenia">
+                                <group string="Mzdový strop pre priradenia zamestnanca">
                                     <group>
                                         <field name="default_max_monthly_wage_hm"/>
                                         <field name="default_max_monthly_wage_ccp" readonly="1"/>
@@ -233,7 +233,51 @@
                                 </field>
                             </page>
                             <page string="Kontakty">
-                                <group>
+                                <div class="mb-2">
+                                    <button name="action_open_contact_wizard"
+                                            type="object"
+                                            string="Pridať existujúci kontakt"
+                                            class="btn btn-primary"
+                                            invisible="not id"/>
+                                </div>
+                                <field name="contact_ids" nolabel="1">
+                                    <list string="Kontakty projektu"
+                                          create="true"
+                                          delete="false"
+                                          edit="true">
+                                        <field name="name"/>
+                                        <field name="email" optional="show"/>
+                                        <field name="phone" optional="show"/>
+                                        <field name="website" optional="show"/>
+                                        <field name="note" optional="show"/>
+                                        <field name="active" optional="show"/>
+                                        <button name="action_unlink_from_project"
+                                                type="object"
+                                                string="Odpojiť"
+                                                icon="fa-chain-broken"
+                                                class="btn-link"
+                                                context="{'unlink_project_id': parent.id}"/>
+                                    </list>
+                                    <form string="Kontakt projektu">
+                                        <sheet>
+                                            <group>
+                                                <group>
+                                                    <field name="name"/>
+                                                    <field name="active"/>
+                                                </group>
+                                                <group>
+                                                    <field name="email"/>
+                                                    <field name="phone"/>
+                                                    <field name="website"/>
+                                                </group>
+                                            </group>
+                                            <group string="Poznámka">
+                                                <field name="note"/>
+                                            </group>
+                                        </sheet>
+                                    </form>
+                                </field>
+                                <group string="Ostatné kontaktné údaje">
                                     <field name="portal"/>
                                     <field name="donor_contact" readonly="1"/>
                                     <field name="partner_contact" readonly="1"/>

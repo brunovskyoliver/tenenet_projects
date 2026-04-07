@@ -1,3 +1,5 @@
+from lxml import etree
+
 from odoo import Command
 from odoo.exceptions import AccessError, ValidationError
 from odoo.tests import TransactionCase, tagged
@@ -93,25 +95,70 @@ class TestTenenetEmployeeAssets(TransactionCase):
         self.assertEqual(self.employee.asset_total_value, 1500.0)
 
     def test_site_key_created_from_employee_side_visible_on_site(self):
+        self.employee.work_phone = "+421 900 111 222"
         key = self.env["tenenet.employee.site.key"].create({
             "employee_id": self.employee.id,
             "site_id": self.site_prevadzka.id,
-            "note": "Hlavný zväzok",
         })
 
         self.assertEqual(key.site_id, self.site_prevadzka)
         self.assertIn(key, self.employee.site_key_ids)
         self.assertIn(key, self.site_prevadzka.site_key_ids)
+        self.assertEqual(key.work_phone, "+421 900 111 222")
 
     def test_site_key_created_from_site_side_visible_on_employee(self):
         key = self.env["tenenet.employee.site.key"].create({
             "employee_id": self.employee.id,
             "site_id": self.site_centrum.id,
-            "note": "Bočný vstup",
         })
 
         self.assertIn(key, self.site_centrum.site_key_ids)
         self.assertIn(key, self.employee.site_key_ids)
+
+    def test_employee_supports_work_and_private_phone(self):
+        self.employee.write({
+            "work_phone": "+421 900 123 456",
+            "private_phone": "+421 901 654 321",
+        })
+
+        self.assertEqual(self.employee.work_phone, "+421 900 123 456")
+        self.assertEqual(self.employee.private_phone, "+421 901 654 321")
+
+    def test_employee_form_does_not_duplicate_language_skill_editor_on_tenenet_tab(self):
+        arch = self.env["hr.employee"].get_view(
+            view_id=self.env.ref("tenenet_projects.view_hr_employee_form_tenenet").id,
+            view_type="form",
+        )["arch"]
+        root = etree.fromstring(arch.encode())
+
+        language_fields = root.xpath(
+            "//page[@string='TENENET']//field[@name='current_employee_skill_ids']"
+        )
+        self.assertFalse(
+            language_fields,
+            "Expected language skills to stay only in the standard Zivotopis section.",
+        )
+
+    def test_employee_form_contains_work_and_private_phone_in_personal_tab(self):
+        arch = self.env["hr.employee"].get_view(
+            view_id=self.env.ref("tenenet_projects.view_hr_employee_form_tenenet").id,
+            view_type="form",
+        )["arch"]
+        root = etree.fromstring(arch.encode())
+
+        personal_work_phone = root.xpath(
+            "//page[@name='personal_information']//field[@name='work_phone']"
+        )
+        personal_private_phone = root.xpath(
+            "//page[@name='personal_information']//field[@name='private_phone']"
+        )
+
+        self.assertTrue(personal_work_phone, "Expected work phone on the Personal tab.")
+        self.assertTrue(personal_private_phone, "Expected private phone on the Personal tab.")
+        self.assertIn(
+            "parent_id.user_id != uid",
+            personal_private_phone[0].get("invisible", ""),
+        )
 
     def test_site_key_rejects_teren(self):
         with self.assertRaises(ValidationError):
@@ -165,3 +212,26 @@ class TestTenenetEmployeeAssets(TransactionCase):
                 "employee_id": self.employee2.id,
                 "site_id": self.site_centrum.id,
             })
+
+    def test_employee_form_site_key_subview_does_not_request_note(self):
+        arch = self.env["hr.employee"].get_view(
+            view_id=self.env.ref("tenenet_projects.view_hr_employee_form_tenenet").id,
+            view_type="form",
+        )["arch"]
+        self._assert_site_key_subview_has_no_note(arch)
+
+    def test_project_site_form_site_key_subview_does_not_request_note(self):
+        arch = self.env["tenenet.project.site"].get_view(
+            view_id=self.env.ref("tenenet_projects.view_tenenet_project_site_form").id,
+            view_type="form",
+        )["arch"]
+        self._assert_site_key_subview_has_no_note(arch)
+
+    def _assert_site_key_subview_has_no_note(self, arch):
+        root = etree.fromstring(arch.encode())
+        site_key_fields = root.xpath("//field[@name='site_key_ids']")
+        self.assertTrue(site_key_fields, "Expected a site_key_ids subview in the form architecture.")
+        self.assertFalse(
+            root.xpath("//field[@name='site_key_ids']//field[@name='note']"),
+            "site_key_ids subview should not request note on tenenet.employee.site.key.",
+        )

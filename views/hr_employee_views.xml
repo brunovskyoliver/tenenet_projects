@@ -220,7 +220,6 @@
                         >
                             <list string="Kľúče" editable="bottom">
                                 <field name="site_id" domain="[('site_type', 'in', ['prevadzka', 'centrum'])]"/>
-                                <field name="note" optional="show"/>
                                 <field name="active"/>
                             </list>
                             <form string="Kľúč">
@@ -230,13 +229,27 @@
                                         <field name="site_id" domain="[('site_type', 'in', ['prevadzka', 'centrum'])]"/>
                                         <field name="active"/>
                                     </group>
-                                    <group>
-                                        <field name="note"/>
-                                    </group>
                                 </sheet>
                             </form>
                         </field>
                     </page>
+                </xpath>
+
+                <xpath expr="//page[@name='personal_information']/group/group[field[@name='private_email']]" position="inside">
+                    <field
+                        name="work_phone"
+                        widget="phone"
+                        string="Pracovný telefón"
+                    />
+                </xpath>
+
+                <xpath expr="//page[@name='personal_information']//field[@name='private_phone']" position="replace">
+                    <field
+                        name="private_phone"
+                        widget="phone"
+                        string="Súkromný telefón"
+                        invisible="parent_id.user_id != uid"
+                    />
                 </xpath>
 
                 <xpath
