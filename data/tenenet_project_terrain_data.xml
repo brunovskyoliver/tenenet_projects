@@ -1,0 +1,52 @@
+<odoo noupdate="1">
+    <data>
+        <record id="tenenet_project_site_terrain_bratislavsky" model="tenenet.project.site">
+            <field name="name">Bratislavský</field>
+            <field name="kraj">Bratislavský</field>
+            <field name="site_type">teren</field>
+            <field name="active">True</field>
+        </record>
+        <record id="tenenet_project_site_terrain_trnavsky" model="tenenet.project.site">
+            <field name="name">Trnavský</field>
+            <field name="kraj">Trnavský</field>
+            <field name="site_type">teren</field>
+            <field name="active">True</field>
+        </record>
+        <record id="tenenet_project_site_terrain_trenciansky" model="tenenet.project.site">
+            <field name="name">Trenčiansky</field>
+            <field name="kraj">Trenčiansky</field>
+            <field name="site_type">teren</field>
+            <field name="active">True</field>
+        </record>
+        <record id="tenenet_project_site_terrain_nitriansky" model="tenenet.project.site">
+            <field name="name">Nitriansky</field>
+            <field name="kraj">Nitriansky</field>
+            <field name="site_type">teren</field>
+            <field name="active">True</field>
+        </record>
+        <record id="tenenet_project_site_terrain_zilinsky" model="tenenet.project.site">
+            <field name="name">Žilinský</field>
+            <field name="kraj">Žilinský</field>
+            <field name="site_type">teren</field>
+            <field name="active">True</field>
+        </record>
+        <record id="tenenet_project_site_terrain_banskobystricky" model="tenenet.project.site">
+            <field name="name">Banskobystrický</field>
+            <field name="kraj">Banskobystrický</field>
+            <field name="site_type">teren</field>
+            <field name="active">True</field>
+        </record>
+        <record id="tenenet_project_site_terrain_presovsky" model="tenenet.project.site">
+            <field name="name">Prešovský</field>
+            <field name="kraj">Prešovský</field>
+            <field name="site_type">teren</field>
+            <field name="active">True</field>
+        </record>
+        <record id="tenenet_project_site_terrain_kosicky" model="tenenet.project.site">
+            <field name="name">Košický</field>
+            <field name="kraj">Košický</field>
+            <field name="site_type">teren</field>
+            <field name="active">True</field>
+        </record>
+    </data>
+</odoo>

@@ -70,6 +70,7 @@ and P&L reporting by program.
         'data/tenenet_program_data.xml',
         'data/tenenet_donor_data.xml',
         'data/hr_leave_type_data.xml',
+        'data/tenenet_project_terrain_data.xml',
         'data/tenenet_alert_mail_template.xml',
         'data/tenenet_alert_cron.xml',
         'data/tenenet_alert_allowed_models_data.xml',

@@ -4,6 +4,8 @@ from . import models
 
 def post_init_hook(env):
     env["resource.calendar.leaves"]._import_sk_public_holidays()
+    for site in env["tenenet.project.site"].search([("site_type", "=", "teren")]):
+        site.write({"kraj": site.name})
 
 
 def pre_init_hook(env):

@@ -87,6 +87,50 @@
             </field>
         </record>
 
+        <record id="view_tenenet_project_site_terrain_list" model="ir.ui.view">
+            <field name="name">tenenet.project.site.terrain.list</field>
+            <field name="model">tenenet.project.site</field>
+            <field name="arch" type="xml">
+                <list string="Kraje Slovenska" create="false" delete="false">
+                    <field name="name"/>
+                    <field name="active"/>
+                    <field name="project_ids" widget="many2many_tags" optional="show" readonly="1"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_tenenet_project_site_terrain_form" model="ir.ui.view">
+            <field name="name">tenenet.project.site.terrain.form</field>
+            <field name="model">tenenet.project.site</field>
+            <field name="arch" type="xml">
+                <form string="Kraj Slovenska" create="false" delete="false">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name" readonly="1"/>
+                                <field name="site_type" readonly="1"/>
+                                <field name="active"/>
+                            </group>
+                        </group>
+                        <group string="Priradené projekty">
+                            <field name="project_ids" widget="many2many_tags" readonly="1"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_tenenet_project_site_terrain_search" model="ir.ui.view">
+            <field name="name">tenenet.project.site.terrain.search</field>
+            <field name="model">tenenet.project.site</field>
+            <field name="arch" type="xml">
+                <search string="Kraje Slovenska">
+                    <field name="name"/>
+                    <filter string="Aktívne" name="active" domain="[('active', '=', True)]"/>
+                </search>
+            </field>
+        </record>
+
         <record id="view_tenenet_project_site_search" model="ir.ui.view">
             <field name="name">tenenet.project.site.search</field>
             <field name="model">tenenet.project.site</field>
@@ -129,9 +173,14 @@
             <field name="name">Terén</field>
             <field name="res_model">tenenet.project.site</field>
             <field name="view_mode">list,form</field>
-            <field name="search_view_id" ref="view_tenenet_project_site_search"/>
+            <field name="view_ids" eval="[
+                (5, 0, 0),
+                (0, 0, {'sequence': 1, 'view_mode': 'list', 'view_id': ref('view_tenenet_project_site_terrain_list')}),
+                (0, 0, {'sequence': 2, 'view_mode': 'form', 'view_id': ref('view_tenenet_project_site_terrain_form')})
+            ]"/>
+            <field name="search_view_id" ref="view_tenenet_project_site_terrain_search"/>
             <field name="domain">[('site_type', '=', 'teren')]</field>
-            <field name="context">{'default_site_type': 'teren', 'search_default_active': 1}</field>
+            <field name="context">{'search_default_active': 1, 'create': False}</field>
         </record>
     </data>
 </odoo>

@@ -6,6 +6,16 @@ from odoo.tools import email_normalize
 
 
 NON_DIGIT_RE = re.compile(r"\D+")
+SLOVAK_REGIONS = {
+    "Bratislavský",
+    "Trnavský",
+    "Trenčiansky",
+    "Nitriansky",
+    "Žilinský",
+    "Banskobystrický",
+    "Prešovský",
+    "Košický",
+}
 
 
 class TenenetProjectSite(models.Model):
@@ -75,6 +85,12 @@ class TenenetProjectSite(models.Model):
             if rec.phone:
                 rec._format_slovak_phone(rec.phone)
 
+    @api.constrains("site_type", "name")
+    def _check_terrain_name(self):
+        for rec in self:
+            if rec.site_type == "teren" and rec.name not in SLOVAK_REGIONS:
+                raise ValidationError("Terén môže obsahovať iba jeden z definovaných krajov Slovenska.")
+
     @api.depends("email", "phone", "responsible_employee_id.name")
     def _compute_contact_summary(self):
         for rec in self:
@@ -92,6 +108,12 @@ class TenenetProjectSite(models.Model):
                 parts.append(rec.country_id.name)
             rec.address_display = ", ".join(parts) if parts else False
 
+    @api.onchange("site_type", "name")
+    def _onchange_terrain_defaults(self):
+        for rec in self:
+            if rec.site_type == "teren" and rec.name:
+                rec.kraj = rec.name
+
     def action_unlink_from_project(self):
         self.ensure_one()
         project_id = self.env.context.get("unlink_project_id")
@@ -102,6 +124,15 @@ class TenenetProjectSite(models.Model):
             raise ValidationError("Projekt pre odpojenie prevádzky neexistuje.")
         project.write({"site_ids": [Command.unlink(self.id)]})
         return {"type": "ir.actions.client", "tag": "reload"}
+
+    @classmethod
+    def _normalize_terrain_vals(cls, vals, record=None):
+        normalized = dict(vals)
+        site_type = normalized.get("site_type", record.site_type if record else False)
+        name = normalized.get("name", record.name if record else False)
+        if site_type == "teren" and name:
+            normalized["kraj"] = name
+        return normalized
 
     @classmethod
     def _format_slovak_phone(cls, raw_phone):
@@ -144,9 +175,14 @@ class TenenetProjectSite(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        vals_list = [self._normalize_contact_vals(vals) for vals in vals_list]
+        vals_list = [
+            self._normalize_contact_vals(self._normalize_terrain_vals(vals))
+            for vals in vals_list
+        ]
         return super().create(vals_list)
 
     def write(self, vals):
-        vals = self._normalize_contact_vals(vals)
-        return super().write(vals)
+        for rec in self:
+            normalized_vals = self._normalize_contact_vals(self._normalize_terrain_vals(vals, record=rec))
+            super(TenenetProjectSite, rec).write(normalized_vals)
+        return True
