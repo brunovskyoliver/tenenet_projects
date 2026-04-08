@@ -61,6 +61,7 @@
             <field name="name">Programy</field>
             <field name="res_model">tenenet.program</field>
             <field name="view_mode">list,form</field>
+            <field name="domain">['&amp;', ('is_tenenet_internal', '=', False), ('code', '!=', 'ADMIN_TENENET')]</field>
         </record>
     </data>
 </odoo>

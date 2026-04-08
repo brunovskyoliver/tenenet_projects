@@ -49,6 +49,12 @@ class TenenetProjectAssignment(models.Model):
         required=True,
         ondelete="cascade",
     )
+    program_id = fields.Many2one(
+        "tenenet.program",
+        string="Program",
+        ondelete="restrict",
+        help="Program v rámci projektu, pod ktorý spadá toto priradenie.",
+    )
     site_ids = fields.Many2many(
         "tenenet.project.site",
         "tenenet_project_assignment_site_rel",
@@ -149,11 +155,12 @@ class TenenetProjectAssignment(models.Model):
         for rec in self:
             rec.timesheet_count = len(rec.timesheet_ids)
 
-    @api.depends("employee_id.name", "project_id.name", "allocation_ratio")
+    @api.depends("employee_id.name", "project_id.name", "program_id.name", "allocation_ratio")
     def _compute_name(self):
         for rec in self:
             ratio = f"{rec.allocation_ratio:.0f} %" if rec.allocation_ratio else "0 %"
-            rec.name = f"{rec.employee_id.name or '-'} / {rec.project_id.name or '-'} / {ratio}"
+            program = rec.program_id.display_name or rec.project_id.reporting_program_id.display_name or "-"
+            rec.name = f"{rec.employee_id.name or '-'} / {rec.project_id.name or '-'} / {program} / {ratio}"
 
     @api.depends(
         "active",
@@ -292,6 +299,12 @@ class TenenetProjectAssignment(models.Model):
                 project = self.env["tenenet.project"].browse(vals["project_id"])
                 if "max_monthly_wage_hm" not in vals:
                     vals["max_monthly_wage_hm"] = project.default_max_monthly_wage_hm or 0.0
+                if "program_id" not in vals:
+                    vals["program_id"] = (
+                        project.reporting_program_id.id
+                        or project.program_ids.filtered(lambda rec: rec.code != "ADMIN_TENENET")[:1].id
+                        or project.program_ids[:1].id
+                    )
         records = super().create(vals_list)
         records._sync_precreated_timesheets()
         return records
@@ -368,6 +381,7 @@ class TenenetProjectAssignment(models.Model):
         "date_start",
         "date_end",
         "allocation_ratio",
+        "program_id",
         "site_ids",
     )
     def _check_dates(self):
@@ -404,3 +418,5 @@ class TenenetProjectAssignment(models.Model):
                 raise ValidationError(
                     "Priradenie môže obsahovať iba prevádzky, centrá alebo terén pripojené k projektu."
                 )
+            if rec.program_id and rec.program_id not in rec.project_id.program_ids:
+                raise ValidationError("Program priradenia musí patriť medzi programy projektu.")

@@ -3,67 +3,62 @@
         <record id="tenenet_program_vci" model="tenenet.program">
             <field name="name">Včasná intervencia</field>
             <field name="code">VCI</field>
-            <field name="headcount">8.97</field>
         </record>
 
         <record id="tenenet_program_scpp" model="tenenet.program">
             <field name="name">ŠCPP</field>
             <field name="code">SCPP</field>
-            <field name="headcount">9.00</field>
         </record>
 
         <record id="tenenet_program_akp_deti" model="tenenet.program">
             <field name="name">AKP - deti a mládež</field>
             <field name="code">AKP_DETI</field>
-            <field name="headcount">2.00</field>
         </record>
 
         <record id="tenenet_program_spodask" model="tenenet.program">
             <field name="name">SPODaSK</field>
             <field name="code">SPODASK</field>
-            <field name="headcount">28.00</field>
         </record>
 
         <record id="tenenet_program_avl" model="tenenet.program">
             <field name="name">AVL</field>
             <field name="code">AVL</field>
-            <field name="headcount">4.38</field>
         </record>
 
         <record id="tenenet_program_akp_dosp" model="tenenet.program">
             <field name="name">AKP - dospelí a seniori</field>
             <field name="code">AKP_DOSP</field>
-            <field name="headcount">5.93</field>
         </record>
 
         <record id="tenenet_program_nas_a_vaz" model="tenenet.program">
             <field name="name">Násilie a väzenstvo</field>
             <field name="code">NAS_A_VAZ</field>
-            <field name="headcount">11.00</field>
         </record>
 
         <record id="tenenet_program_kc" model="tenenet.program">
             <field name="name">Komunitné centrum</field>
             <field name="code">KC</field>
-            <field name="headcount">4.83</field>
         </record>
 
         <record id="tenenet_program_zdrav_znev" model="tenenet.program">
             <field name="name">Zdravotne znevýhodnení</field>
             <field name="code">ZDRAV_ZNEV</field>
-            <field name="headcount">7.46</field>
         </record>
 
         <record id="tenenet_program_ss_projekty" model="tenenet.program">
             <field name="name">SS projekty</field>
             <field name="code">SS_PROJEKTY</field>
-            <field name="headcount">3.03</field>
         </record>
 
         <record id="tenenet_program_ostatne" model="tenenet.program">
             <field name="name">Ostatné (medzinárodné projekty)</field>
             <field name="code">OSTATNE</field>
-            <field name="headcount">3.00</field>
+        </record>
+
+        <record id="tenenet_program_admin_tenenet" model="tenenet.program">
+            <field name="name">Admin TENENET</field>
+            <field name="code">ADMIN_TENENET</field>
+            <field name="program_kind">support</field>
         </record>
     </data>
 </odoo>

@@ -11,6 +11,7 @@
                         </group>
                         <group string="Zamestnanec">
                             <field name="employee_id"/>
+                            <field name="program_id"/>
                         </group>
                         <group string="Obdobie priradenia">
                             <group>

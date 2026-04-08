@@ -219,7 +219,7 @@ def import_sites(env, workbook_path):
             **address_vals,
             **contact_vals,
             "site_type": "prevadzka",
-            "kraj": normalize_text(kraj) or False,
+            "kraj": env["tenenet.project.site"]._normalize_region_label(normalize_text(kraj)) or False,
             "country_id": slovakia.id if slovakia else False,
             "landlord_partner_id": landlord.id or False,
             "program_ids": [(6, 0, program_ids)],

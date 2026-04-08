@@ -43,24 +43,28 @@ class TestTenenetPlan05PLReporting(TransactionCase):
         self.assignment = self.env["tenenet.project.assignment"].create({
             "employee_id": self.employee.id,
             "project_id": self.project_a.id,
+            "program_id": self.program_a.id,
             "wage_hm": self.base_wage_hm,
         })
         self.env["tenenet.project.assignment"].create([
             {
                 "employee_id": self.employee_b.id,
                 "project_id": self.project_a.id,
+                "program_id": self.program_a.id,
                 "allocation_ratio": 50.0,
                 "wage_hm": self.base_wage_hm,
             },
             {
                 "employee_id": self.employee_c.id,
                 "project_id": self.project_a_2.id,
+                "program_id": self.program_a.id,
                 "allocation_ratio": 100.0,
                 "wage_hm": self.base_wage_hm,
             },
             {
                 "employee_id": self.employee_b.id,
                 "project_id": self.project_b.id,
+                "program_id": self.program_b.id,
                 "allocation_ratio": 50.0,
                 "wage_hm": self.base_wage_hm,
             },

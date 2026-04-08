@@ -38,14 +38,15 @@ class TestTenenetPlan01(TransactionCase):
         employee_a = self.env["hr.employee"].create({"name": "Employee A"})
         employee_b = self.env["hr.employee"].create({"name": "Employee B"})
         employee_c = self.env["hr.employee"].create({"name": "Employee C"})
+        employee_d = self.env["hr.employee"].create({"name": "Employee D"})
         project_1 = self.env["tenenet.project"].create({"name": "Project 1", "program_ids": [(4, p1.id)]})
         project_2 = self.env["tenenet.project"].create({"name": "Project 2", "program_ids": [(4, p1.id)]})
         project_3 = self.env["tenenet.project"].create({"name": "Project 3", "program_ids": [(4, p2.id)]})
         self.env["tenenet.project.assignment"].create([
-            {"employee_id": employee_a.id, "project_id": project_1.id},
-            {"employee_id": employee_b.id, "project_id": project_1.id},
-            {"employee_id": employee_c.id, "project_id": project_2.id},
-            {"employee_id": employee_a.id, "project_id": project_3.id},
+            {"employee_id": employee_a.id, "project_id": project_1.id, "program_id": p1.id},
+            {"employee_id": employee_b.id, "project_id": project_1.id, "program_id": p1.id},
+            {"employee_id": employee_c.id, "project_id": project_2.id, "program_id": p1.id},
+            {"employee_id": employee_d.id, "project_id": project_3.id, "program_id": p2.id},
         ])
 
         total_headcount = sum(self.env["tenenet.program"].search([]).mapped("headcount"))
@@ -133,10 +134,15 @@ class TestTenenetPlan01(TransactionCase):
             {
                 "name": "Linked Project",
                 "program_ids": [(4, program.id)],
+                "reporting_program_id": program.id,
                 "donor_id": donor.id,
             }
         )
 
+        project.write({
+            "program_ids": [(3, program.id)],
+            "reporting_program_id": False,
+        })
         program.unlink()
 
         self.assertFalse(project.exists().program_ids)

@@ -56,6 +56,7 @@ class TestTenenetProjectSites(TransactionCase):
             "responsible_employee_id": self.employee.id,
             "email": "prevadzka@test.sk",
             "phone": "+421900000000",
+            "kraj": "Bratislavský samosprávny kraj",
             "street": "Ulica 1",
             "street2": "2. poschodie",
             "zip": "81101",
@@ -65,29 +66,39 @@ class TestTenenetProjectSites(TransactionCase):
         vals.update(overrides)
         return vals
 
+    def _terrain_vals(self, **overrides):
+        vals = self._site_vals(
+            name="Košický samosprávny kraj",
+            site_type="teren",
+            kraj="Košický samosprávny kraj",
+            city=False,
+            street=False,
+            street2=False,
+            zip=False,
+        )
+        vals.update(overrides)
+        return vals
+
     def test_site_creation_with_structured_fields(self):
         prevadzka = self.env["tenenet.project.site"].create(self._site_vals())
         centrum = self.env["tenenet.project.site"].create(
             self._site_vals(name="Centrum", site_type="centrum")
         )
-        teren = self.env["tenenet.project.site"].create(
-            self._site_vals(name="Terén", site_type="teren", city="Košice")
-        )
+        teren = self.env["tenenet.project.site"].create(self._terrain_vals())
 
         self.assertEqual(prevadzka.responsible_employee_id, self.employee)
         self.assertEqual(prevadzka.landlord_partner_id, self.landlord)
         self.assertEqual(prevadzka.city, "Bratislava")
         self.assertEqual(centrum.site_type, "centrum")
         self.assertEqual(teren.site_type, "teren")
+        self.assertEqual(teren.kraj, "Košický samosprávny kraj")
 
     def test_project_can_link_mixed_site_types(self):
         prevadzka = self.env["tenenet.project.site"].create(self._site_vals())
         centrum = self.env["tenenet.project.site"].create(
             self._site_vals(name="Centrum", site_type="centrum")
         )
-        teren = self.env["tenenet.project.site"].create(
-            self._site_vals(name="Terén", site_type="teren")
-        )
+        teren = self.env["tenenet.project.site"].create(self._terrain_vals())
 
         self.project.write({
             "site_ids": [
@@ -126,14 +137,24 @@ class TestTenenetProjectSites(TransactionCase):
 
     def test_assignment_accepts_multiple_project_sites(self):
         prevadzka = self.env["tenenet.project.site"].create(self._site_vals())
-        teren = self.env["tenenet.project.site"].create(
-            self._site_vals(name="Terén", site_type="teren")
-        )
+        teren = self.env["tenenet.project.site"].create(self._terrain_vals())
         self.project.write({"site_ids": [Command.link(prevadzka.id), Command.link(teren.id)]})
 
         self.assignment.write({"site_ids": [Command.set([prevadzka.id, teren.id])]})
 
         self.assertEqual(set(self.assignment.site_ids.ids), {prevadzka.id, teren.id})
+
+    def test_region_labels_are_normalized_to_full_slovak_region_names(self):
+        prevadzka = self.env["tenenet.project.site"].create(
+            self._site_vals(name="Prevádzka BB", kraj="Banskobystrický")
+        )
+        teren = self.env["tenenet.project.site"].create(
+            self._terrain_vals(name="Košický", kraj="Košický")
+        )
+
+        self.assertEqual(prevadzka.kraj, "Banskobystrický samosprávny kraj")
+        self.assertEqual(teren.name, "Košický samosprávny kraj")
+        self.assertEqual(teren.kraj, "Košický samosprávny kraj")
 
     def test_assignment_rejects_site_outside_project(self):
         external_site = self.env["tenenet.project.site"].create(

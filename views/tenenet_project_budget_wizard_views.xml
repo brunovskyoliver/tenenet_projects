@@ -1,0 +1,44 @@
+<odoo>
+    <data>
+        <record id="view_tenenet_project_budget_wizard_form" model="ir.ui.view">
+            <field name="name">tenenet.project.budget.wizard.form</field>
+            <field name="model">tenenet.project.budget.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Pridať rozpočtovú položku">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="project_id" readonly="1"/>
+                                <field name="year"/>
+                                <field name="budget_type"/>
+                                <field name="program_id"/>
+                            </group>
+                            <group>
+                                <field name="year_received_amount" readonly="1"/>
+                                <field name="year_budgeted_amount" readonly="1"/>
+                                <field name="available_amount" readonly="1"/>
+                            </group>
+                        </group>
+                        <group string="Aktuálne alokačné % programov" invisible="budget_type == 'pausal'">
+                            <field name="allocation_summary_html" nolabel="1" widget="html" readonly="1"/>
+                        </group>
+                        <group string="Rozpočtová položka">
+                            <field name="name"/>
+                            <field name="input_mode" widget="radio"/>
+                            <field name="allocation_percentage"/>
+                            <field name="amount"/>
+                            <field name="note"/>
+                        </group>
+                    </sheet>
+                    <footer>
+                        <button name="action_confirm"
+                                type="object"
+                                string="Pridať položku"
+                                class="btn-primary"/>
+                        <button string="Zrušiť" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+    </data>
+</odoo>

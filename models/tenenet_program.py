@@ -10,6 +10,11 @@ class TenenetProgram(models.Model):
     code = fields.Char(string="Kód programu", required=True)
     description = fields.Text(string="Popis")
     active = fields.Boolean(string="Aktívny", default=True)
+    is_tenenet_internal = fields.Boolean(
+        string="Interný TENENET program",
+        default=False,
+        help="Technický interný program, ktorý sa nemá zobrazovať v bežnom UI zoznamoch.",
+    )
     program_kind = fields.Selection(
         [
             ("service", "Služba"),
@@ -24,9 +29,8 @@ class TenenetProgram(models.Model):
         string="Počet ľudí (FTE)",
         digits=(10, 2),
         compute="_compute_headcount",
-        store=True,
         readonly=True,
-        help="Počet aktívnych priradení zamestnancov na aktívnych projektoch patriacich do programu.",
+        help="Aktuálny FTE súčet aktívnych priradení zamestnancov v programe.",
     )
     allocation_pct = fields.Float(
         string="Alokačné %",
@@ -42,7 +46,6 @@ class TenenetProgram(models.Model):
         string="Reporting FTE",
         digits=(10, 4),
         compute="_compute_reporting_fte",
-        store=True,
         readonly=True,
     )
     operating_allocation_pct = fields.Float(
@@ -62,52 +65,95 @@ class TenenetProgram(models.Model):
 
     _unique_code = models.Constraint("UNIQUE(code)", "Kód programu musí byť jedinečný.")
 
+    def _get_program_assignment_totals(self):
+        assignments = self.env["tenenet.project.assignment"].with_context(active_test=False).search([
+            ("active", "=", True),
+            ("project_id.active", "=", True),
+            ("program_id", "in", self.ids),
+        ])
+        totals = {
+            program.id: {
+                "fte": 0.0,
+                "employees": set(),
+            }
+            for program in self
+        }
+        for assignment in assignments:
+            ratio = assignment.effective_work_ratio or assignment.allocation_ratio or 0.0
+            bucket = totals.setdefault(
+                assignment.program_id.id,
+                {"fte": 0.0, "employees": set()},
+            )
+            bucket["fte"] += ratio / 100.0
+            if assignment.employee_id:
+                bucket["employees"].add(assignment.employee_id.id)
+        return totals
+
     @api.depends(
-        "project_ids",
-        "project_ids.active",
-        "project_ids.assignment_ids",
         "project_ids.assignment_ids.active",
+        "project_ids.assignment_ids.program_id",
+        "project_ids.assignment_ids.allocation_ratio",
+        "project_ids.assignment_ids.effective_work_ratio",
+        "project_ids.assignment_ids.employee_id",
+        "project_ids.active",
     )
     def _compute_headcount(self):
-        assignment_model = self.env["tenenet.project.assignment"].with_context(active_test=False)
+        totals = self._get_program_assignment_totals()
         for program in self:
-            program.headcount = float(assignment_model.search_count([
-                ("active", "=", True),
-                ("project_id.active", "=", True),
-                ("project_id.program_ids", "in", program.id),
-            ]))
+            if program.code == "ADMIN_TENENET":
+                program.headcount = 0.0
+                continue
+            program.headcount = totals.get(program.id, {}).get("fte", 0.0)
 
     @api.depends("headcount")
     def _compute_allocation_pct(self):
-        total_headcount = sum(self.search([]).mapped("headcount"))
+        active_programs = self.search([("active", "=", True)]).filtered(
+            lambda program: program.code != "ADMIN_TENENET"
+        )
+        total_headcount = sum(active_programs.mapped("headcount"))
         for program in self:
+            if program.code == "ADMIN_TENENET":
+                program.allocation_pct = False
+                continue
             program.allocation_pct = (program.headcount / total_headcount) if total_headcount else 0.0
 
     @api.depends("headcount")
     def _compute_allocation_pct_percentage(self):
-        total_headcount = sum(self.search([]).mapped("headcount"))
+        active_programs = self.search([("active", "=", True)]).filtered(
+            lambda program: program.code != "ADMIN_TENENET"
+        )
+        total_headcount = sum(active_programs.mapped("headcount"))
         for program in self:
+            if program.code == "ADMIN_TENENET":
+                program.allocation_pct_percentage = False
+                continue
             program.allocation_pct_percentage = ((program.headcount / total_headcount) * 100) if total_headcount else 0.0
 
     @api.depends(
-        "project_ids.reporting_program_id",
         "project_ids.assignment_ids.active",
+        "project_ids.assignment_ids.program_id",
         "project_ids.assignment_ids.allocation_ratio",
+        "project_ids.assignment_ids.effective_work_ratio",
+        "project_ids.active",
     )
     def _compute_reporting_fte(self):
-        assignment_model = self.env["tenenet.project.assignment"].with_context(active_test=False)
+        totals = self._get_program_assignment_totals()
         for program in self:
-            assignments = assignment_model.search([
-                ("active", "=", True),
-                ("project_id.reporting_program_id", "=", program.id),
-                ("project_id.active", "=", True),
-            ])
-            program.reporting_fte = sum(assignments.mapped("allocation_ratio")) / 100.0
+            if program.code == "ADMIN_TENENET":
+                program.reporting_fte = 0.0
+                continue
+            program.reporting_fte = totals.get(program.id, {}).get("fte", 0.0)
 
     @api.depends("reporting_fte")
     def _compute_operating_allocation_pct(self):
-        total_fte = sum(self.search([]).mapped("reporting_fte"))
+        active_programs = self.search([("active", "=", True)]).filtered(
+            lambda program: program.code != "ADMIN_TENENET"
+        )
+        total_fte = sum(active_programs.mapped("reporting_fte"))
         for program in self:
+            if program.code == "ADMIN_TENENET":
+                program.operating_allocation_pct = False
+                continue
             program.operating_allocation_pct = (
                 (program.reporting_fte / total_fte) if total_fte else 0.0
             )

@@ -4,8 +4,8 @@ from . import models
 
 def post_init_hook(env):
     env["resource.calendar.leaves"]._import_sk_public_holidays()
-    for site in env["tenenet.project.site"].search([("site_type", "=", "teren")]):
-        site.write({"kraj": site.name})
+    env["tenenet.project.site"]._sync_slovak_regions()
+    _ensure_admin_tenenet_entities(env)
 
 
 def pre_init_hook(env):
@@ -39,3 +39,7 @@ def pre_init_hook(env):
         )
 
     env.cr.execute("ALTER TABLE tenenet_project DROP COLUMN IF EXISTS financial_manager_id")
+
+
+def _ensure_admin_tenenet_entities(env):
+    env["tenenet.project"]._ensure_admin_tenenet_entities()

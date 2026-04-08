@@ -1,50 +1,50 @@
 <odoo noupdate="1">
     <data>
         <record id="tenenet_project_site_terrain_bratislavsky" model="tenenet.project.site">
-            <field name="name">Bratislavský</field>
-            <field name="kraj">Bratislavský</field>
+            <field name="name">Bratislavský samosprávny kraj</field>
+            <field name="kraj">Bratislavský samosprávny kraj</field>
             <field name="site_type">teren</field>
             <field name="active">True</field>
         </record>
         <record id="tenenet_project_site_terrain_trnavsky" model="tenenet.project.site">
-            <field name="name">Trnavský</field>
-            <field name="kraj">Trnavský</field>
+            <field name="name">Trnavský samosprávny kraj</field>
+            <field name="kraj">Trnavský samosprávny kraj</field>
             <field name="site_type">teren</field>
             <field name="active">True</field>
         </record>
         <record id="tenenet_project_site_terrain_trenciansky" model="tenenet.project.site">
-            <field name="name">Trenčiansky</field>
-            <field name="kraj">Trenčiansky</field>
+            <field name="name">Trenčiansky samosprávny kraj</field>
+            <field name="kraj">Trenčiansky samosprávny kraj</field>
             <field name="site_type">teren</field>
             <field name="active">True</field>
         </record>
         <record id="tenenet_project_site_terrain_nitriansky" model="tenenet.project.site">
-            <field name="name">Nitriansky</field>
-            <field name="kraj">Nitriansky</field>
+            <field name="name">Nitriansky samosprávny kraj</field>
+            <field name="kraj">Nitriansky samosprávny kraj</field>
             <field name="site_type">teren</field>
             <field name="active">True</field>
         </record>
         <record id="tenenet_project_site_terrain_zilinsky" model="tenenet.project.site">
-            <field name="name">Žilinský</field>
-            <field name="kraj">Žilinský</field>
+            <field name="name">Žilinský samosprávny kraj</field>
+            <field name="kraj">Žilinský samosprávny kraj</field>
             <field name="site_type">teren</field>
             <field name="active">True</field>
         </record>
         <record id="tenenet_project_site_terrain_banskobystricky" model="tenenet.project.site">
-            <field name="name">Banskobystrický</field>
-            <field name="kraj">Banskobystrický</field>
+            <field name="name">Banskobystrický samosprávny kraj</field>
+            <field name="kraj">Banskobystrický samosprávny kraj</field>
             <field name="site_type">teren</field>
             <field name="active">True</field>
         </record>
         <record id="tenenet_project_site_terrain_presovsky" model="tenenet.project.site">
-            <field name="name">Prešovský</field>
-            <field name="kraj">Prešovský</field>
+            <field name="name">Prešovský samosprávny kraj</field>
+            <field name="kraj">Prešovský samosprávny kraj</field>
             <field name="site_type">teren</field>
             <field name="active">True</field>
         </record>
         <record id="tenenet_project_site_terrain_kosicky" model="tenenet.project.site">
-            <field name="name">Košický</field>
-            <field name="kraj">Košický</field>
+            <field name="name">Košický samosprávny kraj</field>
+            <field name="kraj">Košický samosprávny kraj</field>
             <field name="site_type">teren</field>
             <field name="active">True</field>
         </record>

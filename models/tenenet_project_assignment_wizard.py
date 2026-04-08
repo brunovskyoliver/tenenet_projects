@@ -16,6 +16,12 @@ class TenenetProjectAssignmentWizard(models.TransientModel):
         string="Zamestnanec",
         required=True,
     )
+    program_id = fields.Many2one(
+        "tenenet.program",
+        string="Program",
+        required=True,
+        domain="[('id', 'in', project_id.program_ids)]",
+    )
     date_start = fields.Date(string="Začiatok priradenia")
     date_end = fields.Date(string="Koniec priradenia")
     allocation_ratio = fields.Float(
@@ -40,11 +46,21 @@ class TenenetProjectAssignmentWizard(models.TransientModel):
             )
             self.wage_hm = avg_hm
 
+    @api.onchange("project_id")
+    def _onchange_project_id(self):
+        if self.project_id:
+            self.program_id = (
+                self.project_id.reporting_program_id
+                or self.project_id.program_ids.filtered(lambda rec: rec.code != "ADMIN_TENENET")[:1]
+                or self.project_id.program_ids[:1]
+            )
+
     def action_confirm(self):
         self.ensure_one()
         self.env["tenenet.project.assignment"].create({
             "project_id": self.project_id.id,
             "employee_id": self.employee_id.id,
+            "program_id": self.program_id.id,
             "date_start": self.date_start,
             "date_end": self.date_end,
             "allocation_ratio": self.allocation_ratio,

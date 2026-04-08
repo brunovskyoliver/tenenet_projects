@@ -33,14 +33,8 @@ class TenenetPLReportingSupport(models.AbstractModel):
             "section_label": "Náklady",
             "is_editable": True,
         },
-        "support_admin": {
-            "row_label": "Mzdové N - podporné odd/admin",
-            "sequence": 700,
-            "section_label": "Náklady",
-            "is_editable": True,
-        },
-        "management": {
-            "row_label": "Mzdové N - management",
+        "admin_tenenet_cost": {
+            "row_label": "Admin TENENET náklady",
             "sequence": 800,
             "section_label": "Náklady",
             "is_editable": True,
@@ -142,6 +136,15 @@ class TenenetPLReportingSupport(models.AbstractModel):
             return project.reporting_program_id.display_name or project.reporting_program_id.name or ""
         return ", ".join(project.program_ids.mapped("name"))
 
+    def _get_admin_tenenet_program(self):
+        return self.env["tenenet.program"].with_context(active_test=False).search(
+            [("code", "=", "ADMIN_TENENET")],
+            limit=1,
+        )
+
+    def _is_admin_tenenet_program(self, program):
+        return bool(program and program.code == "ADMIN_TENENET")
+
     def _zero_by_month(self):
         return defaultdict(float, {month: 0.0 for month in range(1, 13)})
 
@@ -201,10 +204,61 @@ class TenenetPLReportingSupport(models.AbstractModel):
             if override_row:
                 values = defaultdict(float, override_row.get("values") or {})
             if any(values.values()):
-                rows.append({**bucket, "values": values})
+                rows.append({**bucket, "values": values, "detail_rows": []})
+
+        rows.extend(self._get_admin_pausal_income_rows(program, selected_year))
 
         rows.sort(key=lambda row: (row["name"] or "").lower())
-        return rows
+        return self._merge_project_income_rows(rows)
+
+    def _merge_project_income_rows(self, rows):
+        merged = {}
+        ordered_rows = []
+        for row in rows:
+            key = row["project"].id
+            existing = merged.get(key)
+            if existing:
+                existing["values"] = self._sum_month_dicts(existing["values"], row["values"])
+                existing.setdefault("detail_rows", []).extend(row.get("detail_rows") or [])
+                continue
+            copy_row = dict(row)
+            copy_row["detail_rows"] = list(row.get("detail_rows") or [])
+            merged[key] = copy_row
+            ordered_rows.append(copy_row)
+        return ordered_rows
+
+    def _get_admin_pausal_income_rows(self, program, selected_year):
+        if not self._is_admin_tenenet_program(program):
+            return []
+        budget_lines = self.env["tenenet.project.budget.line"].search(
+            [
+                ("year", "=", selected_year),
+                ("budget_type", "=", "pausal"),
+                ("project_id.is_tenenet_internal", "=", False),
+                ("amount", "!=", 0.0),
+            ],
+            order="project_id, sequence, id",
+        )
+        rows = {}
+        for line in budget_lines:
+            project = line.project_id
+            line_values = defaultdict(float, project._allocate_annual_amount_by_project_plan(selected_year, line.amount))
+            bucket = rows.setdefault(
+                project.id,
+                {
+                    "project": project,
+                    "name": self._get_project_line_name(project),
+                    "values": defaultdict(float),
+                    "detail_rows": [],
+                },
+            )
+            bucket["values"] = self._sum_month_dicts(bucket["values"], line_values)
+            bucket["detail_rows"].append({
+                "budget_line": line,
+                "name": line.name,
+                "values": line_values,
+            })
+        return list(rows.values())
 
     def _make_income_row(self, project, values):
         return {
@@ -311,6 +365,49 @@ class TenenetPLReportingSupport(models.AbstractModel):
     def _legacy_trzby_override(self, override_rows):
         return override_rows.get("sales_legacy_unclassified") or override_rows.get("trzby")
 
+    def _legacy_admin_override(self, override_rows):
+        admin_values = self._zero_by_month()
+        for row_key in ("admin_tenenet_cost", "support_admin", "management"):
+            row = override_rows.get(row_key)
+            if not row:
+                continue
+            admin_values = self._sum_month_dicts(admin_values, row.get("values") or {})
+        return {"values": admin_values}
+
+    def _get_admin_cost_detail_rows(self, program, selected_year):
+        if not self._is_admin_tenenet_program(program):
+            return []
+        rows = {}
+        expenses = self.env["tenenet.internal.expense"].search(
+            [
+                ("period", ">=", date(selected_year, 1, 1)),
+                ("period", "<=", date(selected_year, 12, 31)),
+            ],
+            order="employee_id, period",
+        )
+        for expense in expenses:
+            employee = expense.employee_id
+            bucket = rows.setdefault(
+                employee.id,
+                {
+                    "employee": employee,
+                    "name": employee.display_name,
+                    "values": defaultdict(float),
+                },
+            )
+            bucket["values"][expense.period.month] -= expense.cost_ccp or expense.expense_amount or 0.0
+        return sorted(rows.values(), key=lambda row: (row["name"] or "").lower())
+
+    def _get_admin_manual_detail_row(self, override_rows):
+        values = self._legacy_admin_override(override_rows)["values"]
+        if not any(values.values()):
+            return None
+        return {
+            "name": "Manuálna korekcia",
+            "values": values,
+            "is_manual": True,
+        }
+
     def _build_program_override_row_specs(self, program, selected_year):
         values = self._get_program_report_values(program, selected_year)
         row_specs = []
@@ -339,6 +436,10 @@ class TenenetPLReportingSupport(models.AbstractModel):
         sales_rows = self._get_sales_rows(program, selected_year)
         fundraising_rows = self._get_fundraising_rows(program, selected_year)
         labor_project_rows = self._get_program_labor_cost_rows(program, selected_year)
+        admin_cost_detail_rows = self._get_admin_cost_detail_rows(program, selected_year)
+        admin_manual_detail_row = self._get_admin_manual_detail_row(override_rows)
+        if admin_manual_detail_row:
+            admin_cost_detail_rows.append(admin_manual_detail_row)
 
         project_income = self._sum_month_dicts(*(row["values"] for row in project_rows))
 
@@ -373,16 +474,16 @@ class TenenetPLReportingSupport(models.AbstractModel):
         stravne = self._override_month_values(self._zero_by_month(), override_rows.get("stravne"))
         labor_coverage = self._sum_month_dicts(income_total, labor_cost)
         pre_admin_result = self._sum_month_dicts(labor_coverage, stravne)
-        support_admin = self._override_month_values(self._zero_by_month(), override_rows.get("support_admin"))
-        management = self._override_month_values(self._zero_by_month(), override_rows.get("management"))
+        admin_tenenet_cost = self._sum_month_dicts(*(row["values"] for row in admin_cost_detail_rows))
         operating = self._get_operating_cost_by_month(program, selected_year)
-        final_result = self._sum_month_dicts(pre_admin_result, support_admin, management, operating)
+        final_result = self._sum_month_dicts(pre_admin_result, admin_tenenet_cost, operating)
 
         return {
             "project_rows": project_rows,
             "sales_rows": sales_rows,
             "fundraising_rows": fundraising_rows,
             "labor_project_rows": labor_project_rows,
+            "admin_cost_detail_rows": admin_cost_detail_rows,
             "projects_total": project_income,
             "sales_cash_register": sales_values["sales_cash_register"],
             "sales_invoice": sales_values["sales_invoice"],
@@ -394,8 +495,7 @@ class TenenetPLReportingSupport(models.AbstractModel):
             "stravne": stravne,
             "labor_coverage": labor_coverage,
             "pre_admin_result": pre_admin_result,
-            "support_admin": support_admin,
-            "management": management,
+            "admin_tenenet_cost": admin_tenenet_cost,
             "operating": operating,
             "final_result": final_result,
         }
