@@ -315,6 +315,20 @@ class TestTenenetPlan13PLReport(TransactionCase):
         with self.assertRaises(UserError):
             labor_row.write({"amount": 1.0})
 
+    def test_project_income_override_row_updates_program_report(self):
+        year = fields.Date.context_today(self).year + 1
+        self._create_receipt(self.project_a, f"{year}-03-01", 1200.0)
+        self._set_income_override(year, self.project_a, 3, 1200.0)
+
+        self._set_pl_override(year, self.program_a, f"income:{self.project_a.id}", 3, 1500.0)
+
+        lines = self._get_detail_lines(year, self.program_a, unfold_all=True)
+        project_alpha_columns = self._column_map(self._find_line(lines, "Projekt Alpha"))
+        income_total_columns = self._column_map(self._find_line(lines, "Príjmy spolu"))
+
+        self.assertAlmostEqual(project_alpha_columns["month_03"], 1500.0, places=2)
+        self.assertAlmostEqual(income_total_columns["month_03"], 1500.0, places=2)
+
     def test_summary_report_aggregates_new_engine(self):
         year = fields.Date.context_today(self).year + 1
         self._create_receipt(self.project_a, f"{year}-03-01", 1200.0)
@@ -352,12 +366,18 @@ class TestTenenetPlan13PLReport(TransactionCase):
 
     def test_program_override_grid_prepares_new_row_set(self):
         year = fields.Date.context_today(self).year + 1
+        self._create_receipt(self.project_a, f"{year}-03-01", 1200.0)
+        self._create_receipt(self.multi_project, f"{year}-03-01", 300.0)
+        self._set_income_override(year, self.project_a, 3, 1200.0)
+        self._set_income_override(year, self.multi_project, 3, 300.0)
         self._create_sales_entry(self.program_a, f"{year}-03-01", "cash_register", 100.0)
         self.env["tenenet.pl.program.override"].with_context(grid_anchor=f"{year}-01-01").action_prepare_grid_year()
 
         overrides = self.env["tenenet.pl.program.override"].search([("year", "=", year)])
         program_a_rows = overrides.filtered(lambda rec: rec.program_id == self.program_a)
 
+        self.assertEqual(len(program_a_rows.filtered(lambda rec: rec.row_key == f"income:{self.project_a.id}")), 12)
+        self.assertEqual(len(program_a_rows.filtered(lambda rec: rec.row_key == f"income:{self.multi_project.id}")), 12)
         self.assertEqual(len(program_a_rows.filtered(lambda rec: rec.row_key == "sales_cash_register")), 12)
         self.assertEqual(len(program_a_rows.filtered(lambda rec: rec.row_key == "sales_invoice")), 12)
         self.assertEqual(len(program_a_rows.filtered(lambda rec: rec.row_key == "fundraising_total")), 12)
@@ -369,6 +389,52 @@ class TestTenenetPlan13PLReport(TransactionCase):
         self.assertIn("Výsledok programu", set(program_a_rows.mapped("row_label")))
         self.assertNotIn("Mzdové N - management", set(program_a_rows.mapped("row_label")))
         self.assertNotIn("Mzdové N - podporné odd/admin", set(program_a_rows.mapped("row_label")))
+
+    def test_program_override_grid_seeds_project_rows_without_income(self):
+        year = fields.Date.context_today(self).year + 1
+        self.env["tenenet.pl.program.override"].with_context(grid_anchor=f"{year}-01-01").action_prepare_grid_year()
+
+        overrides = self.env["tenenet.pl.program.override"].search([
+            ("year", "=", year),
+            ("program_id", "=", self.program_a.id),
+            ("row_key", "=", f"income:{self.project_a.id}"),
+        ])
+
+        self.assertEqual(len(overrides), 12)
+        self.assertEqual(set(overrides.mapped("project_label")), {self.project_a.display_name})
+        self.assertTrue(all(overrides.mapped("is_editable")))
+
+    def test_program_override_editable_only_context_hides_calculated_rows(self):
+        year = fields.Date.context_today(self).year + 1
+        self._create_receipt(self.project_a, f"{year}-03-01", 1200.0)
+        self._set_income_override(year, self.project_a, 3, 1200.0)
+        override_model = self.env["tenenet.pl.program.override"].with_context(grid_anchor=f"{year}-01-01")
+        override_model.action_prepare_grid_year()
+
+        editable_rows = self.env["tenenet.pl.program.override"].with_context(
+            pl_program_override_editable_only=True
+        ).search([("year", "=", year), ("program_id", "=", self.program_a.id)])
+
+        self.assertTrue(editable_rows)
+        self.assertTrue(all(editable_rows.mapped("is_editable")))
+        self.assertIn("Tržby z registračky", set(editable_rows.mapped("row_label")))
+        self.assertIn("Admin TENENET náklady", set(editable_rows.mapped("row_label")))
+        self.assertIn(self.project_a.display_name, " ".join(editable_rows.mapped("project_label")))
+        self.assertIn("Projekty", set(editable_rows.mapped("row_label")))
+        self.assertNotIn("Výsledok programu", set(editable_rows.mapped("row_label")))
+
+    def test_program_override_grid_row_label_includes_project_when_present(self):
+        row = self.env["tenenet.pl.program.override"].create({
+            "program_id": self.program_a.id,
+            "period": f"{fields.Date.context_today(self).year + 1}-01-01",
+            "row_key": "test_project_label",
+            "row_label": "Projekty",
+            "project_label": "Projekt Alpha",
+            "amount": 0.0,
+            "currency_id": self.env.company.currency_id.id,
+        })
+
+        self.assertEqual(row.grid_row_label, "Projekt Alpha / Projekty")
 
     def test_admin_tenenet_collects_project_pausals_only(self):
         year = fields.Date.context_today(self).year + 1

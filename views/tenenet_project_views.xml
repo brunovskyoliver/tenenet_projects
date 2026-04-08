@@ -153,7 +153,7 @@
                                 <field name="budget_pausal_line_ids">
                                     <list string="Paušálne položky" create="0" edit="0">
                                         <field name="year"/>
-                                        <field name="program_id" domain="[('id', 'in', parent.program_ids)]"/>
+                                        <field name="program_id"/>
                                         <field name="name"/>
                                         <field name="amount"/>
                                         <field name="note" optional="show"/>
@@ -163,7 +163,7 @@
                                 <field name="budget_labor_line_ids">
                                     <list string="Mzdové položky" create="0" edit="0">
                                         <field name="year"/>
-                                        <field name="program_id" domain="[('id', 'in', parent.program_ids)]"/>
+                                        <field name="program_id"/>
                                         <field name="name"/>
                                         <field name="amount"/>
                                         <field name="note" optional="show"/>
@@ -173,7 +173,7 @@
                                 <field name="budget_other_line_ids">
                                     <list string="Iné položky" create="0" edit="0">
                                         <field name="year"/>
-                                        <field name="program_id" domain="[('id', 'in', parent.program_ids)]"/>
+                                        <field name="program_id"/>
                                         <field name="name"/>
                                         <field name="amount"/>
                                         <field name="note" optional="show"/>

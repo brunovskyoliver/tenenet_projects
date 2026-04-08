@@ -19,6 +19,7 @@ class TenenetPLProgramOverride(models.Model):
     row_label = fields.Char(string="Riadok", required=True, readonly=True, default="Tržby - neklasifikované")
     section_label = fields.Char(string="Sekcia", readonly=True)
     project_label = fields.Char(string="Projekt", readonly=True)
+    grid_row_label = fields.Char(string="Riadok v mriežke", compute="_compute_grid_row_label", store=True)
     sequence = fields.Integer(string="Poradie", default=100, readonly=True)
     is_editable = fields.Boolean(string="Upraviteľné", default=True, readonly=True)
     is_separator = fields.Boolean(string="Oddeľovač", default=False, readonly=True)
@@ -69,6 +70,14 @@ class TenenetPLProgramOverride(models.Model):
             else:
                 rec.name = f"{rec.program_label or ''} - {rec.row_label}".strip(" -")
 
+    @api.depends("project_label", "row_label")
+    def _compute_grid_row_label(self):
+        for rec in self:
+            if rec.project_label and rec.row_label:
+                rec.grid_row_label = f"{rec.project_label} / {rec.row_label}"
+            else:
+                rec.grid_row_label = rec.project_label or rec.row_label or ""
+
     @api.model
     def _normalize_period(self, period):
         return fields.Date.to_date(period).replace(day=1)
@@ -82,6 +91,8 @@ class TenenetPLProgramOverride(models.Model):
         domain = list(domain or [])
         if not self.env.context.get("include_separators"):
             domain.append(("is_separator", "=", False))
+        if self.env.context.get("pl_program_override_editable_only"):
+            domain.append(("is_editable", "=", True))
         return domain
 
     @api.model

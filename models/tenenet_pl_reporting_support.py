@@ -179,6 +179,7 @@ class TenenetPLReportingSupport(models.AbstractModel):
     def _get_project_income_rows(self, program, selected_year):
         project_values = {}
         cashflow_rows = self._cashflow_override_rows(selected_year)
+        program_override_rows = self._program_override_rows(selected_year, program)
         cashflows = self.env["tenenet.project.cashflow"].search(
             [("receipt_year", "=", selected_year)],
             order="project_id, receipt_id, date_start",
@@ -199,10 +200,12 @@ class TenenetPLReportingSupport(models.AbstractModel):
 
         rows = []
         for project_id, bucket in project_values.items():
+            program_override_row = program_override_rows.get(f"income:{project_id}")
             override_row = cashflow_rows.get(f"income:{project_id}")
             values = self._copy_month_values(bucket["values"])
             if override_row:
                 values = defaultdict(float, override_row.get("values") or {})
+            values = self._override_month_values(values, program_override_row)
             if any(values.values()):
                 rows.append({**bucket, "values": values, "detail_rows": []})
 
@@ -259,6 +262,53 @@ class TenenetPLReportingSupport(models.AbstractModel):
                 "values": line_values,
             })
         return list(rows.values())
+
+    def _get_program_income_override_rows(self, program, selected_year):
+        rows_by_project = {
+            row["project"].id: {
+                "project": row["project"],
+                "name": row["name"],
+                "values": self._copy_month_values(row["values"]),
+            }
+            for row in self._get_project_income_rows(program, selected_year)
+        }
+        project_ids = set(rows_by_project)
+
+        if self._is_admin_tenenet_program(program):
+            project_ids.update(
+                self.env["tenenet.project.budget.line"].search([
+                    ("year", "=", selected_year),
+                    ("budget_type", "=", "pausal"),
+                    ("project_id.is_tenenet_internal", "=", False),
+                ]).mapped("project_id").ids
+            )
+        else:
+            project_ids.update(
+                self.env["tenenet.project"].with_context(active_test=False).search([
+                    ("reporting_program_id", "=", program.id),
+                ]).ids
+            )
+
+        override_rows = self._program_override_rows(selected_year, program)
+        for row_key in override_rows:
+            if not row_key.startswith("income:"):
+                continue
+            try:
+                project_ids.add(int(row_key.split(":", 1)[1]))
+            except (TypeError, ValueError):
+                continue
+
+        rows = []
+        for project in self.env["tenenet.project"].with_context(active_test=False).browse(sorted(project_ids)).exists():
+            rows.append(
+                rows_by_project.get(project.id, {
+                    "project": project,
+                    "name": self._get_project_line_name(project),
+                    "values": self._zero_by_month(),
+                })
+            )
+        rows.sort(key=lambda row: (row["name"] or "").lower())
+        return rows
 
     def _make_income_row(self, project, values):
         return {
@@ -411,6 +461,17 @@ class TenenetPLReportingSupport(models.AbstractModel):
     def _build_program_override_row_specs(self, program, selected_year):
         values = self._get_program_report_values(program, selected_year)
         row_specs = []
+        for index, row in enumerate(self._get_program_income_override_rows(program, selected_year), start=1):
+            row_specs.append({
+                "program_id": program.id,
+                "row_key": f"income:{row['project'].id}",
+                "row_label": "Projekty",
+                "section_label": "Príjmy",
+                "project_label": row["name"],
+                "sequence": 100 + index,
+                "values": self._copy_month_values(row["values"]),
+                "is_editable": True,
+            })
         for row_key, metadata in self._ROW_SPEC_METADATA.items():
             row_specs.append({
                 "program_id": program.id,

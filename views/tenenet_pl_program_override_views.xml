@@ -7,6 +7,7 @@
                 <list string="P&amp;L override programu" default_order="program_label, sequence, period desc">
                     <field name="program_id"/>
                     <field name="section_label"/>
+                    <field name="project_label"/>
                     <field name="row_label"/>
                     <field name="period"/>
                     <field name="year" readonly="1"/>
@@ -26,6 +27,7 @@
                         <group>
                             <field name="program_id"/>
                             <field name="section_label"/>
+                            <field name="project_label"/>
                             <field name="row_label"/>
                             <field name="period"/>
                             <field name="year" readonly="1"/>
@@ -52,6 +54,7 @@
                       hide_column_total="1"
                       form_view_id="%(view_tenenet_pl_program_override_form)d">
                     <field name="program_id" type="row"/>
+                    <field name="project_label" type="row"/>
                     <field name="sequence" type="row" invisible="1"/>
                     <field name="is_separator" type="row" invisible="1"/>
                     <field name="row_label" type="row"/>
@@ -71,6 +74,7 @@
                 <search string="P&amp;L override programu">
                     <field name="program_id"/>
                     <field name="section_label"/>
+                    <field name="project_label"/>
                     <field name="row_label"/>
                     <field name="period"/>
                     <field name="year"/>
@@ -89,13 +93,14 @@
         <record id="action_tenenet_pl_program_override" model="ir.actions.act_window">
             <field name="name">P&amp;L override</field>
             <field name="res_model">tenenet.pl.program.override</field>
+            <field name="domain">[('is_editable', '=', True)]</field>
             <field name="view_mode">grid,list,form</field>
             <field name="view_ids" eval="[(5, 0, 0),
                    (0, 0, {'view_mode': 'grid', 'view_id': ref('view_tenenet_pl_program_override_grid')}),
                    (0, 0, {'view_mode': 'list', 'view_id': ref('view_tenenet_pl_program_override_tree')}),
                    (0, 0, {'view_mode': 'form', 'view_id': ref('view_tenenet_pl_program_override_form')})]"/>
             <field name="search_view_id" ref="view_tenenet_pl_program_override_search"/>
-            <field name="context">{'grid_range': 'year', 'auto_sync_pl_program_override': True}</field>
+            <field name="context">{'grid_range': 'year', 'auto_sync_pl_program_override': True, 'pl_program_override_editable_only': True}</field>
         </record>
     </data>
 </odoo>

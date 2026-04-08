@@ -20,7 +20,10 @@ class TenenetProjectAssignmentWizard(models.TransientModel):
         "tenenet.program",
         string="Program",
         required=True,
-        domain="[('id', 'in', project_id.program_ids)]",
+    )
+    available_program_ids = fields.Many2many(
+        "tenenet.program",
+        compute="_compute_available_program_ids",
     )
     date_start = fields.Date(string="Začiatok priradenia")
     date_end = fields.Date(string="Koniec priradenia")
@@ -38,6 +41,16 @@ class TenenetProjectAssignmentWizard(models.TransientModel):
         string="Hodinová mzda HM (brutto)",
         digits=(10, 4),
     )
+
+    @api.depends("project_id", "project_id.program_ids", "project_id.ui_program_ids")
+    def _compute_available_program_ids(self):
+        for rec in self:
+            rec.available_program_ids = rec.project_id.ui_program_ids or rec.project_id.program_ids
+
+    def _get_program_domain(self):
+        self.ensure_one()
+        return [("id", "in", self.available_program_ids.ids)]
+
     @api.onchange("employee_id")
     def _onchange_employee_id(self):
         if self.employee_id:
@@ -48,12 +61,19 @@ class TenenetProjectAssignmentWizard(models.TransientModel):
 
     @api.onchange("project_id")
     def _onchange_project_id(self):
+        domain = {"program_id": []}
         if self.project_id:
+            domain["program_id"] = self._get_program_domain()
+            available_programs = self.available_program_ids
             self.program_id = (
-                self.project_id.reporting_program_id
-                or self.project_id.program_ids.filtered(lambda rec: rec.code != "ADMIN_TENENET")[:1]
+                self.project_id.reporting_program_id.filtered(lambda rec: rec in available_programs)
+                or available_programs.filtered(lambda rec: rec.code != "ADMIN_TENENET")[:1]
+                or available_programs[:1]
                 or self.project_id.program_ids[:1]
             )
+        else:
+            self.program_id = False
+        return {"domain": domain}
 
     def action_confirm(self):
         self.ensure_one()
