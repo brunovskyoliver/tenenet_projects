@@ -45,6 +45,15 @@ class HrEmployee(models.Model):
         help="Percento pracovnej kapacity zamestnanca. Pri 100 % je mesačný fond 160 hodín.",
     )
     hourly_rate = fields.Float(string="Hodinová sadzba", digits=(10, 2))
+    is_mgmt = fields.Boolean(
+        string="Administratíva/manažment",
+        default=False,
+        help=(
+            "Zamestnanec patrí do administratívy. "
+            "Mzdové náklady sa v P&L Admin TENENET zobrazia v sekcii "
+            "Mzdové náklady administratívy."
+        ),
+    )
     allocation_ids = fields.One2many(
         "tenenet.employee.allocation",
         "employee_id",

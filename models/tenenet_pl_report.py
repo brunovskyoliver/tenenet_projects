@@ -59,7 +59,42 @@ class TenenetPLReportHandler(models.AbstractModel):
         self, line_dict_id, groupby, options, progress, offset, unfold_all_batch_data=None
     ):
         report = self.env["account.report"].browse(options["report_id"])
+        program = self._get_selected_program_from_options(options)
         values = self._get_selected_program_report_values(options)
+        if self._is_admin_tenenet_program(program):
+            lines = [
+                self._build_unfoldable_section_line(
+                    report,
+                    options,
+                    "Paušály",
+                    "tenenet_pl_admin_pausal_section",
+                    "_report_expand_unfoldable_line_tenenet_pl_admin_pausal_section",
+                    level=2,
+                    parent_line_id=line_dict_id,
+                    unfoldable=bool(values["project_rows"]),
+                    monthly_values=values["projects_total"],
+                ),
+                self._build_value_line(
+                    report,
+                    options,
+                    "Prevádzkové príjmy",
+                    values["operating_income"],
+                    "tenenet_pl_operating_income",
+                    level=2,
+                    parent_line_id=line_dict_id,
+                ),
+                self._build_value_line(
+                    report,
+                    options,
+                    "Príjmy spolu",
+                    values["income_total"],
+                    "tenenet_pl_income_total",
+                    level=2,
+                    parent_line_id=line_dict_id,
+                ),
+            ]
+            return self._build_expand_result(lines, progress)
+
         projects_line = self._build_unfoldable_section_line(
             report,
             options,
@@ -107,6 +142,41 @@ class TenenetPLReportHandler(models.AbstractModel):
                 parent_line_id=line_dict_id,
             ),
         ]
+        return self._build_expand_result(lines, progress)
+
+    def _report_expand_unfoldable_line_tenenet_pl_admin_pausal_section(
+        self, line_dict_id, groupby, options, progress, offset, unfold_all_batch_data=None
+    ):
+        report = self.env["account.report"].browse(options["report_id"])
+        values = self._get_selected_program_report_values(options)
+        lines = []
+        for row in values["project_rows"]:
+            if row.get("detail_rows"):
+                lines.append(self._build_unfoldable_section_line(
+                    report,
+                    options,
+                    row["name"],
+                    markup=f"tenenet_pl_project_income_{row['project'].id}",
+                    expand_function="_report_expand_unfoldable_line_tenenet_pl_project_income_detail",
+                    level=3,
+                    parent_line_id=line_dict_id,
+                    unfoldable=True,
+                    monthly_values=row["values"],
+                    model="tenenet.project",
+                    record_id=row["project"].id,
+                ))
+            else:
+                lines.append(self._build_value_line(
+                    report,
+                    options,
+                    row["name"],
+                    row["values"],
+                    markup=f"tenenet_pl_project_income_{row['project'].id}",
+                    level=3,
+                    parent_line_id=line_dict_id,
+                    model="tenenet.project",
+                    record_id=row["project"].id,
+                ))
         return self._build_expand_result(lines, progress)
 
     def _report_expand_unfoldable_line_tenenet_pl_projects_section(
@@ -235,7 +305,62 @@ class TenenetPLReportHandler(models.AbstractModel):
         self, line_dict_id, groupby, options, progress, offset, unfold_all_batch_data=None
     ):
         report = self.env["account.report"].browse(options["report_id"])
+        program = self._get_selected_program_from_options(options)
         values = self._get_selected_program_report_values(options)
+        if self._is_admin_tenenet_program(program):
+            lines = [
+                self._build_unfoldable_section_line(
+                    report,
+                    options,
+                    "Mzdové náklady",
+                    "tenenet_pl_admin_labor_cost",
+                    "_report_expand_unfoldable_line_tenenet_pl_admin_labor_section",
+                    level=2,
+                    parent_line_id=line_dict_id,
+                    unfoldable=bool(values["labor_project_rows"]),
+                    monthly_values=values["labor_cost"],
+                ),
+                self._build_unfoldable_section_line(
+                    report,
+                    options,
+                    "Náklady bez projektov",
+                    "tenenet_pl_admin_non_project_cost",
+                    "_report_expand_unfoldable_line_tenenet_pl_admin_non_project_cost",
+                    level=2,
+                    parent_line_id=line_dict_id,
+                    unfoldable=bool(values["labor_non_project_rows"]),
+                    monthly_values=values["labor_non_project"],
+                ),
+                self._build_value_line(
+                    report,
+                    options,
+                    "Mzdové náklady administratívy",
+                    values["labor_mgmt"],
+                    "tenenet_pl_admin_labor_mgmt",
+                    level=2,
+                    parent_line_id=line_dict_id,
+                ),
+                self._build_value_line(
+                    report,
+                    options,
+                    "Prevádzkové náklady",
+                    values["operating"],
+                    "tenenet_pl_operating",
+                    level=2,
+                    parent_line_id=line_dict_id,
+                ),
+                self._build_value_line(
+                    report,
+                    options,
+                    "Výsledok programu",
+                    values["final_result"],
+                    "tenenet_pl_final_result",
+                    level=2,
+                    parent_line_id=line_dict_id,
+                ),
+            ]
+            return self._build_expand_result(lines, progress)
+
         lines = [
             self._build_unfoldable_section_line(
                 report,
@@ -275,17 +400,6 @@ class TenenetPLReportHandler(models.AbstractModel):
                 level=2,
                 parent_line_id=line_dict_id,
             ),
-            self._build_unfoldable_section_line(
-                report,
-                options,
-                "Admin TENENET náklady",
-                "tenenet_pl_admin_tenenet_cost",
-                "_report_expand_unfoldable_line_tenenet_pl_admin_tenenet_cost",
-                level=2,
-                parent_line_id=line_dict_id,
-                unfoldable=bool(values["admin_cost_detail_rows"]),
-                monthly_values=values["admin_tenenet_cost"],
-            ),
             self._build_value_line(
                 report,
                 options,
@@ -305,6 +419,21 @@ class TenenetPLReportHandler(models.AbstractModel):
                 parent_line_id=line_dict_id,
             ),
         ]
+        if values["admin_cost_detail_rows"] or any(values["admin_tenenet_cost"].values()):
+            lines.insert(
+                4,
+                self._build_unfoldable_section_line(
+                    report,
+                    options,
+                    "Admin TENENET náklady",
+                    "tenenet_pl_admin_tenenet_cost",
+                    "_report_expand_unfoldable_line_tenenet_pl_admin_tenenet_cost",
+                    level=2,
+                    parent_line_id=line_dict_id,
+                    unfoldable=bool(values["admin_cost_detail_rows"]),
+                    monthly_values=values["admin_tenenet_cost"],
+                ),
+            )
         return self._build_expand_result(lines, progress)
 
     def _report_expand_unfoldable_line_tenenet_pl_admin_tenenet_cost(
@@ -350,6 +479,79 @@ class TenenetPLReportHandler(models.AbstractModel):
                 record_id=row["project"].id,
             )
             for row in values["labor_project_rows"]
+        ]
+        return self._build_expand_result(lines, progress)
+
+    def _report_expand_unfoldable_line_tenenet_pl_admin_labor_section(
+        self, line_dict_id, groupby, options, progress, offset, unfold_all_batch_data=None
+    ):
+        report = self.env["account.report"].browse(options["report_id"])
+        values = self._get_selected_program_report_values(options)
+        lines = [
+            self._build_unfoldable_section_line(
+                report,
+                options,
+                row["name"],
+                markup=f"tenenet_pl_admin_labor_project_{row['project'].id}",
+                expand_function="_report_expand_unfoldable_line_tenenet_pl_admin_labor_project_detail",
+                level=3,
+                parent_line_id=line_dict_id,
+                unfoldable=bool(row.get("employee_rows")),
+                monthly_values=row["values"],
+                model="tenenet.project",
+                record_id=row["project"].id,
+            )
+            for row in values["labor_project_rows"]
+        ]
+        return self._build_expand_result(lines, progress)
+
+    def _report_expand_unfoldable_line_tenenet_pl_admin_labor_project_detail(
+        self, line_dict_id, groupby, options, progress, offset, unfold_all_batch_data=None
+    ):
+        report = self.env["account.report"].browse(options["report_id"])
+        values = self._get_selected_program_report_values(options)
+        match = re.search(r"tenenet_pl_admin_labor_project_(\d+)", str(line_dict_id))
+        if not match:
+            return self._build_expand_result([], progress)
+        project_id = int(match.group(1))
+        project_row = next(
+            (row for row in values["labor_project_rows"] if row["project"].id == project_id),
+            None,
+        )
+        lines = [
+            self._build_value_line(
+                report,
+                options,
+                row["name"],
+                row["values"],
+                markup=f"tenenet_pl_admin_labor_employee_{row['employee'].id}",
+                level=4,
+                parent_line_id=line_dict_id,
+                model="hr.employee",
+                record_id=row["employee"].id,
+            )
+            for row in (project_row or {}).get("employee_rows", [])
+        ]
+        return self._build_expand_result(lines, progress)
+
+    def _report_expand_unfoldable_line_tenenet_pl_admin_non_project_cost(
+        self, line_dict_id, groupby, options, progress, offset, unfold_all_batch_data=None
+    ):
+        report = self.env["account.report"].browse(options["report_id"])
+        values = self._get_selected_program_report_values(options)
+        lines = [
+            self._build_value_line(
+                report,
+                options,
+                row["name"],
+                row["values"],
+                markup=f"tenenet_pl_admin_non_project_employee_{row['employee'].id}",
+                level=3,
+                parent_line_id=line_dict_id,
+                model="hr.employee",
+                record_id=row["employee"].id,
+            )
+            for row in values["labor_non_project_rows"]
         ]
         return self._build_expand_result(lines, progress)
 

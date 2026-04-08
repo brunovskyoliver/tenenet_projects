@@ -282,13 +282,17 @@ class TenenetProjectTimesheetMatrix(models.Model):
         Managers see all active projects; garanti/PMs see only their own.
         """
         if self.env.user.has_group("tenenet_projects.group_tenenet_manager"):
-            projects = self.env["tenenet.project"].search([("active", "=", True)], order="name")
+            projects = self.env["tenenet.project"].search(
+                [("active", "=", True), ("is_tenenet_internal", "=", False)],
+                order="name",
+            )
         else:
             employee = self.env["hr.employee"].search([("user_id", "=", self.env.uid)], limit=1)
             if not employee:
                 return []
             projects = self.env["tenenet.project"].search([
                 ("active", "=", True),
+                ("is_tenenet_internal", "=", False),
                 "|",
                 ("odborny_garant_id", "=", employee.id),
                 ("project_manager_id", "=", employee.id),

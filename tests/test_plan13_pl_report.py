@@ -1,4 +1,4 @@
-from odoo import fields
+from odoo import Command, fields
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
 
@@ -159,6 +159,16 @@ class TestTenenetPlan13PLReport(TransactionCase):
             ("month", "=", month),
         ], limit=1).write({"amount": amount})
 
+    def _create_user(self, login, group_ids):
+        return self.env["res.users"].with_context(no_reset_password=True).create({
+            "name": login,
+            "login": login,
+            "email": f"{login}@example.com",
+            "company_id": self.env.company.id,
+            "company_ids": [Command.set([self.env.company.id])],
+            "group_ids": [Command.set(group_ids)],
+        })
+
     def test_detail_report_uses_projects_sales_fundraising_and_operating_pool(self):
         year = fields.Date.context_today(self).year + 1
         self._create_receipt(self.project_a, f"{year}-03-01", 1200.0)
@@ -184,7 +194,6 @@ class TestTenenetPlan13PLReport(TransactionCase):
             "Stravné a iné",
             "Pokrytie mzdových nákladov",
             "Výsledok po mzdových nákladoch",
-            "Admin TENENET náklady",
             "Prevádzkové náklady",
             "Výsledok programu",
         ])
@@ -209,7 +218,6 @@ class TestTenenetPlan13PLReport(TransactionCase):
             "Stravné a iné",
             "Pokrytie mzdových nákladov",
             "Výsledok po mzdových nákladoch",
-            "Admin TENENET náklady",
             "Prevádzkové náklady",
             "Výsledok programu",
         ])
@@ -263,16 +271,14 @@ class TestTenenetPlan13PLReport(TransactionCase):
         )
         self.assertAlmostEqual(operating_columns["year_total"], expected_operating_total, places=2)
 
-    def test_admin_tenenet_detail_shows_manual_correction_when_present(self):
+    def test_admin_tenenet_detail_uses_labor_mgmt_override_when_present(self):
         year = fields.Date.context_today(self).year + 1
-        self._set_pl_override(year, self.admin_program, "admin_tenenet_cost", 3, -100.0)
+        self._set_pl_override(year, self.admin_program, "labor_mgmt", 3, -100.0)
 
         lines = self._get_detail_lines(year, self.admin_program, unfold_all=True)
-        header_columns = self._column_map(self._find_line(lines, "Admin TENENET náklady"))
-        manual_columns = self._column_map(self._find_line(lines, "Manuálna korekcia"))
+        header_columns = self._column_map(self._find_line(lines, "Mzdové náklady administratívy"))
 
         self.assertAlmostEqual(header_columns["month_03"], -100.0, places=2)
-        self.assertAlmostEqual(manual_columns["month_03"], -100.0, places=2)
 
     def test_report_uses_reporting_program_not_program_tags(self):
         year = fields.Date.context_today(self).year + 1
@@ -362,7 +368,7 @@ class TestTenenetPlan13PLReport(TransactionCase):
         self.assertAlmostEqual(labor_a["month_03"], -100.0, places=2)
         self.assertAlmostEqual(pre_admin_a["month_03"], 1300.0, places=2)
         self.assertAlmostEqual(pre_admin_b["month_03"], 250.0, places=2)
-        self.assertAlmostEqual(final_total["year_total"], 1550.0, places=2)
+        self.assertAlmostEqual(final_total["year_total"], 1400.0, places=2)
 
     def test_program_override_grid_prepares_new_row_set(self):
         year = fields.Date.context_today(self).year + 1
@@ -436,7 +442,7 @@ class TestTenenetPlan13PLReport(TransactionCase):
 
         self.assertEqual(row.grid_row_label, "Projekt Alpha / Projekty")
 
-    def test_admin_tenenet_collects_project_pausals_only(self):
+    def test_admin_tenenet_uses_dedicated_income_and_expense_sections(self):
         year = fields.Date.context_today(self).year + 1
         self._create_budget_line(self.project_a, year, "pausal", self.program_a, "Projektový paušál A", 240.0)
         self.env["tenenet.internal.expense"].create({
@@ -450,15 +456,121 @@ class TestTenenetPlan13PLReport(TransactionCase):
         program_lines = self._get_detail_lines(year, self.program_a, unfold_all=True)
 
         admin_project_columns = self._column_map(self._find_line(admin_lines, "Projekt Alpha"))
+        non_project_columns = self._column_map(self._find_line(admin_lines, "Náklady bez projektov"))
         employee_cost_columns = self._column_map(self._find_line(admin_lines, "Adam Zamestnanec"))
         admin_names = [line["name"] for line in admin_lines]
         program_names = [line["name"] for line in program_lines]
 
+        self.assertIn("Paušály", admin_names)
+        self.assertIn("Prevádzkové príjmy", admin_names)
+        self.assertIn("Náklady bez projektov", admin_names)
+        self.assertNotIn("Tržby", admin_names)
+        self.assertNotIn("Zbierky", admin_names)
+        self.assertNotIn("Admin TENENET náklady", admin_names)
         self.assertIn("Projektový paušál A", admin_names)
         self.assertIn("Adam Zamestnanec", admin_names)
         self.assertAlmostEqual(admin_project_columns["year_total"], 240.0, places=2)
+        self.assertAlmostEqual(non_project_columns["month_03"], -100.0, places=2)
         self.assertAlmostEqual(employee_cost_columns["month_03"], -100.0, places=2)
         self.assertNotIn("Projektový paušál A", program_names)
+
+    def test_admin_tenenet_groups_labor_by_project_and_employee(self):
+        year = fields.Date.context_today(self).year + 1
+        self._create_timesheet(self.assignment_a, f"{year}-03-01", 100.0)
+        self._create_timesheet(self.assignment_b, f"{year}-03-01", 50.0)
+
+        lines = self._get_detail_lines(year, self.admin_program, unfold_all=True)
+        labor_columns = self._column_map(self._find_line(lines, "Mzdové náklady"))
+        alpha_columns = self._column_map(self._find_line(lines, "Projekt Alpha"))
+        beta_columns = self._column_map(self._find_line(lines, "Projekt Beta"))
+        adam_columns = self._column_map(self._find_line(lines, "Adam Zamestnanec"))
+        beata_columns = self._column_map(self._find_line(lines, "Beata Zamestnanec"))
+
+        self.assertAlmostEqual(labor_columns["month_03"], -150.0, places=2)
+        self.assertAlmostEqual(alpha_columns["month_03"], -100.0, places=2)
+        self.assertAlmostEqual(beta_columns["month_03"], -50.0, places=2)
+        self.assertAlmostEqual(adam_columns["month_03"], -100.0, places=2)
+        self.assertAlmostEqual(beata_columns["month_03"], -50.0, places=2)
+
+    def test_admin_tenenet_separates_management_labor(self):
+        year = fields.Date.context_today(self).year + 1
+        self.employee_b.is_mgmt = True
+        self.env["tenenet.internal.expense"].create({
+            "employee_id": self.employee_a.id,
+            "period": f"{year}-03-01",
+            "category": "expense",
+            "expense_amount": 100.0,
+        })
+        self.env["tenenet.internal.expense"].create({
+            "employee_id": self.employee_b.id,
+            "period": f"{year}-03-01",
+            "category": "expense",
+            "expense_amount": 200.0,
+        })
+
+        lines = self._get_detail_lines(year, self.admin_program, unfold_all=True)
+        non_project_columns = self._column_map(self._find_line(lines, "Náklady bez projektov"))
+        mgmt_columns = self._column_map(self._find_line(lines, "Mzdové náklady administratívy"))
+        line_names = [line["name"] for line in lines]
+
+        self.assertAlmostEqual(non_project_columns["month_03"], -100.0, places=2)
+        self.assertAlmostEqual(mgmt_columns["month_03"], -200.0, places=2)
+        self.assertIn("Adam Zamestnanec", line_names)
+        self.assertNotIn("Beata Zamestnanec", [
+            line["name"]
+            for line in lines
+            if line.get("parent_id") == self._find_line(lines, "Náklady bez projektov")["id"]
+        ])
+
+    def test_current_year_sales_prediction_fills_future_months_and_respects_manual_override(self):
+        today = fields.Date.context_today(self)
+        if today.month == 1:
+            self.skipTest("Prediction test requires at least one past month.")
+
+        past_months = [today.month - 1]
+        expected = 120.0
+        self._create_sales_entry(self.program_a, f"{today.year}-{past_months[0]:02d}-01", "cash_register", 120.0)
+        if today.month > 2:
+            past_months.insert(0, today.month - 2)
+            self._create_sales_entry(self.program_a, f"{today.year}-{past_months[0]:02d}-01", "cash_register", 240.0)
+            expected = 180.0
+
+        lines = self._get_detail_lines(today.year, self.program_a, unfold_all=True)
+        cash_register_columns = self._column_map(self._find_line(lines, "Tržby z registračky"))
+        current_label = f"month_{today.month:02d}"
+        self.assertAlmostEqual(cash_register_columns[current_label], expected, places=2)
+
+        self._set_pl_override(today.year, self.program_a, "sales_cash_register", today.month, 999.0)
+        lines = self._get_detail_lines(today.year, self.program_a, unfold_all=True)
+        cash_register_columns = self._column_map(self._find_line(lines, "Tržby z registračky"))
+        self.assertAlmostEqual(cash_register_columns[current_label], 999.0, places=2)
+
+    def test_get_garant_projects_excludes_internal_project_for_manager_and_garant(self):
+        manager_group = self.env.ref("tenenet_projects.group_tenenet_manager")
+        garant_group = self.env.ref("tenenet_projects.group_tenenet_garant_pm")
+        manager_user = self._create_user("timesheet.manager", [manager_group.id])
+        garant_user = self._create_user("timesheet.garant", [garant_group.id])
+        garant_employee = self.env["hr.employee"].create({
+            "name": "Garant Employee",
+            "user_id": garant_user.id,
+        })
+        public_project = self.env["tenenet.project"].create({
+            "name": "Garant Project",
+            "program_ids": [(6, 0, self.program_a.ids)],
+            "reporting_program_id": self.program_a.id,
+            "odborny_garant_id": garant_employee.id,
+        })
+        internal_project = self.env["tenenet.project"].search([("is_tenenet_internal", "=", True)], limit=1)
+        internal_project.write({"odborny_garant_id": garant_employee.id})
+
+        matrix_model = self.env["tenenet.project.timesheet.matrix"]
+        manager_projects = matrix_model.with_user(manager_user).get_garant_projects()
+        garant_projects = matrix_model.with_user(garant_user).get_garant_projects()
+
+        self.assertIn(public_project.id, [project["id"] for project in manager_projects])
+        self.assertIn(public_project.id, [project["id"] for project in garant_projects])
+        self.assertNotIn(internal_project.id, [project["id"] for project in manager_projects])
+        self.assertNotIn(internal_project.id, [project["id"] for project in garant_projects])
 
     def test_result_rows_are_visible_but_not_editable(self):
         year = fields.Date.context_today(self).year + 1

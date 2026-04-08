@@ -6,6 +6,13 @@
             <field name="model">tenenet.project.receipt</field>
             <field name="arch" type="xml">
                 <form string="Príjem projektu">
+                    <header>
+                        <button name="action_open_cashflow_distribute_wizard"
+                                type="object"
+                                string="Distribuovať cashflow"
+                                class="btn btn-primary"
+                                invisible="not id"/>
+                    </header>
                     <sheet>
                         <group>
                             <field name="project_id" readonly="1"/>
