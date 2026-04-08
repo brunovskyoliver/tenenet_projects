@@ -374,12 +374,8 @@
                     <field name="reporting_program_id"/>
                     <field name="donor_id"/>
                     <filter string="Aktívne" name="active" domain="[('active', '=', True)]"/>
-<<<<<<< HEAD
-                    <filter string="Medzinárodné" name="international" domain="[('donor_id.donor_type', 'in', ['international', 'eu'])]"/>
-=======
                     <filter string="Bez virtuálneho admin projektu" name="hide_internal" domain="[('is_tenenet_internal', '=', False)]"/>
-                    <filter string="Medzinárodné" name="international" domain="[('international', '=', True)]"/>
->>>>>>> ae75ccd (changes with p&l and project logic)
+                    <filter string="Medzinárodné" name="international" domain="[('donor_id.donor_type', 'in', ['international', 'eu'])]"/>
                     <filter string="Donor" name="group_donor" context="{'group_by': 'donor_id'}"/>
                 </search>
             </field>

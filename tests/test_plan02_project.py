@@ -105,12 +105,25 @@ class TestTenenetPlan02Project(TransactionCase):
         self.assertEqual(project.active_year_from, 2024)
         self.assertEqual(project.active_year_to, 2026)
 
-<<<<<<< HEAD
     def test_project_write_still_works_without_removed_notes_field(self):
         project = self.env["tenenet.project"].create(
             {
                 "name": "Projekt F",
-=======
+                "program_ids": [(4, self.program.id)],
+                "donor_id": self.donor.id,
+            }
+        )
+
+        project.write(
+            {
+                "partner_id": self.project_partner.id,
+                "portal": "https://portal.test",
+            }
+        )
+
+        self.assertEqual(project.partner_id, self.project_partner)
+        self.assertEqual(project.portal, "https://portal.test")
+
     def test_admin_tenenet_seed_exists(self):
         admin_program = self.env["tenenet.program"].search([("code", "=", "ADMIN_TENENET")], limit=1)
         admin_project = self.env["tenenet.project"].with_context(active_test=False).search(
@@ -130,28 +143,6 @@ class TestTenenetPlan02Project(TransactionCase):
             program_action["domain"],
             "['&', ('is_tenenet_internal', '=', False), ('code', '!=', 'ADMIN_TENENET')]",
         )
-
-    def test_project_budget_lines_validate_program_membership(self):
-        other_program = self.env["tenenet.program"].create({"name": "Iný program", "code": "PG_OTHER"})
-        project = self.env["tenenet.project"].create(
-            {
-                "name": "Projekt Rozpočet",
->>>>>>> ae75ccd (changes with p&l and project logic)
-                "program_ids": [(4, self.program.id)],
-                "donor_id": self.donor.id,
-            }
-        )
-
-<<<<<<< HEAD
-        project.write(
-            {
-                "partner_id": self.project_partner.id,
-                "portal": "https://portal.test",
-            }
-        )
-
-        self.assertEqual(project.partner_id, self.project_partner)
-        self.assertEqual(project.portal, "https://portal.test")
 
     def test_project_international_classification_comes_from_donor_type(self):
         eu_donor = self.env["tenenet.donor"].create(
@@ -178,7 +169,17 @@ class TestTenenetPlan02Project(TransactionCase):
 
         self.assertFalse(local_project._is_international_by_donor())
         self.assertTrue(eu_project._is_international_by_donor())
-=======
+
+    def test_project_budget_lines_validate_program_membership(self):
+        other_program = self.env["tenenet.program"].create({"name": "Iný program", "code": "PG_OTHER"})
+        project = self.env["tenenet.project"].create(
+            {
+                "name": "Projekt Rozpočet",
+                "program_ids": [(4, self.program.id)],
+                "donor_id": self.donor.id,
+            }
+        )
+
         self.env["tenenet.project.budget.line"].create({
             "project_id": project.id,
             "year": 2026,
@@ -363,4 +364,3 @@ class TestTenenetPlan02Project(TransactionCase):
         self.assertEqual(project.finance_cashflow_to_date_state, "minus")
         self.assertAlmostEqual(project.finance_forecast_total_amount, 319.0, places=2)
         self.assertEqual(project.finance_forecast_total_state, "plus")
->>>>>>> ae75ccd (changes with p&l and project logic)

@@ -13,11 +13,7 @@ and P&L reporting by program.
     'website': "https://www.tenenet.sk",
 
     'category': 'Project',
-<<<<<<< HEAD
-    'version': '19.0.5.8.1',
-=======
     'version': '19.0.5.9.2',
->>>>>>> ae75ccd (changes with p&l and project logic)
     'license': 'LGPL-3',
 
     'depends': ['base', 'hr', 'hr_holidays', 'hr_skills', 'hr_expense', 'account_reports', 'mail', 'web_enterprise', 'web_gantt', 'web_grid'],
