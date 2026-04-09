@@ -113,14 +113,12 @@
                     <colgroup>
                         <col class="o_tenenet_cashflow_dialog_col_month"/>
                         <col class="o_tenenet_cashflow_dialog_col_amount"/>
-                        <col class="o_tenenet_cashflow_dialog_col_state"/>
                         <col class="o_tenenet_cashflow_dialog_col_remove"/>
                     </colgroup>
                     <thead>
                         <tr>
                             <th class="o_tenenet_cashflow_dialog_head_month">Mesiac</th>
                             <th class="o_tenenet_cashflow_dialog_head_amount">Suma</th>
-                            <th class="o_tenenet_cashflow_dialog_head_state">Stav</th>
                             <th class="o_tenenet_cashflow_dialog_head_remove">
                                 <span aria-hidden="true">&#160;</span>
                             </th>
@@ -133,21 +131,13 @@
                                         <span t-out="getMonthLabel(entry.month)"/>
                                         <span class="o_tenenet_cashflow_dialog_year" t-out="props.year"/>
                                     </td>
-                                    <td class="o_tenenet_cashflow_dialog_amount">
+                                <td class="o_tenenet_cashflow_dialog_amount">
                                         <input type="text"
                                            inputmode="decimal"
                                            class="form-control form-control-sm o_tenenet_cashflow_dialog_input"
                                            t-att-value="formatAmountInput(entry.amount)"
                                            t-on-change="(ev) => this.onAmountChange(entry.month, ev)"
                                            t-on-focus="(ev) => ev.target.select()"/>
-                                </td>
-                                <td class="o_tenenet_cashflow_dialog_state">
-                                    <span t-att-class="{
-                                            'o_tenenet_cashflow_dialog_badge': true,
-                                            'is-manual': entry.manual,
-                                            'is-auto': !entry.manual,
-                                        }"
-                                          t-out="entry.manual ? 'Fixné' : 'Auto'"/>
                                 </td>
                                 <td class="o_tenenet_cashflow_dialog_remove">
                                     <button class="btn btn-link o_tenenet_cashflow_dialog_remove_btn"
@@ -164,9 +154,6 @@
                             <th class="o_tenenet_cashflow_dialog_total_month">Spolu</th>
                             <th class="o_tenenet_cashflow_dialog_total_amount"
                                 t-out="formatAmountWithCurrency(totalAssigned)"/>
-                            <th class="o_tenenet_cashflow_dialog_total_state">
-                                <span aria-hidden="true">&#160;</span>
-                            </th>
                             <th class="o_tenenet_cashflow_dialog_total_remove">
                                 <span aria-hidden="true">&#160;</span>
                             </th>

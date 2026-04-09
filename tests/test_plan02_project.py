@@ -62,6 +62,23 @@ class TestTenenetPlan02Project(TransactionCase):
         admin_program = self.env["tenenet.program"].search([("code", "=", "ADMIN_TENENET")], limit=1)
         self.assertIn(admin_program, project.program_ids)
         self.assertNotIn(admin_program, project.ui_program_ids)
+        self.assertEqual(project.reporting_program_id, self.program)
+
+    def test_reporting_program_is_auto_resolved_from_visible_programs(self):
+        second_program = self.env["tenenet.program"].create({"name": "Program B", "code": "PG_B"})
+        project = self.env["tenenet.project"].create(
+            {
+                "name": "Projekt Programy",
+                "program_ids": [(6, 0, [self.program.id, second_program.id])],
+            }
+        )
+
+        self.assertEqual(project.reporting_program_id, self.program)
+
+        project.write({"ui_program_ids": [(6, 0, [second_program.id])]})
+
+        self.assertEqual(project.ui_program_ids, second_program)
+        self.assertEqual(project.reporting_program_id, second_program)
 
     def test_project_budget_total_compute(self):
         project = self.env["tenenet.project"].create(

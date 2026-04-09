@@ -159,7 +159,8 @@ class TenenetProjectAssignment(models.Model):
     def _compute_name(self):
         for rec in self:
             ratio = f"{rec.allocation_ratio:.0f} %" if rec.allocation_ratio else "0 %"
-            program = rec.program_id.display_name or rec.project_id.reporting_program_id.display_name or "-"
+            fallback_program = rec.project_id._get_effective_reporting_program()
+            program = rec.program_id.display_name or fallback_program.display_name or "-"
             rec.name = f"{rec.employee_id.name or '-'} / {rec.project_id.name or '-'} / {program} / {ratio}"
 
     @api.depends(
@@ -301,7 +302,7 @@ class TenenetProjectAssignment(models.Model):
                     vals["max_monthly_wage_hm"] = project.default_max_monthly_wage_hm or 0.0
                 if "program_id" not in vals:
                     vals["program_id"] = (
-                        project.reporting_program_id.id
+                        project._get_effective_reporting_program().id
                         or project.program_ids.filtered(lambda rec: rec.code != "ADMIN_TENENET")[:1].id
                         or project.program_ids[:1].id
                     )

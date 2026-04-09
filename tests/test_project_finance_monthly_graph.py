@@ -112,6 +112,51 @@ class TestProjectFinanceMonthlyGraph(TransactionCase):
         self.assertAlmostEqual(self._line_amount(next_year, 2, "predicted_cf"), 150.0, places=2)
         self.assertEqual(len(self.project.finance_monthly_comparison_line_ids), 24)
 
+    def test_chart_data_uses_selected_receipts_and_exposes_tooltip_breakdown(self):
+        first_receipt = self.env["tenenet.project.receipt"].create({
+            "project_id": self.project.id,
+            "date_received": f"{self.current_year}-01-10",
+            "amount": 600.0,
+        })
+        second_receipt = self.env["tenenet.project.receipt"].create({
+            "project_id": self.project.id,
+            "date_received": f"{self.current_year}-01-20",
+            "amount": 900.0,
+        })
+        first_receipt.set_cashflow_month_amounts(self.current_year, {2: 200.0, 3: 400.0})
+        second_receipt.set_cashflow_month_amounts(self.current_year, {2: 900.0})
+
+        self.env["tenenet.project.timesheet"].create({
+            "assignment_id": self.assignment.id,
+            "period": f"{self.current_year}-02-01",
+            "hours_pp": 10.0,
+        })
+        self.env["tenenet.project.expense"].create({
+            "project_id": self.project.id,
+            "allowed_type_id": self.allowed_type.id,
+            "date": f"{self.current_year}-02-15",
+            "amount": 50.0,
+            "description": "Cesta",
+        })
+
+        chart_data = self.project.get_finance_monthly_comparison_chart_data(self.current_year)
+        real_expense_total = self.project._get_actual_project_spend_for_month(self.current_year, 2)
+        timesheet_total = real_expense_total - 50.0
+
+        self.assertEqual(chart_data["series"][0]["values"][1], 1100.0)
+        self.assertEqual(chart_data["series"][1]["values"][1], real_expense_total)
+        self.assertEqual(
+            chart_data["series"][0]["tooltips"][1]["items"],
+            [{"label": "Celý cashflow", "amount": 1100.0}],
+        )
+        self.assertEqual(
+            chart_data["series"][1]["tooltips"][1]["items"],
+            [
+                {"label": "Timesheety", "amount": timesheet_total},
+                {"label": "Projektové výdavky", "amount": 50.0},
+            ],
+        )
+
     def test_deleting_sources_resets_month_values_to_zero(self):
         receipt = self.env["tenenet.project.receipt"].create({
             "project_id": self.project.id,

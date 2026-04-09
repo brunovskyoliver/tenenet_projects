@@ -128,7 +128,7 @@ class TenenetProjectAssignmentWizard(models.TransientModel):
             domain["program_id"] = self._get_program_domain()
             available_programs = self.available_program_ids
             self.program_id = (
-                self.project_id.reporting_program_id.filtered(lambda rec: rec in available_programs)
+                self.project_id._get_effective_reporting_program().filtered(lambda rec: rec in available_programs)
                 or available_programs.filtered(lambda rec: rec.code != "ADMIN_TENENET")[:1]
                 or available_programs[:1]
                 or self.project_id.program_ids[:1]

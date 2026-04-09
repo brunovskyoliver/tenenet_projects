@@ -190,6 +190,7 @@ export class TenenetCashflowPlannerField extends Component {
             year: this.initialYear,
             rows: [],
             availableYears: [],
+            availableReceipts: [],
             currencySymbol: "",
             currencyPosition: "after",
             zeroMode: false,
@@ -239,6 +240,7 @@ export class TenenetCashflowPlannerField extends Component {
             this.state.loading = false;
             this.state.rows = [];
             this.state.availableYears = [];
+            this.state.availableReceipts = [];
             return;
         }
         this.state.loading = true;
@@ -247,20 +249,26 @@ export class TenenetCashflowPlannerField extends Component {
                 [resId],
                 this.state.year,
             ]);
-            this.state.rows = data.rows || [];
-            this.state.availableYears = data.available_years || [];
-            this.state.currencySymbol = data.currency_symbol || "";
-            this.state.currencyPosition = data.currency_position || "after";
-            this.state.year = data.year || this.state.year;
+            this.applyPlannerData(data);
         } catch (error) {
             this.notification.add(error.data?.message || _t("Nepodarilo sa načítať cashflow."), {
                 type: "danger",
             });
             this.state.rows = [];
+            this.state.availableReceipts = [];
         } finally {
             this.state.loading = false;
             this.resetDrag();
         }
+    }
+
+    applyPlannerData(data) {
+        this.state.rows = data.rows || [];
+        this.state.availableYears = data.available_years || [];
+        this.state.availableReceipts = data.available_receipts || [];
+        this.state.currencySymbol = data.currency_symbol || "";
+        this.state.currencyPosition = data.currency_position || "after";
+        this.state.year = data.year || this.state.year;
     }
 
     async changeYear(delta) {

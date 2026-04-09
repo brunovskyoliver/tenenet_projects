@@ -13,7 +13,6 @@
                            class="o_tenenet_project_semaphore_dot"/>
                     <field name="name"/>
                     <field name="ui_program_ids" widget="many2many_tags"/>
-                    <field name="reporting_program_id" optional="show"/>
                     <field name="donor_id"/>
                     <field name="budget_total"/>
                     <field name="date_start"/>
@@ -51,7 +50,6 @@
                             </group>
                             <group>
                                 <field name="ui_program_ids" widget="many2many_tags"/>
-                                <field name="reporting_program_id"/>
                                 <field name="donor_id"/>
                                 <field name="recipient_partner_id"/>
                                 <field name="partner_id"/>
@@ -99,28 +97,57 @@
                                         <field name="budget_total" readonly="1"/>
                                     </group>
                                 </group>
-                                <group string="Finančný stav">
-                                    <group>
-                                        <field name="finance_actual_vs_plan_to_date_state" widget="badge"
-                                               string="Stav ku dnešku"
-                                               decoration-success="finance_actual_vs_plan_to_date_state == 'plus'"
-                                               decoration-danger="finance_actual_vs_plan_to_date_state == 'minus'"
-                                               decoration-muted="finance_actual_vs_plan_to_date_state == 'neutral'"/>
-                                        <field name="finance_actual_vs_plan_to_date_amount"
-                                               string="Predikované financie do dneška mínus výdavky do dneška"
-                                               readonly="1"/>
-                                    </group>
-                                    <group>
-                                        <field name="finance_forecast_total_state" widget="badge"
-                                               string="Stav zostatku"
-                                               decoration-success="finance_forecast_total_state == 'plus'"
-                                               decoration-danger="finance_forecast_total_state == 'minus'"
-                                               decoration-muted="finance_forecast_total_state == 'neutral'"/>
-                                        <field name="finance_forecast_total_amount"
-                                               string="Zostatok financií = celkový príjem mínus výdavky doteraz"
-                                               readonly="1"/>
-                                    </group>
-                                </group>
+                                <separator string="Finančný stav"/>
+                                <div class="row g-3 mb-3">
+                                    <div class="col-12 col-lg-4">
+                                        <div class="border rounded-4 p-3 h-100 bg-light">
+                                            <div class="text-muted small mb-2">Cashflow ku dnešku</div>
+                                            <field name="finance_actual_vs_plan_to_date_state"
+                                                   widget="badge"
+                                                   nolabel="1"
+                                                   class="mb-2"
+                                                   decoration-success="finance_actual_vs_plan_to_date_state == 'plus'"
+                                                   decoration-danger="finance_actual_vs_plan_to_date_state == 'minus'"
+                                                   decoration-muted="finance_actual_vs_plan_to_date_state == 'neutral'"/>
+                                            <div class="fw-semibold mb-1">Predikovaný cashflow mínus výdavky</div>
+                                            <field name="finance_actual_vs_plan_to_date_amount"
+                                                   nolabel="1"
+                                                   readonly="1"/>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-lg-4">
+                                        <div class="border rounded-4 p-3 h-100 bg-light">
+                                            <div class="text-muted small mb-2">Aktuálny stav plánu</div>
+                                            <field name="finance_cashflow_to_date_state"
+                                                   widget="badge"
+                                                   nolabel="1"
+                                                   class="mb-2"
+                                                   decoration-success="finance_cashflow_to_date_state == 'plus'"
+                                                   decoration-danger="finance_cashflow_to_date_state == 'minus'"
+                                                   decoration-muted="finance_cashflow_to_date_state == 'neutral'"/>
+                                            <div class="fw-semibold mb-1">Stav podľa cashflow plánu</div>
+                                            <field name="finance_cashflow_to_date_amount"
+                                                   nolabel="1"
+                                                   readonly="1"/>
+                                        </div>
+                                    </div>
+                                    <div class="col-12 col-lg-4">
+                                        <div class="border rounded-4 p-3 h-100 bg-light">
+                                            <div class="text-muted small mb-2">Celkový výhľad</div>
+                                            <field name="finance_forecast_total_state"
+                                                   widget="badge"
+                                                   nolabel="1"
+                                                   class="mb-2"
+                                                   decoration-success="finance_forecast_total_state == 'plus'"
+                                                   decoration-danger="finance_forecast_total_state == 'minus'"
+                                                   decoration-muted="finance_forecast_total_state == 'neutral'"/>
+                                            <div class="fw-semibold mb-1">Zostatok financií projektu</div>
+                                            <field name="finance_forecast_total_amount"
+                                                   nolabel="1"
+                                                   readonly="1"/>
+                                        </div>
+                                    </div>
+                                </div>
                                 <separator string="Prijaté prostriedky"/>
                                 <div class="mb-2">
                                     <button name="action_open_receipt_wizard"
@@ -414,11 +441,10 @@
             <field name="name">tenenet.project.search</field>
             <field name="model">tenenet.project</field>
             <field name="arch" type="xml">
-                <search string="Projekty">
-                    <field name="name"/>
-                    <field name="ui_program_ids"/>
-                    <field name="reporting_program_id"/>
-                    <field name="donor_id"/>
+                    <search string="Projekty">
+                        <field name="name"/>
+                        <field name="ui_program_ids"/>
+                        <field name="donor_id"/>
                     <filter string="Aktívne" name="active" domain="[('active', '=', True)]"/>
                     <filter string="Bez virtuálneho admin projektu" name="hide_internal" domain="[('is_tenenet_internal', '=', False)]"/>
                     <filter string="Medzinárodné" name="international" domain="[('donor_id.donor_type', 'in', ['international', 'eu'])]"/>

@@ -1,12 +1,12 @@
 .o_tenenet_finance_chart {
-    --finance-chart-surface: var(--bs-body-bg, #212529);
-    --finance-chart-surface-soft: var(--bs-secondary-bg, rgba(255, 255, 255, 0.08));
-    --finance-chart-surface-strong: var(--bs-tertiary-bg, rgba(255, 255, 255, 0.12));
-    --finance-chart-border: var(--bs-border-color, rgba(255, 255, 255, 0.16));
-    --finance-chart-text: var(--bs-body-color, #f8f9fa);
-    --finance-chart-text-muted: var(--bs-secondary-color, rgba(248, 249, 250, 0.72));
-    --finance-chart-grid: rgba(255, 255, 255, 0.08);
-    --finance-chart-axis: rgba(255, 255, 255, 0.24);
+    --finance-chart-surface: #3c3e4b;
+    --finance-chart-surface-soft: #444756;
+    --finance-chart-surface-strong: #4d5163;
+    --finance-chart-border: #5b6073;
+    --finance-chart-text: #f3f4f6;
+    --finance-chart-text-muted: #c2c7d3;
+    --finance-chart-grid: rgba(194, 199, 211, 0.12);
+    --finance-chart-axis: rgba(194, 199, 211, 0.24);
 
     display: block;
     width: 100%;
@@ -96,6 +96,54 @@
         overflow: hidden;
     }
 
+    .o_tenenet_finance_chart_plot {
+        position: relative;
+    }
+
+    .o_tenenet_finance_chart_tooltip {
+        position: absolute;
+        min-width: 220px;
+        max-width: 280px;
+        padding: 12px;
+        border: 1px solid var(--finance-chart-border);
+        border-radius: 12px;
+        background: rgba(18, 24, 32, 0.94);
+        color: #f8f9fa;
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.24);
+        z-index: 2;
+        pointer-events: none;
+        transform: translate(-50%, calc(-100% - 14px));
+
+        &.is-align-left {
+            transform: translate(0, calc(-100% - 14px));
+        }
+
+        &.is-align-right {
+            transform: translate(-100%, calc(-100% - 14px));
+        }
+    }
+
+    .o_tenenet_finance_chart_tooltip_title {
+        font-size: 13px;
+        font-weight: 700;
+        margin-bottom: 6px;
+    }
+
+    .o_tenenet_finance_chart_tooltip_total {
+        font-size: 12px;
+        margin-bottom: 6px;
+        color: rgba(248, 249, 250, 0.88);
+    }
+
+    .o_tenenet_finance_chart_tooltip_row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 12px;
+        color: rgba(248, 249, 250, 0.88);
+    }
+
     .o_tenenet_finance_chart_grid {
         stroke: var(--finance-chart-grid);
         stroke-width: 1;
@@ -116,6 +164,11 @@
     .o_tenenet_finance_chart_point {
         stroke: var(--finance-chart-surface);
         stroke-width: 1.5;
+        transition: stroke-width 120ms ease;
+
+        &:hover {
+            stroke-width: 2.5;
+        }
     }
 
     .o_tenenet_finance_chart_x_label,

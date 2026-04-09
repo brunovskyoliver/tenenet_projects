@@ -84,10 +84,7 @@ class TenenetProjectReceipt(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        records = super().create(vals_list)
-        for rec in records:
-            rec._generate_equal_cashflow()
-        return records
+        return super().create(vals_list)
 
     def write(self, vals):
         old_pairs = {
@@ -95,10 +92,12 @@ class TenenetProjectReceipt(models.Model):
             for record in self
             if record.project_id and record.year
         }
+        had_cashflow = {record.id: bool(record.cashflow_ids) for record in self}
         result = super().write(vals)
         if "amount" in vals or "date_received" in vals:
             for rec in self:
-                rec._generate_equal_cashflow()
+                if had_cashflow.get(rec.id):
+                    rec._generate_equal_cashflow()
             self.env["tenenet.project"]._sync_finance_monthly_comparison_pairs(
                 old_pairs | {
                     (record.project_id.id, record.year)
@@ -220,9 +219,11 @@ class TenenetProjectReceipt(models.Model):
             month = int(month_key)
             if month < 1 or month > 12:
                 raise ValidationError("Mesiace cashflow musia byť v rozsahu 1 až 12.")
-            if month < min_month:
-                raise ValidationError("Cashflow nemôže začínať pred mesiacom prijatia príjmu.")
             amount_value = currency.round(float(amount or 0.0))
+            if month < min_month:
+                if abs(amount_value) < 0.00001:
+                    continue
+                raise ValidationError("Cashflow nemôže začínať pred mesiacom prijatia príjmu.")
             if amount_value < 0:
                 raise ValidationError("Mesačný cashflow nemôže byť záporný.")
             normalized_amounts[month] = amount_value

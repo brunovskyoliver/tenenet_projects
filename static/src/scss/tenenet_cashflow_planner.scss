@@ -2,16 +2,16 @@
 .o_tenenet_budget_line_planner,
 .o_tenenet_cashflow_planner_dialog,
 .o_tenenet_month_planner_dialog {
-    --planner-surface: var(--bs-body-bg, #212529);
-    --planner-surface-soft: var(--bs-secondary-bg, rgba(255, 255, 255, 0.08));
-    --planner-surface-strong: var(--bs-tertiary-bg, rgba(255, 255, 255, 0.12));
-    --planner-border: var(--bs-border-color, rgba(255, 255, 255, 0.16));
-    --planner-text: var(--bs-body-color, #f8f9fa);
-    --planner-text-muted: var(--bs-secondary-color, rgba(248, 249, 250, 0.72));
+    --planner-surface: #3c3e4b;
+    --planner-surface-soft: #444756;
+    --planner-surface-strong: #4d5163;
+    --planner-border: #5b6073;
+    --planner-text: #f3f4f6;
+    --planner-text-muted: #c2c7d3;
     --planner-accent: var(--bs-primary, #0d6efd);
     --planner-accent-rgb: var(--bs-primary-rgb, 13, 110, 253);
     --planner-accent-soft: rgba(var(--planner-accent-rgb), 0.18);
-    --planner-accent-soft-strong: rgba(var(--planner-accent-rgb), 0.3);
+    --planner-accent-soft-strong: rgba(var(--planner-accent-rgb), 0.32);
     --planner-accent-text: var(--bs-primary-text-emphasis, #fff);
 }
 
@@ -89,6 +89,7 @@
         color: var(--planner-text);
         font-weight: 600;
     }
+
 
     .o_tenenet_cashflow_planner_table {
         margin-bottom: 0;
@@ -192,6 +193,37 @@
         letter-spacing: 0.01em;
         line-height: 1.2;
     }
+}
+
+.o_form_sheet_bg:has(.o_field_tenenet_cashflow_planner) {
+    overflow-x: auto;
+}
+
+.o_form_sheet_bg:has(.o_field_tenenet_cashflow_planner) {
+    --formView-sheetBg-padding-right: 0.5rem;
+}
+
+.o_form_sheet:has(.o_field_tenenet_cashflow_planner) {
+    width: max-content;
+    min-width: 100%;
+    max-width: none;
+}
+
+.o_form_sheet:has(.o_field_tenenet_cashflow_planner) .o_field_tenenet_cashflow_planner {
+    display: block;
+}
+
+.o_form_sheet:has(.o_field_tenenet_cashflow_planner) .o_tenenet_cashflow_planner {
+    width: max-content;
+    min-width: 100%;
+}
+
+.o_form_sheet_bg:has(.o_field_tenenet_cashflow_planner) + .o-mail-ChatterContainer.o-aside,
+.o_form_sheet_bg:has(.o_field_tenenet_cashflow_planner) + .o-mail-Form-chatter.o-aside {
+    flex: 0 0 360px !important;
+    width: 360px !important;
+    max-width: 360px !important;
+    min-width: 360px !important;
 }
 
 .o_tenenet_cashflow_planner_dialog,
@@ -360,7 +392,7 @@
 
         thead th,
         tfoot th {
-            text-align: left;
+            text-align: center;
         }
 
         .o_tenenet_cashflow_dialog_total_row {
@@ -396,10 +428,13 @@
 
     .o_tenenet_cashflow_dialog_month {
         display: flex;
-        align-items: baseline;
-        gap: 8px;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 2px;
         font-weight: 700;
         color: var(--planner-text);
+        text-align: center;
     }
 
     .o_tenenet_cashflow_dialog_year {

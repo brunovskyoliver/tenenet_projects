@@ -122,7 +122,7 @@ class TenenetProjectBudgetWizard(models.TransientModel):
             elif rows:
                 rec.program_id = rows[0]["program"]
             else:
-                rec.program_id = rec.project_id.reporting_program_id or rec.project_id.program_ids[:1]
+                rec.program_id = rec.project_id._get_effective_reporting_program() or rec.project_id.program_ids[:1]
         return {"domain": domain}
 
     def _sync_amount_from_percentage(self):

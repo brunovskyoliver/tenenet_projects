@@ -51,37 +51,61 @@
                         </t>
                     </div>
 
-                    <svg class="o_tenenet_finance_chart_svg" viewBox="0 0 760 260" preserveAspectRatio="xMidYMid meet">
-                        <t t-foreach="yTicks" t-as="tick" t-key="tick.value">
-                            <line class="o_tenenet_finance_chart_grid"
-                                  t-att-x1="plotLeft" t-att-y1="tick.y"
-                                  t-att-x2="plotRight" t-att-y2="tick.y"/>
-                            <text class="o_tenenet_finance_chart_y_label"
-                                  t-att-x="yLabelX" t-att-y="tick.y + 4"
-                                  t-out="axisAmountLabel(tick.value)"/>
-                        </t>
-                        <line class="o_tenenet_finance_chart_axis"
-                              t-att-x1="plotLeft" t-att-y1="plotBottom"
-                              t-att-x2="plotRight" t-att-y2="plotBottom"/>
-                        <t t-foreach="monthPoints" t-as="month" t-key="month.label">
-                            <text class="o_tenenet_finance_chart_x_label"
-                                  t-att-x="month.x"
-                                  y="248"
-                                  t-out="month.label"/>
-                        </t>
-                        <t t-foreach="chartState.series" t-as="series" t-key="series.key">
-                            <polyline class="o_tenenet_finance_chart_line"
-                                      t-att-style="'stroke:' + this.colorFor(series.key)"
-                                      t-att-points="this.polyline(series)"/>
-                            <t t-foreach="series.values" t-as="value" t-key="series.key + '-' + value_index">
-                                <circle class="o_tenenet_finance_chart_point"
-                                        t-att-style="'fill:' + this.colorFor(series.key)"
-                                        t-att-cx="monthPoints[value_index].x"
-                                        t-att-cy="this.valueToY(value)"
-                                        r="3.5"/>
+                    <div class="o_tenenet_finance_chart_plot">
+                        <svg class="o_tenenet_finance_chart_svg" viewBox="0 0 760 260" preserveAspectRatio="xMidYMid meet">
+                            <t t-foreach="yTicks" t-as="tick" t-key="tick.value">
+                                <line class="o_tenenet_finance_chart_grid"
+                                      t-att-x1="plotLeft" t-att-y1="tick.y"
+                                      t-att-x2="plotRight" t-att-y2="tick.y"/>
+                                <text class="o_tenenet_finance_chart_y_label"
+                                      t-att-x="yLabelX" t-att-y="tick.y + 4"
+                                      t-out="axisAmountLabel(tick.value)"/>
                             </t>
+                            <line class="o_tenenet_finance_chart_axis"
+                                  t-att-x1="plotLeft" t-att-y1="plotBottom"
+                                  t-att-x2="plotRight" t-att-y2="plotBottom"/>
+                            <t t-foreach="monthPoints" t-as="month" t-key="month.label">
+                                <text class="o_tenenet_finance_chart_x_label"
+                                      t-att-x="month.x"
+                                      y="248"
+                                      t-out="month.label"/>
+                            </t>
+                            <t t-foreach="chartState.series" t-as="series" t-key="series.key">
+                                <polyline class="o_tenenet_finance_chart_line"
+                                          t-att-style="'stroke:' + this.colorFor(series.key)"
+                                          t-att-points="this.polyline(series)"/>
+                                <t t-foreach="series.values" t-as="value" t-key="series.key + '-' + value_index">
+                                    <circle class="o_tenenet_finance_chart_point"
+                                            t-att-style="'fill:' + this.colorFor(series.key)"
+                                            t-att-cx="monthPoints[value_index].x"
+                                            t-att-cy="this.valueToY(value)"
+                                            r="3.5"
+                                            t-on-mouseenter="() => this.showTooltip(series, value_index)"
+                                            t-on-mouseleave="() => this.hideTooltip()"/>
+                                </t>
+                            </t>
+                        </svg>
+                        <t t-if="chartState.tooltip">
+                            <div class="o_tenenet_finance_chart_tooltip"
+                                 t-att-class="{
+                                     'o_tenenet_finance_chart_tooltip': true,
+                                     'is-align-left': chartState.tooltip.align === 'left',
+                                     'is-align-right': chartState.tooltip.align === 'right',
+                                 }"
+                                 t-att-style="'left:' + chartState.tooltip.xPercent + '%;top:' + chartState.tooltip.yPercent + '%;'">
+                                <div class="o_tenenet_finance_chart_tooltip_title" t-out="chartState.tooltip.title"/>
+                                <div class="o_tenenet_finance_chart_tooltip_total">
+                                    Spolu: <strong t-out="amountLabel(chartState.tooltip.total)"/>
+                                </div>
+                                <t t-foreach="chartState.tooltip.items" t-as="item" t-key="item.label">
+                                    <div class="o_tenenet_finance_chart_tooltip_row">
+                                        <span t-out="item.label"/>
+                                        <strong t-out="amountLabel(item.amount)"/>
+                                    </div>
+                                </t>
+                            </div>
                         </t>
-                    </svg>
+                    </div>
 
                     <div class="o_tenenet_finance_chart_table table-responsive">
                         <table class="table table-sm mb-0">

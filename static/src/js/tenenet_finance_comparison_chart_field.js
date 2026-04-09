@@ -55,6 +55,7 @@ export class TenenetFinanceComparisonChartField extends Component {
             series: [],
             currency_symbol: "",
             currency_position: "after",
+            tooltip: null,
         });
 
         onWillStart(async () => {
@@ -70,6 +71,7 @@ export class TenenetFinanceComparisonChartField extends Component {
                 await this.loadChartData(nextResId);
             }
         });
+
     }
 
     get initialYear() {
@@ -102,6 +104,7 @@ export class TenenetFinanceComparisonChartField extends Component {
             this.state.available_years = [];
             this.state.months = [];
             this.state.series = [];
+            this.state.tooltip = null;
             return;
         }
         this.state.loading = true;
@@ -116,6 +119,7 @@ export class TenenetFinanceComparisonChartField extends Component {
             this.state.series = data.series || [];
             this.state.currency_symbol = data.currency_symbol || "";
             this.state.currency_position = data.currency_position || "after";
+            this.state.tooltip = null;
         } catch (error) {
             this.notification.add(
                 error.data?.message || _t("Nepodarilo sa načítať porovnanie cashflow a výdavkov."),
@@ -124,6 +128,7 @@ export class TenenetFinanceComparisonChartField extends Component {
             this.state.available_years = [];
             this.state.months = [];
             this.state.series = [];
+            this.state.tooltip = null;
         } finally {
             this.state.loading = false;
         }
@@ -214,6 +219,43 @@ export class TenenetFinanceComparisonChartField extends Component {
 
     axisAmountLabel(value) {
         return formatWithCurrency(Math.round(value || 0), this.chartState);
+    }
+
+    pointTooltip(series, index) {
+        return series.tooltips?.[index] || null;
+    }
+
+    showTooltip(series, index) {
+        const dot = this.monthPoints[index];
+        const tooltip = this.pointTooltip(series, index);
+        if (!tooltip || !dot) {
+            this.state.tooltip = null;
+            return;
+        }
+        const tooltipWidth = 260;
+        const tooltipHeight = 110;
+        const pointY = this.valueToY(series.values?.[index] || 0);
+        const pointXPercent = (dot.x / CHART_WIDTH) * 100;
+        const pointYPercent = (pointY / CHART_HEIGHT) * 100;
+        const edgePadding = 18;
+        let align = "center";
+        if (dot.x < tooltipWidth / 2 + edgePadding) {
+            align = "left";
+        } else if (dot.x > CHART_WIDTH - tooltipWidth / 2 - edgePadding) {
+            align = "right";
+        }
+        this.state.tooltip = {
+            title: `${series.label} • ${tooltip.month}`,
+            total: tooltip.total || 0,
+            items: tooltip.items || [],
+            xPercent: pointXPercent,
+            yPercent: pointYPercent,
+            align,
+        };
+    }
+
+    hideTooltip() {
+        this.state.tooltip = null;
     }
 }
 

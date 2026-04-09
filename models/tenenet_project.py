@@ -112,7 +112,7 @@ class TenenetProject(models.Model):
         ondelete="restrict",
         compute="_compute_reporting_program_id",
         store=True,
-        readonly=False,
+        readonly=True,
         help="Kanónický program používaný pre P&L reporting, cashflow a alokácie prevádzkových nákladov.",
     )
     site_ids = fields.Many2many(
@@ -371,12 +371,30 @@ class TenenetProject(models.Model):
             )
         )
 
+    def _get_visible_programs(self):
+        self.ensure_one()
+        return self.program_ids.filtered(lambda program: not self._is_hidden_internal_program(program))
+
+    def _get_primary_visible_program(self):
+        self.ensure_one()
+        visible_programs = self._get_visible_programs()
+        if self.reporting_program_id and self.reporting_program_id in visible_programs:
+            return self.reporting_program_id
+        return visible_programs[:1]
+
+    def _get_effective_reporting_program(self):
+        self.ensure_one()
+        if self.is_tenenet_internal:
+            return self.env["tenenet.program"].with_context(active_test=False).search(
+                [("code", "=", self.ADMIN_TENENET_PROGRAM_CODE)],
+                limit=1,
+            )
+        return self._get_primary_visible_program()
+
     @api.depends("program_ids", "program_ids.is_tenenet_internal")
     def _compute_ui_program_ids(self):
         for rec in self:
-            rec.ui_program_ids = rec.program_ids.filtered(
-                lambda program: not rec._is_hidden_internal_program(program)
-            )
+            rec.ui_program_ids = rec._get_visible_programs()
 
     def _inverse_ui_program_ids(self):
         admin_program = self.env["tenenet.program"].with_context(active_test=False).search(
@@ -391,12 +409,55 @@ class TenenetProject(models.Model):
     @api.depends("program_ids", "program_ids.is_tenenet_internal")
     def _compute_reporting_program_id(self):
         for rec in self:
-            visible_programs = rec.program_ids.filtered(
-                lambda program: not rec._is_hidden_internal_program(program)
-            )
-            if rec.reporting_program_id and rec.reporting_program_id in visible_programs:
-                continue
-            rec.reporting_program_id = visible_programs[:1]
+            rec.reporting_program_id = rec._get_effective_reporting_program()
+
+    def _get_receipts_for_cashflow_year(self, year):
+        self.ensure_one()
+        selected_year = int(year or 0)
+        if not selected_year:
+            return self.env["tenenet.project.receipt"]
+        return self.receipt_line_ids.filtered(lambda rec: rec.year == selected_year).sorted(
+            key=lambda rec: (rec.date_received or date.min, rec.id),
+            reverse=True,
+        )
+
+    def _get_cashflow_breakdown_for_month(self, year, month):
+        self.ensure_one()
+        total = self._get_effective_cashflow_month_values(year).get(month, 0.0)
+        return {
+            "total": total,
+            "items": [
+                {
+                    "label": "Celý cashflow",
+                    "amount": total,
+                },
+            ],
+        }
+
+    def _get_actual_project_spend_breakdown_for_month(self, year, month):
+        self.ensure_one()
+        month_start = date(year, month, 1)
+        timesheet_cost = sum(
+            self.timesheet_ids.filtered(
+                lambda rec: rec.period and rec.period == month_start
+            ).mapped("total_labor_cost")
+        )
+        expense_cost = sum(
+            self.expense_ids.filtered(
+                lambda rec: rec.charged_to == "project"
+                and rec.date
+                and rec.date.year == year
+                and rec.date.month == month
+            ).mapped("amount")
+        )
+        total = timesheet_cost + expense_cost
+        return {
+            "total": total,
+            "items": [
+                {"label": "Timesheety", "amount": timesheet_cost},
+                {"label": "Projektové výdavky", "amount": expense_cost},
+            ],
+        }
 
     CCP_MULTIPLIER = 1.362
 
@@ -510,10 +571,15 @@ class TenenetProject(models.Model):
         }
         available_years.add(selected_year)
         planner_data = self.get_cashflow_planner_data(selected_year)
-        predicted_values = {month: 0.0 for month in range(1, 13)}
-        for row in planner_data.get("rows", []):
-            for month in range(1, 13):
-                predicted_values[month] += float((row.get("months") or {}).get(str(month), 0.0) or 0.0)
+        predicted_values = self._get_effective_cashflow_month_values(selected_year)
+        real_expense_breakdowns = {
+            month: self._get_actual_project_spend_breakdown_for_month(selected_year, month)
+            for month in range(1, 13)
+        }
+        predicted_breakdowns = {
+            month: self._get_cashflow_breakdown_for_month(selected_year, month)
+            for month in range(1, 13)
+        }
         return {
             "year": selected_year,
             "available_years": sorted(available_years),
@@ -525,12 +591,28 @@ class TenenetProject(models.Model):
                     "key": "predicted_cf",
                     "label": "Predikovaný CF",
                     "values": [predicted_values.get(month, 0.0) for month in range(1, 13)],
+                    "tooltips": [
+                        {
+                            "month": month_labels[month - 1],
+                            "total": predicted_breakdowns[month]["total"],
+                            "items": predicted_breakdowns[month]["items"],
+                        }
+                        for month in range(1, 13)
+                    ],
                 },
                 {
                     "key": "real_expense",
                     "label": "Reálne výdavky",
                     "values": [
                         self._get_actual_project_spend_for_month(selected_year, month)
+                        for month in range(1, 13)
+                    ],
+                    "tooltips": [
+                        {
+                            "month": month_labels[month - 1],
+                            "total": real_expense_breakdowns[month]["total"],
+                            "items": real_expense_breakdowns[month]["items"],
+                        }
                         for month in range(1, 13)
                     ],
                 },
@@ -1168,10 +1250,7 @@ class TenenetProject(models.Model):
     def get_cashflow_planner_data(self, year=None):
         self.ensure_one()
         selected_year = int(year or fields.Date.context_today(self).year)
-        receipts = self.receipt_line_ids.filtered(lambda rec: rec.year == selected_year).sorted(
-            key=lambda rec: (rec.date_received or date.min, rec.id),
-            reverse=True,
-        )
+        receipts = self._get_receipts_for_cashflow_year(selected_year)
         cashflow_model = self.env["tenenet.project.cashflow"]
         cashflows = cashflow_model.search([
             ("project_id", "=", self.id),
@@ -1192,7 +1271,18 @@ class TenenetProject(models.Model):
             available_years = [selected_year]
 
         rows = []
+        available_receipts = []
         for receipt in receipts:
+            available_receipts.append({
+                "id": receipt.id,
+                "label": (
+                    f"{cashflow_model._format_sk_date(receipt.date_received)} / "
+                    f"{cashflow_model._format_sk_amount(receipt.amount)}"
+                ),
+                "amount": receipt.amount,
+                "formatted_amount": cashflow_model._format_sk_amount(receipt.amount),
+                "date_received": fields.Date.to_string(receipt.date_received) if receipt.date_received else False,
+            })
             active_months = sorted(set(active_months_by_receipt.get(receipt.id, [])))
             rows.append({
                 "receipt_id": receipt.id,
@@ -1217,8 +1307,10 @@ class TenenetProject(models.Model):
             "available_years": available_years,
             "currency_symbol": self.currency_id.symbol or "",
             "currency_position": self.currency_id.position or "after",
+            "available_receipts": available_receipts,
             "rows": rows,
         }
+
 
     def action_open_receipt_wizard(self):
         self.ensure_one()
