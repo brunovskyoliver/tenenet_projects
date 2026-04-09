@@ -534,14 +534,17 @@ class TenenetUtilizationReportBaseMixin:
         columns = []
         for column in options["columns"]:
             label = column["expression_label"]
-            columns.append(
-                report._build_column_dict(
-                    self._get_column_value(values, label),
-                    column,
-                    options=options,
-                    digits=2,
-                )
+            column_dict = report._build_column_dict(
+                self._get_column_value(values, label),
+                column,
+                options=options,
+                digits=2,
             )
+            status_class = self._get_status_column_class(label, values)
+            if status_class:
+                existing_class = column_dict.get("class", "")
+                column_dict["class"] = f"{existing_class} {status_class}".strip()
+            columns.append(column_dict)
         return columns
 
     def _get_column_value(self, values, label):
@@ -549,6 +552,16 @@ class TenenetUtilizationReportBaseMixin:
             label,
             "" if label in {"manager_name", "project_type", "utilization_status", "non_project_status"} else 0.0,
         )
+
+    def _get_status_column_class(self, label, values):
+        if label not in {"utilization_status", "non_project_status"}:
+            return ""
+        status = values.get(label)
+        if status == "ok":
+            return "tenenet_status_cell is-ok"
+        if status == "warning":
+            return "tenenet_status_cell is-warning"
+        return ""
 
     def _get_project_type_key(self, project):
         if project and project._is_international_by_donor():

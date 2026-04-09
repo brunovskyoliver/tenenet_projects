@@ -93,6 +93,12 @@ class TestTenenetEmployeeListReport(TransactionCase):
         })
         (self.employee_partial | self.employee_full | self.employee_free | self.employee_without_job).invalidate_recordset()
 
+    def _create_timesheet(self, assignment, period, **hours):
+        timesheet = self.env["tenenet.project.timesheet"]._get_or_create_for_assignment_period(assignment, period)
+        if hours:
+            timesheet.with_context(from_hr_leave_sync=True).write(hours)
+        return timesheet
+
     def _availability_selection(self, *selected_states):
         available_states = [
             ("free", "Voľný"),
@@ -140,7 +146,64 @@ class TestTenenetEmployeeListReport(TransactionCase):
         self.assertEqual(columns["work_phone"], "+421901111222")
         self.assertEqual(columns["study_field"], "Psychológia")
         self.assertEqual(columns["manager_name"], "Mgr. Jana Vedúca")
+        self.assertAlmostEqual(columns["utilization_percentage"], 0.0, places=2)
         self.assertAlmostEqual(columns["work_hours"], 8.0, places=2)
+
+    def test_utilization_column_matches_selected_month(self):
+        assignment = self.employee_partial.assignment_ids[:1]
+        self._create_timesheet(assignment, "2026-03-01", hours_pp=120.0)
+
+        line = self._employee_line(self.employee_partial.name, date={"mode": "single", "filter": "custom", "date_to": "2026-03-18"})
+        columns = self._column_map(line)
+
+        utilization = self.env["tenenet.utilization"].search(
+            [("employee_id", "=", self.employee_partial.id), ("period", "=", "2026-03-01")],
+            limit=1,
+        )
+        self.assertTrue(utilization)
+        self.assertAlmostEqual(columns["utilization_percentage"], utilization.utilization_percentage, places=2)
+
+    def test_utilization_column_changes_when_month_changes(self):
+        assignment = self.employee_partial.assignment_ids[:1]
+        self._create_timesheet(assignment, "2026-01-01", hours_pp=40.0)
+        self._create_timesheet(assignment, "2026-02-01", hours_pp=80.0)
+
+        january_columns = self._column_map(
+            self._employee_line(
+                self.employee_partial.name,
+                date={"mode": "single", "filter": "custom", "date_to": "2026-01-10"},
+            )
+        )
+        february_columns = self._column_map(
+            self._employee_line(
+                self.employee_partial.name,
+                date={"mode": "single", "filter": "custom", "date_to": "2026-02-10"},
+            )
+        )
+
+        self.assertNotEqual(january_columns["utilization_percentage"], february_columns["utilization_percentage"])
+
+    def test_grouped_modes_keep_utilization_column(self):
+        assignment = self.employee_partial.assignment_ids[:1]
+        self._create_timesheet(assignment, "2026-04-01", hours_pp=96.0)
+
+        line = self._employee_line(
+            self.employee_partial.name,
+            grouping_mode="availability",
+            date={"mode": "single", "filter": "custom", "date_to": "2026-04-05"},
+        )
+        columns = self._column_map(line)
+
+        self.assertGreater(columns["utilization_percentage"], 0.0)
+
+    def test_utilization_column_defaults_to_zero_without_month_data(self):
+        line = self._employee_line(
+            self.employee_partial.name,
+            date={"mode": "single", "filter": "custom", "date_to": "2030-01-10"},
+        )
+        columns = self._column_map(line)
+
+        self.assertAlmostEqual(columns["utilization_percentage"], 0.0, places=2)
 
     def test_report_search_filters_employee_rows(self):
         line_names = [self._column_map(line)["employee_name"] for line in self._employee_lines(filter_search_bar="adam")]

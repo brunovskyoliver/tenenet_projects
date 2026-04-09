@@ -124,6 +124,14 @@ class TestTenenetEmployeeAssets(TransactionCase):
         self.assertEqual(self.employee.work_phone, "+421 900 123 456")
         self.assertEqual(self.employee.private_phone, "+421 901 654 321")
 
+    def test_employee_moves_legacy_mobile_phone_to_private_phone(self):
+        self.employee.write({
+            "mobile_phone": "+421 901 654 321",
+        })
+
+        self.assertFalse(self.employee.mobile_phone)
+        self.assertEqual(self.employee.private_phone, "+421 901 654 321")
+
     def test_employee_form_does_not_duplicate_language_skill_editor_on_tenenet_tab(self):
         arch = self.env["hr.employee"].get_view(
             view_id=self.env.ref("tenenet_projects.view_hr_employee_form_tenenet").id,
@@ -155,9 +163,83 @@ class TestTenenetEmployeeAssets(TransactionCase):
 
         self.assertTrue(personal_work_phone, "Expected work phone on the Personal tab.")
         self.assertTrue(personal_private_phone, "Expected private phone on the Personal tab.")
+        self.assertTrue(
+            root.xpath("//page[@name='personal_information']//field[@name='can_view_private_phone']"),
+            "Expected the Personal tab to include the private-phone visibility helper field.",
+        )
         self.assertIn(
-            "parent_id.user_id != uid",
+            "not can_view_private_phone",
             personal_private_phone[0].get("invisible", ""),
+        )
+
+    def test_private_phone_visible_to_employee_manager_and_higher_up_only(self):
+        hr_user_group = self.env.ref("hr.group_hr_user")
+        grand_manager_user = self.env["res.users"].with_context(no_reset_password=True).create({
+            "name": "Grand Manager Phone",
+            "login": "grand_manager_phone",
+            "email": "grand_manager_phone@example.com",
+            "company_id": self.company.id,
+            "company_ids": [Command.set([self.company.id])],
+            "group_ids": [Command.set([self.base_user_group.id, hr_user_group.id])],
+        })
+        manager_user = self.env["res.users"].with_context(no_reset_password=True).create({
+            "name": "Manager Phone",
+            "login": "manager_phone",
+            "email": "manager_phone@example.com",
+            "company_id": self.company.id,
+            "company_ids": [Command.set([self.company.id])],
+            "group_ids": [Command.set([self.base_user_group.id, hr_user_group.id])],
+        })
+        employee_user = self.env["res.users"].with_context(no_reset_password=True).create({
+            "name": "Employee Phone",
+            "login": "employee_phone",
+            "email": "employee_phone@example.com",
+            "company_id": self.company.id,
+            "company_ids": [Command.set([self.company.id])],
+            "group_ids": [Command.set([self.base_user_group.id, hr_user_group.id])],
+        })
+        outsider_user = self.env["res.users"].with_context(no_reset_password=True).create({
+            "name": "Outsider Phone",
+            "login": "outsider_phone",
+            "email": "outsider_phone@example.com",
+            "company_id": self.company.id,
+            "company_ids": [Command.set([self.company.id])],
+            "group_ids": [Command.set([self.base_user_group.id, hr_user_group.id])],
+        })
+        grand_manager = self.env["hr.employee"].create({
+            "name": "Grand Manager Phone",
+            "user_id": grand_manager_user.id,
+        })
+        manager = self.env["hr.employee"].create({
+            "name": "Manager Phone",
+            "user_id": manager_user.id,
+            "parent_id": grand_manager.id,
+        })
+        employee = self.env["hr.employee"].create({
+            "name": "Employee Phone",
+            "user_id": employee_user.id,
+            "parent_id": manager.id,
+            "private_phone": "+421 901 654 321",
+        })
+        self.env["hr.employee"].create({
+            "name": "Outsider Phone",
+            "user_id": outsider_user.id,
+        })
+
+        self.assertEqual(
+            employee.with_user(employee_user).read(["private_phone"])[0]["private_phone"],
+            "+421 901 654 321",
+        )
+        self.assertEqual(
+            employee.with_user(manager_user).read(["private_phone"])[0]["private_phone"],
+            "+421 901 654 321",
+        )
+        self.assertEqual(
+            employee.with_user(grand_manager_user).read(["private_phone"])[0]["private_phone"],
+            "+421 901 654 321",
+        )
+        self.assertFalse(
+            employee.with_user(outsider_user).read(["private_phone"])[0]["private_phone"]
         )
 
     def test_site_key_rejects_teren(self):

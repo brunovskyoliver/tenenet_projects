@@ -48,4 +48,17 @@
     .column_header {
         display: none;
     }
+
+    .tenenet_status_cell {
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .tenenet_status_cell.is-ok {
+        color: #198754 !important;
+    }
+
+    .tenenet_status_cell.is-warning {
+        color: #dc3545 !important;
+    }
 }

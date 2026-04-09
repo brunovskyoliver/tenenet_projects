@@ -237,6 +237,7 @@
                 </xpath>
 
                 <xpath expr="//page[@name='personal_information']/group/group[field[@name='private_email']]" position="inside">
+                    <field name="can_view_private_phone" invisible="1" />
                     <field
                         name="work_phone"
                         widget="phone"
@@ -249,7 +250,7 @@
                         name="private_phone"
                         widget="phone"
                         string="Súkromný telefón"
-                        invisible="parent_id.user_id != uid"
+                        invisible="not can_view_private_phone"
                     />
                 </xpath>
 

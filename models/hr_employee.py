@@ -163,6 +163,10 @@ class HrEmployee(models.Model):
         compute="_compute_tenenet_assignment_availability",
         store=True,
     )
+    can_view_private_phone = fields.Boolean(
+        compute="_compute_can_view_private_phone",
+    )
+
     @api.model
     def _compose_display_name(self, title_academic, first_name, last_name):
         parts = [part.strip() for part in [title_academic, first_name, last_name] if part and part.strip()]
@@ -228,6 +232,16 @@ class HrEmployee(models.Model):
         synced_vals["job_id"] = job.id or False
         return synced_vals
 
+    @api.model
+    def _prepare_private_phone_sync_vals(self, vals, record=None):
+        synced_vals = dict(vals)
+        legacy_mobile = synced_vals.get("mobile_phone", record.mobile_phone if record else False)
+        private_phone = synced_vals.get("private_phone", record.private_phone if record else False)
+        if legacy_mobile and not private_phone:
+            synced_vals["private_phone"] = legacy_mobile
+            synced_vals["mobile_phone"] = False
+        return synced_vals
+
     @api.depends("asset_ids", "asset_ids.cost", "asset_ids.active")
     def _compute_asset_total_value(self):
         for employee in self:
@@ -239,6 +253,7 @@ class HrEmployee(models.Model):
         for vals in vals_list:
             synced_vals = self._prepare_identity_sync_vals(vals)
             synced_vals = self._prepare_position_sync_vals(synced_vals)
+            synced_vals = self._prepare_private_phone_sync_vals(synced_vals)
             synced_vals_list.append(synced_vals)
         return super().create(synced_vals_list)
 
@@ -246,13 +261,26 @@ class HrEmployee(models.Model):
         if len(self) == 1:
             vals = self._prepare_identity_sync_vals(vals, self)
             vals = self._prepare_position_sync_vals(vals, self)
+            vals = self._prepare_private_phone_sync_vals(vals, self)
             return super().write(vals)
 
         for record in self:
             record_vals = record._prepare_identity_sync_vals(vals, record)
             record_vals = record._prepare_position_sync_vals(record_vals, record)
+            record_vals = record._prepare_private_phone_sync_vals(record_vals, record)
             super(HrEmployee, record).write(record_vals)
         return True
+
+    def read(self, fields=None, load="_classic_read"):
+        values_list = super().read(fields=fields, load=load)
+        if fields and "private_phone" not in fields:
+            return values_list
+
+        access_map = self._get_private_phone_access_map()
+        for values in values_list:
+            if not access_map.get(values["id"]):
+                values["private_phone"] = False
+        return values_list
 
     @api.model
     def _sync_optional_payroll_cleanup_view(self):
@@ -325,6 +353,26 @@ class HrEmployee(models.Model):
                 is_hr_manager
                 or rec.service_manager_user_ids.filtered(lambda user: user == current_user)
             )
+
+    def _get_private_phone_access_map(self, user=None):
+        current_user = user or self.env.user
+        if current_user.has_group("hr.group_hr_manager") or current_user.has_group("base.group_system"):
+            return {employee.id: True for employee in self}
+
+        access_map = {}
+        for employee in self:
+            access_map[employee.id] = bool(
+                employee.user_id == current_user
+                or current_user in employee.service_manager_user_ids
+            )
+        return access_map
+
+    @api.depends("user_id", "service_manager_user_ids")
+    @api.depends_context("uid")
+    def _compute_can_view_private_phone(self):
+        access_map = self._get_private_phone_access_map()
+        for employee in self:
+            employee.can_view_private_phone = access_map.get(employee.id, False)
 
     @api.depends(
         "work_ratio",

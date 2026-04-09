@@ -4,7 +4,7 @@
             <field name="name">Zoznam zamestnancov</field>
             <field name="load_more_limit">200</field>
             <field name="search_bar" eval="True" />
-            <field name="filter_date_range" eval="False" />
+            <field name="filter_date_range" eval="True" />
             <field name="filter_show_draft" eval="False" />
             <field name="filter_unreconciled" eval="False" />
             <field name="filter_unfold_all" eval="False" />
@@ -17,6 +17,7 @@
             <field name="filter_account_type">disabled</field>
             <field name="filter_partner" eval="False" />
             <field name="filter_aml_ir_filters" eval="False" />
+            <field name="default_opening_date_filter">this_month</field>
             <field
                 name="custom_handler_model_id"
                 ref="model_tenenet_employee_list_report_handler"
@@ -102,6 +103,15 @@
                     <field name="name">Priamy nadriadený</field>
                     <field name="expression_label">manager_name</field>
                     <field name="figure_type">string</field>
+                </record>
+                <record
+                    id="tenenet_employee_list_report_column_utilization_percentage"
+                    model="account.report.column"
+                >
+                    <field name="sequence">75</field>
+                    <field name="name">Vyťaženosť</field>
+                    <field name="expression_label">utilization_percentage</field>
+                    <field name="figure_type">percentage</field>
                 </record>
                 <record
                     id="tenenet_employee_list_report_column_work_hours"

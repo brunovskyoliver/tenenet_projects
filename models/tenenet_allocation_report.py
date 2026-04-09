@@ -9,6 +9,9 @@ class TenenetAllocationReportHandler(models.AbstractModel):
     _inherit = ["account.report.custom.handler"]
     _description = "TENENET Allocation Report Handler"
 
+    _TRAVEL_EXPENSE_TOKENS = ("cestovn", "travel")
+    _TRAINING_EXPENSE_TOKENS = ("školen", "skolen", "training")
+
     def _custom_options_initializer(self, report, options, previous_options=None):
         super()._custom_options_initializer(report, options, previous_options=previous_options)
         custom_display_config = options["custom_display_config"]
@@ -157,6 +160,7 @@ class TenenetAllocationReportHandler(models.AbstractModel):
 
         leave_expenses = internal_expenses.filtered(lambda e: e.category == "leave")
         wage_expenses = internal_expenses.filtered(lambda e: e.category == "wage")
+        expense_expenses = internal_expenses.filtered(lambda e: e.category == "expense")
 
         ie_leave_hm = defaultdict(float)
         ie_leave_ccp = defaultdict(float)
@@ -169,6 +173,15 @@ class TenenetAllocationReportHandler(models.AbstractModel):
         for exp in wage_expenses:
             ie_wage_hm[exp.period.month] += exp.cost_hm or 0.0
             ie_wage_ccp[exp.period.month] += exp.cost_ccp or 0.0
+
+        ie_travel = self._aggregate_internal_expense_bucket_by_month(
+            expense_expenses,
+            self._TRAVEL_EXPENSE_TOKENS,
+        )
+        ie_training = self._aggregate_internal_expense_bucket_by_month(
+            expense_expenses,
+            self._TRAINING_EXPENSE_TOKENS,
+        )
 
         if any(ie_leave_hm.values()) or any(ie_leave_ccp.values()):
             lines.append((0, self._build_report_line(
@@ -202,6 +215,14 @@ class TenenetAllocationReportHandler(models.AbstractModel):
         lines.append((0, self._build_report_line(
             report, options, "Ošetrenie u lekára - náhrady", empty_values, "monetary", 2,
             f"alloc_{emp_id}_placeholder_doctor",
+        )))
+        lines.append((0, self._build_report_line(
+            report, options, "Cestovné náhrady", ie_travel or empty_values, "monetary", 2,
+            f"alloc_{emp_id}_internal_travel",
+        )))
+        lines.append((0, self._build_report_line(
+            report, options, "Školenie", ie_training or empty_values, "monetary", 2,
+            f"alloc_{emp_id}_internal_training",
         )))
         lines.append((0, self._build_report_line(
             report, options, "Finančný príspevok za stravu - náklady", empty_values, "monetary", 2,
@@ -380,6 +401,24 @@ class TenenetAllocationReportHandler(models.AbstractModel):
             result[project.id]["hm"][exp.period.month] += exp.cost_hm or 0.0
             result[project.id]["ccp"][exp.period.month] += exp.cost_ccp or 0.0
         return result
+
+    def _aggregate_internal_expense_bucket_by_month(self, expenses, tokens):
+        result = defaultdict(float)
+        for expense in expenses:
+            if not self._matches_internal_expense_tokens(expense, tokens):
+                continue
+            result[expense.period.month] += expense.cost_ccp or expense.expense_amount or 0.0
+        return result
+
+    def _matches_internal_expense_tokens(self, expense, tokens):
+        search_parts = [
+            expense.expense_type_config_id.name,
+            expense.expense_type_config_id.display_name,
+            expense.hr_expense_id.name,
+            expense.hr_expense_id.product_id.display_name,
+        ]
+        haystack = " ".join(part for part in search_parts if part).lower()
+        return any(token in haystack for token in tokens)
 
     def _subtract_monthly_values(self, source_values, subtract_values):
         result = defaultdict(float)

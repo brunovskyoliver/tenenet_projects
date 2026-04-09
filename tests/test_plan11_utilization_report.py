@@ -155,6 +155,9 @@ class TestTenenetPlan11UtilizationReport(TransactionCase):
         self.assertEqual(columns["project_type"], "N: 1 / M: 0")
         self.assertAlmostEqual(columns["monthly_project_income"], 0.0, places=2)
         self.assertAlmostEqual(columns["project_insurance_income"], 0.0, places=2)
+        column_dicts = {column["expression_label"]: column for column in adam_line["columns"]}
+        self.assertEqual(column_dicts["utilization_status"]["class"], "tenenet_status_cell is-warning")
+        self.assertEqual(column_dicts["non_project_status"]["class"], "tenenet_status_cell is-ok")
 
     def test_report_month_switch_changes_dataset(self):
         self._create_timesheet(self.assignment_a, "2026-01-01", hours_pp=10.0)
@@ -203,6 +206,36 @@ class TestTenenetPlan11UtilizationReport(TransactionCase):
         self.assertEqual(self.project_report.name, "Vyťaženosť report podľa projektu")
         self.assertFalse(self.report.root_report_id)
         self.assertFalse(self.project_report.root_report_id)
+
+    def test_employee_report_status_columns_expose_css_classes(self):
+        self._create_timesheet(
+            self.assignment_a,
+            "2026-08-01",
+            hours_pp=140.0,
+            hours_np=2.0,
+        )
+
+        lines, _options = self._get_lines("2026-08-15")
+        adam_line = self._find_employee_line(lines, "Adam Zamestnanec")
+        columns = {column["expression_label"]: column for column in adam_line["columns"]}
+
+        self.assertEqual(columns["utilization_status"]["class"], "tenenet_status_cell is-ok")
+        self.assertEqual(columns["non_project_status"]["class"], "tenenet_status_cell is-ok")
+
+    def test_project_report_status_columns_expose_css_classes(self):
+        self._create_timesheet(
+            self.assignment_a,
+            "2026-09-01",
+            hours_pp=10.0,
+            hours_np=50.0,
+        )
+
+        lines, _options = self._get_lines("2026-09-15", report=self.project_report)
+        project_line = self._find_line(lines, "Národný projekt")
+        columns = {column["expression_label"]: column for column in project_line["columns"]}
+
+        self.assertEqual(columns["utilization_status"]["class"], "tenenet_status_cell is-warning")
+        self.assertEqual(columns["non_project_status"]["class"], "tenenet_status_cell is-ok")
 
     def test_employee_unfold_shows_projects_with_aggregated_assignments(self):
         self.assignment_a.write({

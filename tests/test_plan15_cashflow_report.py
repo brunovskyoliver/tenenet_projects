@@ -295,6 +295,46 @@ class TestTenenetPlan15CashflowReport(TransactionCase):
         self.assertAlmostEqual(allocation_ccp["month_03"], 2043.0, places=2)
         self.assertAlmostEqual(allocation_internal_wage["month_03"], 681.0, places=2)
 
+    def test_allocation_report_shows_travel_and_training_internal_lines_as_placeholders(self):
+        year = fields.Date.context_today(self).year + 1
+
+        travel_columns = self._column_map(self._find_allocation_line(self._get_allocation_lines(year), "Cestovné náhrady"))
+        training_columns = self._column_map(self._find_allocation_line(self._get_allocation_lines(year), "Školenie"))
+
+        self.assertAlmostEqual(travel_columns["year_total"], 0.0, places=2)
+        self.assertAlmostEqual(training_columns["year_total"], 0.0, places=2)
+
+    def test_allocation_report_uses_internal_expense_amounts_for_travel_and_training(self):
+        year = fields.Date.context_today(self).year + 1
+        travel_type = self.env["tenenet.expense.type.config"].create({"name": "Cestovné náhrady"})
+        training_type = self.env["tenenet.expense.type.config"].create({"name": "Školenie"})
+
+        self.env["tenenet.internal.expense"].create({
+            "employee_id": self.employee.id,
+            "period": f"{year}-03-01",
+            "category": "expense",
+            "source_project_id": self.project_a.id,
+            "expense_type_config_id": travel_type.id,
+            "expense_amount": 45.0,
+        })
+        self.env["tenenet.internal.expense"].create({
+            "employee_id": self.employee.id,
+            "period": f"{year}-04-01",
+            "category": "expense",
+            "source_project_id": self.project_a.id,
+            "expense_type_config_id": training_type.id,
+            "expense_amount": 70.0,
+        })
+
+        lines = self._get_allocation_lines(year)
+        travel_columns = self._column_map(self._find_allocation_line(lines, "Cestovné náhrady"))
+        training_columns = self._column_map(self._find_allocation_line(lines, "Školenie"))
+
+        self.assertAlmostEqual(travel_columns["month_03"], 45.0, places=2)
+        self.assertAlmostEqual(travel_columns["year_total"], 45.0, places=2)
+        self.assertAlmostEqual(training_columns["month_04"], 70.0, places=2)
+        self.assertAlmostEqual(training_columns["year_total"], 70.0, places=2)
+
     def test_salary_row_ignores_stale_override_values(self):
         year = fields.Date.context_today(self).year + 1
         self.env["tenenet.project.timesheet"].create({

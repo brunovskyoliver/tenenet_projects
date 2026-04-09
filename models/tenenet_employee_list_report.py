@@ -1,4 +1,5 @@
-from odoo import models
+from odoo import fields, models
+from odoo.tools import format_date
 
 
 class TenenetEmployeeListReportHandler(models.AbstractModel):
@@ -17,7 +18,7 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
         ("profession", "Podľa profesie"),
         ("availability", "Podľa vyťaženosti"),
     ]
-    _FLOAT_COLUMNS = {"work_hours"}
+    _FLOAT_COLUMNS = {"work_hours", "utilization_percentage"}
     _STRING_COLUMNS = {
         "employee_name",
         "tenenet_number",
@@ -34,11 +35,24 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
         super()._custom_options_initializer(report, options, previous_options=previous_options)
         custom_display_config = options["custom_display_config"]
         custom_display_config["css_custom_class"] = (
-            custom_display_config.get("css_custom_class", "") + " tenenet_pl_report"
+            custom_display_config.get("css_custom_class", "") + " tenenet_pl_report tenenet_utilization_report"
         ).strip()
         custom_display_config.setdefault("components", {})["AccountReportFilters"] = (
             "TenenetEmployeeListReportFilters"
         )
+
+        period = self._get_selected_month_start(options)
+        options["date"]["filter"] = "this_month"
+        options["date"]["period_type"] = "month"
+        options["date"]["period"] = self._get_month_offset(period)
+        options["date"]["date_from"] = fields.Date.to_string(period)
+        options["date"]["date_to"] = fields.Date.to_string(fields.Date.end_of(period, "month"))
+        month_str = format_date(self.env, options["date"]["date_to"], date_format="MMM yyyy")
+        options["date"]["string"] = month_str
+
+        for cg_data in options.get("column_groups", {}).values():
+            if isinstance(cg_data, dict):
+                cg_data["string"] = month_str
 
         language_skill_type = self._get_language_skill_type()
         selected_jobs = self._get_selected_jobs(previous_options)
@@ -66,16 +80,21 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
         ]
 
     def _dynamic_lines_generator(self, report, options, all_column_groups_expression_totals, warnings=None):
+        period = self._get_selected_month_start(options)
+        utilization_by_employee = self._get_utilization_by_employee(period)
         employees = self._get_employee_records(
             options,
             search_term=options.get("filter_search_bar"),
         )
         grouping_mode = options.get("grouping_mode", "none")
         if grouping_mode == "profession":
-            return self._get_grouped_lines(report, options, employees, grouping_mode)
+            return self._get_grouped_lines(report, options, employees, grouping_mode, utilization_by_employee)
         if grouping_mode == "availability":
-            return self._get_grouped_lines(report, options, employees, grouping_mode)
-        return [(0, self._get_report_line(report, options, employee)) for employee in employees]
+            return self._get_grouped_lines(report, options, employees, grouping_mode, utilization_by_employee)
+        return [
+            (0, self._get_report_line(report, options, employee, utilization_by_employee))
+            for employee in employees
+        ]
 
     def _get_employee_records(self, options, search_term=None):
         employees = self.env["hr.employee"].search([], order="tenenet_number, last_name, first_name, name")
@@ -117,12 +136,12 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
             )
         return employees
 
-    def _get_grouped_lines(self, report, options, employees, grouping_mode):
+    def _get_grouped_lines(self, report, options, employees, grouping_mode, utilization_by_employee):
         lines = []
         for section_key, section_label, section_employees in self._group_employees(employees, grouping_mode):
             lines.append((0, self._get_section_line(report, options, grouping_mode, section_key, section_label)))
             lines.extend(
-                (0, self._get_report_line(report, options, employee, level=2))
+                (0, self._get_report_line(report, options, employee, utilization_by_employee, level=2))
                 for employee in section_employees
             )
         return lines
@@ -188,13 +207,13 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
             "unfoldable": False,
         }
 
-    def _get_report_line(self, report, options, employee, level=2):
+    def _get_report_line(self, report, options, employee, utilization_by_employee, level=2):
         columns = []
         for column in options["columns"]:
             label = column["expression_label"]
             columns.append(
                 report._build_column_dict(
-                    self._get_column_value(employee, label),
+                    self._get_column_value(employee, label, utilization_by_employee),
                     column,
                     options=options,
                     digits=2,
@@ -208,13 +227,16 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
             "level": level,
         }
 
-    def _get_column_value(self, employee, label):
+    def _get_column_value(self, employee, label, utilization_by_employee):
         if label == "employee_name":
             return employee.name or ""
         if label == "manager_name":
             return employee.parent_id.name or ""
         if label == "tenenet_number":
             return str(employee.tenenet_number) if employee.tenenet_number else ""
+        if label == "utilization_percentage":
+            utilization = utilization_by_employee.get(employee.id)
+            return utilization.utilization_percentage if utilization else 0.0
         if label in self._STRING_COLUMNS:
             return employee[label] or ""
         if label in self._FLOAT_COLUMNS:
@@ -236,6 +258,20 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
     def _get_selected_jobs(self, previous_options):
         job_ids = self._sanitize_ids(previous_options and previous_options.get("job_ids"))
         return self.env["hr.job"].browse(job_ids).exists()
+
+    def _get_selected_month_start(self, options):
+        date_to = options.get("date", {}).get("date_to") or fields.Date.context_today(self)
+        return self.env["tenenet.utilization"]._normalize_period(date_to)
+
+    def _get_month_offset(self, period):
+        period_date = fields.Date.to_date(period)
+        today = fields.Date.context_today(self)
+        today_month_start = today.replace(day=1)
+        return (period_date.year - today_month_start.year) * 12 + period_date.month - today_month_start.month
+
+    def _get_utilization_by_employee(self, period):
+        records = self.env["tenenet.utilization"].sudo()._refresh_for_period(period)
+        return {record.employee_id.id: record for record in records if record.employee_id}
 
     def _get_selected_language_skills(self, previous_options, language_skill_type):
         skill_ids = self._sanitize_ids(previous_options and previous_options.get("language_skill_ids"))

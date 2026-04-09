@@ -179,7 +179,7 @@ def get_or_create_employee(env, row: dict[str, str], department_map: dict[str, i
         "department_id": department_map.get(row["department_id/id"]) or False,
         "position_catalog_id": job_map.get(row["job_id/id"]) or False,
         "work_email": row.get("work_email") or False,
-        "mobile_phone": row.get("mobile_phone") or False,
+        "private_phone": row.get("private_phone") or row.get("mobile_phone") or False,
         "work_phone": row.get("work_phone") or False,
         "work_location_id": work_location.id if work_location else False,
         "address_id": work_location.address_id.id if work_location else False,
