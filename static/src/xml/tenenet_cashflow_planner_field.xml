@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="tenenet_projects.TenenetCashflowPlannerField">
+        <div class="o_tenenet_cashflow_planner">
+            <t t-if="!hasRecord">
+                <div class="o_tenenet_cashflow_planner_empty">
+                    Cashflow bude dostupný po uložení projektu.
+                </div>
+            </t>
+            <t t-elif="state.loading">
+                <div class="o_tenenet_cashflow_planner_loading">
+                    <i class="fa fa-spinner fa-spin me-2"/>Načítavam...
+                </div>
+            </t>
+            <t t-else="">
+                <div class="o_tenenet_cashflow_planner_header">
+                    <div class="o_tenenet_cashflow_planner_title">Cashflow</div>
+                    <div class="o_tenenet_cashflow_planner_year">
+                        <button class="btn btn-secondary btn-sm"
+                                t-on-click="() => this.changeYear(-1)">
+                            <i class="fa fa-chevron-left"/>
+                        </button>
+                        <span class="o_tenenet_cashflow_planner_year_value" t-out="state.year"/>
+                        <button class="btn btn-secondary btn-sm"
+                                t-on-click="() => this.changeYear(1)">
+                            <i class="fa fa-chevron-right"/>
+                        </button>
+                    </div>
+                </div>
+
+                <t t-if="state.rows.length === 0">
+                    <div class="o_tenenet_cashflow_planner_empty">
+                        V roku <t t-out="state.year"/> nie sú na projekte evidované žiadne prijaté prostriedky.
+                    </div>
+                </t>
+                <t t-else="">
+                    <div class="table-responsive">
+                        <table class="table table-sm o_tenenet_cashflow_planner_table">
+                            <thead>
+                                <tr>
+                                    <th class="o_tenenet_cashflow_planner_label_head">Príjem</th>
+                                    <t t-foreach="months" t-as="month" t-key="month.number">
+                                        <th class="o_tenenet_cashflow_planner_month_head" t-out="month.label"/>
+                                    </t>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="state.rows" t-as="row" t-key="row.receipt_id">
+                                    <tr>
+                                        <td class="o_tenenet_cashflow_planner_label_cell">
+                                            <div class="o_tenenet_cashflow_planner_receipt_label" t-out="row.label"/>
+                                            <t t-if="row.note">
+                                                <div class="o_tenenet_cashflow_planner_receipt_note" t-out="row.note"/>
+                                            </t>
+                                        </td>
+                                        <t t-foreach="months" t-as="month" t-key="month.number">
+                                            <td t-att-class="{
+                                                    'o_tenenet_cashflow_planner_cell': true,
+                                                    'is-filled': this.isFilled(row, month.number),
+                                                    'is-selected': this.isSelected(row, month.number),
+                                                    'is-selection-edge': this.isSelectionEdge(row, month.number),
+                                                }"
+                                                t-on-pointerdown="(ev) => this.onCellPointerDown(row, month.number, ev)"
+                                                t-on-pointerenter="() => this.onCellPointerEnter(row, month.number)">
+                                                <span class="o_tenenet_cashflow_planner_cell_value"
+                                                      t-out="this.formatCellValue(row, month.number)"/>
+                                            </td>
+                                        </t>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </div>
+    </t>
+
+    <t t-name="tenenet_projects.TenenetCashflowPlannerDialog">
+        <Dialog size="'md'" title="'Cashflow'" contentClass="'o_tenenet_cashflow_planner_dialog'">
+            <div class="o_tenenet_cashflow_dialog_meta">
+                <div class="o_tenenet_cashflow_dialog_receipt_block">
+                    <div class="o_tenenet_cashflow_dialog_receipt" t-out="props.rowLabel"/>
+                    <div class="o_tenenet_cashflow_dialog_cap">
+                        Maximum
+                        <strong t-out="formatAmountWithCurrency(props.maxDistributeAmount)"/>
+                    </div>
+                </div>
+                <div class="o_tenenet_cashflow_dialog_total">
+                    <label class="o_tenenet_cashflow_dialog_total_label">Na rozdelenie</label>
+                    <input type="text"
+                           inputmode="decimal"
+                           class="form-control o_tenenet_cashflow_dialog_total_input"
+                           t-att-value="formatAmountInput(state.distributeAmount)"
+                           t-on-change="onDistributeAmountChange"/>
+                </div>
+                <div class="o_tenenet_cashflow_dialog_total">
+                    <span>Zostáva</span>
+                    <strong t-out="formatAmountWithCurrency(props.remainingAmount)"/>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm o_tenenet_cashflow_dialog_table">
+                    <thead>
+                        <tr>
+                            <th>Mesiac</th>
+                            <th>Suma</th>
+                            <th>Stav</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="entries" t-as="entry" t-key="entry.month">
+                            <tr>
+                                <td class="o_tenenet_cashflow_dialog_month">
+                                        <span t-out="getMonthLabel(entry.month)"/>
+                                        <span class="o_tenenet_cashflow_dialog_year" t-out="props.year"/>
+                                    </td>
+                                    <td class="o_tenenet_cashflow_dialog_amount">
+                                        <input type="text"
+                                           inputmode="decimal"
+                                           class="form-control form-control-sm o_tenenet_cashflow_dialog_input"
+                                           t-att-value="formatAmountInput(entry.amount)"
+                                           t-on-change="(ev) => this.onAmountChange(entry.month, ev)"
+                                           t-on-focus="(ev) => ev.target.select()"/>
+                                </td>
+                                <td class="o_tenenet_cashflow_dialog_state">
+                                    <span t-att-class="{
+                                            'o_tenenet_cashflow_dialog_badge': true,
+                                            'is-manual': entry.manual,
+                                            'is-auto': !entry.manual,
+                                        }"
+                                          t-out="entry.manual ? 'Fixné' : 'Auto'"/>
+                                </td>
+                            </tr>
+                        </t>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th>Spolu</th>
+                            <th t-out="formatAmountWithCurrency(totalAssigned)"/>
+                            <th/>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            <t t-set-slot="footer">
+                <button t-if="props.hasExistingAllocation"
+                        class="btn btn-outline-secondary"
+                        t-on-click="() => this.onResetSelection()"
+                        t-att-disabled="state.saving">
+                    Resetovať rozsah
+                </button>
+                <button class="btn btn-primary"
+                        t-on-click="() => this.onSave()"
+                        t-att-disabled="state.saving">
+                    Uložiť
+                </button>
+                <button class="btn btn-secondary"
+                        t-on-click="() => props.close()"
+                        t-att-disabled="state.saving">
+                    Zrušiť
+                </button>
+            </t>
+        </Dialog>
+    </t>
+</templates>

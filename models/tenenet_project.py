@@ -253,6 +253,10 @@ class TenenetProject(models.Model):
         compute="_compute_active_year_range",
         store=True,
     )
+    cashflow_planner_state = fields.Json(
+        string="Cashflow planner",
+        compute="_compute_cashflow_planner_state",
+    )
 
     @api.depends("date_start", "date_end")
     def _compute_active_year_range(self):
@@ -269,6 +273,14 @@ class TenenetProject(models.Model):
             else:
                 rec.active_year_from = False
                 rec.active_year_to = False
+
+    def _compute_cashflow_planner_state(self):
+        current_year = fields.Date.context_today(self).year
+        for rec in self:
+            rec.cashflow_planner_state = {
+                "project_id": rec.id or False,
+                "current_year": current_year,
+            }
 
     def _is_hidden_internal_program(self, program):
         return bool(
@@ -695,6 +707,60 @@ class TenenetProject(models.Model):
         action["context"] = context
         action["target"] = "current"
         return action
+
+    def get_cashflow_planner_data(self, year=None):
+        self.ensure_one()
+        selected_year = int(year or fields.Date.context_today(self).year)
+        receipts = self.receipt_line_ids.filtered(lambda rec: rec.year == selected_year).sorted(
+            key=lambda rec: (rec.date_received or date.min, rec.id),
+            reverse=True,
+        )
+        cashflow_model = self.env["tenenet.project.cashflow"]
+        cashflows = cashflow_model.search([
+            ("project_id", "=", self.id),
+            ("year", "=", selected_year),
+            ("receipt_id", "in", receipts.ids),
+        ], order="receipt_id, month")
+
+        empty_months = {str(month): 0.0 for month in range(1, 13)}
+        months_by_receipt = {receipt.id: dict(empty_months) for receipt in receipts}
+        active_months_by_receipt = {receipt.id: [] for receipt in receipts}
+        for cashflow in cashflows:
+            receipt_id = cashflow.receipt_id.id
+            months_by_receipt.setdefault(receipt_id, dict(empty_months))[str(cashflow.month)] = cashflow.amount
+            active_months_by_receipt.setdefault(receipt_id, []).append(cashflow.month)
+
+        available_years = sorted({receipt.year for receipt in self.receipt_line_ids if receipt.year})
+        if not available_years:
+            available_years = [selected_year]
+
+        rows = []
+        for receipt in receipts:
+            active_months = sorted(set(active_months_by_receipt.get(receipt.id, [])))
+            rows.append({
+                "receipt_id": receipt.id,
+                "date_received": fields.Date.to_string(receipt.date_received) if receipt.date_received else False,
+                "label": (
+                    f"{cashflow_model._format_sk_date(receipt.date_received)} / "
+                    f"{cashflow_model._format_sk_amount(receipt.amount)}"
+                ),
+                "formatted_amount": cashflow_model._format_sk_amount(receipt.amount),
+                "amount": receipt.amount,
+                "note": receipt.note or "",
+                "months": months_by_receipt.get(receipt.id, dict(empty_months)),
+                "start_month": active_months[0] if active_months else False,
+                "end_month": active_months[-1] if active_months else False,
+            })
+
+        return {
+            "project_id": self.id,
+            "project_name": self.display_name,
+            "year": selected_year,
+            "available_years": available_years,
+            "currency_symbol": self.currency_id.symbol or "",
+            "currency_position": self.currency_id.position or "after",
+            "rows": rows,
+        }
 
     def action_open_receipt_wizard(self):
         self.ensure_one()

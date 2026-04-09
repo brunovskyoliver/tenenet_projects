@@ -30,6 +30,7 @@ and P&L reporting by program.
             'tenenet_projects/static/src/js/tenenet_employee_list_report_filters.js',
             'tenenet_projects/static/src/js/tenenet_my_timesheets_action.js',
             'tenenet_projects/static/src/js/tenenet_garant_timesheets_action.js',
+            'tenenet_projects/static/src/js/tenenet_cashflow_planner_field.js',
             'tenenet_projects/static/src/js/timesheet_matrix_host.js',
             'tenenet_projects/static/src/xml/tenenet_internal_expense_report_filters.xml',
             'tenenet_projects/static/src/xml/tenenet_internal_expense_report_line_cell.xml',
@@ -41,6 +42,7 @@ and P&L reporting by program.
             'tenenet_projects/static/src/xml/tenenet_employee_list_report_filters.xml',
             'tenenet_projects/static/src/xml/tenenet_my_timesheets_action.xml',
             'tenenet_projects/static/src/xml/tenenet_garant_timesheets_action.xml',
+            'tenenet_projects/static/src/xml/tenenet_cashflow_planner_field.xml',
             'tenenet_projects/static/src/js/tenenet_home_menu_utilization.js',
             'tenenet_projects/static/src/xml/tenenet_home_menu_utilization.xml',
             'tenenet_projects/static/src/xml/hr_holidays_overrides.xml',
@@ -54,6 +56,7 @@ and P&L reporting by program.
             'tenenet_projects/static/src/scss/timesheet_matrix.scss',
             'tenenet_projects/static/src/scss/tenenet_home_menu_utilization.scss',
             'tenenet_projects/static/src/scss/hr_employee.scss',
+            'tenenet_projects/static/src/scss/tenenet_cashflow_planner.scss',
         ],
         'web.assets_backend_lazy': [
             'tenenet_projects/static/src/js/cashflow_gantt_view.js',

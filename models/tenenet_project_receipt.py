@@ -2,6 +2,7 @@ import datetime
 
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
+from odoo.tools.float_utils import float_compare
 
 
 class TenenetProjectReceipt(models.Model):
@@ -88,39 +89,43 @@ class TenenetProjectReceipt(models.Model):
 
     def _generate_equal_cashflow(self):
         self.ensure_one()
-        self.cashflow_ids.unlink()
         if not self.year or not self.amount:
+            self.cashflow_ids.unlink()
             return
-        currency = self.currency_id or self.env.company.currency_id
-        monthly_amount = currency.round(self.amount / 12)
         start_month = self.date_received.month if self.date_received else 1
-        vals_list = []
-        total_assigned = 0.0
-        for month in range(start_month, 13):
-            date_start = datetime.date(self.year, month, 1)
-            if month == start_month:
-                date_stop = (
-                    datetime.date(self.year, month + 1, 1) - datetime.timedelta(days=1)
-                    if month < 12
-                    else datetime.date(self.year, 12, 31)
-                )
-                month_amount = currency.round(monthly_amount * start_month)
-                total_assigned += month_amount
-            elif month == 12:
-                date_stop = datetime.date(self.year, 12, 31)
-                month_amount = currency.round(self.amount - total_assigned)
+        month_numbers = list(range(start_month, 13))
+        currency = self.currency_id or self.env.company.currency_id
+        monthly_amount = currency.round(self.amount / len(month_numbers))
+        assigned_amount = 0.0
+        month_amounts = {}
+        for index, month in enumerate(month_numbers, start=1):
+            if index == len(month_numbers):
+                month_amounts[month] = currency.round(self.amount - assigned_amount)
             else:
-                date_stop = datetime.date(self.year, month + 1, 1) - datetime.timedelta(days=1)
-                month_amount = monthly_amount
-                total_assigned += month_amount
-            vals_list.append({
+                month_amounts[month] = monthly_amount
+                assigned_amount += monthly_amount
+        self._replace_cashflow_month_amounts(month_amounts)
+
+    def _replace_cashflow_month_amounts(self, month_amounts):
+        self.ensure_one()
+        self.cashflow_ids.unlink()
+        if not month_amounts:
+            return True
+
+        values_list = []
+        for month in sorted(month_amounts):
+            if abs(month_amounts[month]) < 0.00001:
+                continue
+            date_start, date_stop = self._month_bounds(self.year, month)
+            values_list.append({
                 "project_id": self.project_id.id,
                 "receipt_id": self.id,
                 "date_start": date_start,
                 "date_stop": date_stop,
-                "amount": month_amount,
+                "amount": month_amounts[month],
             })
-        self.env["tenenet.project.cashflow"].create(vals_list)
+        self.env["tenenet.project.cashflow"].create(values_list)
+        return True
 
     def distribute_cashflow_span(self, date_from, date_to, amount=None):
         self.ensure_one()
@@ -139,26 +144,59 @@ class TenenetProjectReceipt(models.Model):
         currency = self.currency_id or self.env.company.currency_id
         month_numbers = self._iter_month_numbers(date_from, date_to)
 
-        self.cashflow_ids.unlink()
         if not total_amount or not month_numbers:
+            self.cashflow_ids.unlink()
             return True
 
         monthly_amount = currency.round(total_amount / len(month_numbers))
         assigned_amount = 0.0
-        values_list = []
+        month_amounts = {}
         for index, month in enumerate(month_numbers, start=1):
-            date_start, date_stop = self._month_bounds(self.year, month)
             if index == len(month_numbers):
                 month_amount = currency.round(total_amount - assigned_amount)
             else:
                 month_amount = monthly_amount
                 assigned_amount += month_amount
-            values_list.append({
-                "project_id": self.project_id.id,
-                "receipt_id": self.id,
-                "date_start": date_start,
-                "date_stop": date_stop,
-                "amount": month_amount,
-            })
-        self.env["tenenet.project.cashflow"].create(values_list)
-        return True
+            month_amounts[month] = month_amount
+        return self._replace_cashflow_month_amounts(month_amounts)
+
+    def distribute_cashflow_month_span(self, year, start_month, end_month):
+        self.ensure_one()
+        year = int(year or 0)
+        start_month = int(start_month or 0)
+        end_month = int(end_month or 0)
+        if year != self.year:
+            raise ValidationError("Vybraný rok musí byť zhodný s rokom príjmu.")
+        if start_month < 1 or start_month > 12 or end_month < 1 or end_month > 12:
+            raise ValidationError("Mesiace distribúcie musia byť v rozsahu 1 až 12.")
+        if start_month > end_month:
+            raise ValidationError("Počiatočný mesiac nemôže byť neskôr ako koncový mesiac.")
+
+        date_from, _date_ignore = self._month_bounds(year, start_month)
+        _date_ignore, date_to = self._month_bounds(year, end_month)
+        return self.distribute_cashflow_span(date_from, date_to)
+
+    def set_cashflow_month_amounts(self, year, month_amounts):
+        self.ensure_one()
+        year = int(year or 0)
+        if year != self.year:
+            raise ValidationError("Vybraný rok musí byť zhodný s rokom príjmu.")
+        if not isinstance(month_amounts, dict) or not month_amounts:
+            raise ValidationError("Je potrebné zadať aspoň jeden mesiac cashflow.")
+
+        currency = self.currency_id or self.env.company.currency_id
+        normalized_amounts = {}
+        for month_key, amount in month_amounts.items():
+            month = int(month_key)
+            if month < 1 or month > 12:
+                raise ValidationError("Mesiace cashflow musia byť v rozsahu 1 až 12.")
+            amount_value = currency.round(float(amount or 0.0))
+            if amount_value < 0:
+                raise ValidationError("Mesačný cashflow nemôže byť záporný.")
+            normalized_amounts[month] = amount_value
+
+        total_amount = sum(normalized_amounts.values())
+        if float_compare(total_amount, self.amount, precision_rounding=currency.rounding) > 0:
+            raise ValidationError("Súčet mesačných hodnôt nemôže byť vyšší ako celá suma príjmu.")
+
+        return self._replace_cashflow_month_amounts(normalized_amounts)

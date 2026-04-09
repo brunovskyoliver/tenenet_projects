@@ -134,6 +134,12 @@
                                                 class="btn-link"/>
                                     </list>
                                 </field>
+                                <separator string="Cashflow planner" invisible="not id"/>
+                                <field name="cashflow_planner_state"
+                                       widget="tenenet_cashflow_planner"
+                                       nolabel="1"
+                                       readonly="1"
+                                       invisible="not id"/>
                             </page>
                             <page string="Rozpočet">
                                 <group>

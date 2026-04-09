@@ -7,8 +7,8 @@ class TestTenenetPlan15CashflowReport(TransactionCase):
     def setUp(self):
         super().setUp()
         self.report = self.env.ref("tenenet_projects.tenenet_cashflow_report")
-        self.program_a = self.env["tenenet.program"].create({"name": "Program A"})
-        self.program_b = self.env["tenenet.program"].create({"name": "Program B"})
+        self.program_a = self.env["tenenet.program"].create({"name": "Program A", "code": "PLAN15_A"})
+        self.program_b = self.env["tenenet.program"].create({"name": "Program B", "code": "PLAN15_B"})
         self.project_a = self.env["tenenet.project"].create({
             "name": "Projekt A",
             "program_ids": [(6, 0, self.program_a.ids)],
