@@ -135,7 +135,7 @@
                                             invisible="not id or not receipt_line_ids"/>
                                 </div>
                                 <field name="receipt_line_ids" nolabel="1">
-                                    <list string="Prijaté prostriedky" create="0" delete="1"
+                                    <list string="Prijaté prostriedky" create="0" edit="0" delete="0"
                                           default_order="date_received desc">
                                         <field name="date_received"/>
                                         <field name="year" readonly="1"/>
@@ -145,6 +145,11 @@
                                                 type="object"
                                                 string="Distribuovať cashflow"
                                                 class="btn-link"/>
+                                        <button name="action_delete_with_reload"
+                                                type="object"
+                                                string="Odstrániť"
+                                                icon="fa-trash"
+                                                class="btn-link text-danger"/>
                                     </list>
                                 </field>
                                 <separator string="Cashflow planner" invisible="not id"/>
@@ -152,6 +157,12 @@
                                        widget="tenenet_cashflow_planner"
                                        nolabel="1"
                                        readonly="1"
+                                       invisible="not id"/>
+                                <separator string="Mesačné porovnanie cashflow a výdavkov" invisible="not id"/>
+                                <field name="finance_monthly_comparison_state"
+                                       widget="tenenet_finance_comparison_chart"
+                                       class="w-100"
+                                       nolabel="1"
                                        invisible="not id"/>
                             </page>
                             <page string="Rozpočet">

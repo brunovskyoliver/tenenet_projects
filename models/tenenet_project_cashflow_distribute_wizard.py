@@ -83,4 +83,4 @@ class TenenetProjectCashflowDistributeWizard(models.TransientModel):
     def action_distribute(self):
         self.ensure_one()
         self.receipt_id.distribute_cashflow_span(self.date_from, self.date_to, amount=self.amount)
-        return {"type": "ir.actions.act_window_close"}
+        return {"type": "ir.actions.client", "tag": "soft_reload"}

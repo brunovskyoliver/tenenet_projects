@@ -140,6 +140,15 @@
             background: var(--planner-accent-soft);
         }
 
+        &.is-disabled {
+            cursor: default;
+            opacity: 0.45;
+
+            &:hover {
+                background: var(--planner-surface);
+            }
+        }
+
         &.is-selected {
             background: var(--planner-accent);
             color: var(--planner-accent-text);

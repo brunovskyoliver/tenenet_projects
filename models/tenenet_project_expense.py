@@ -69,9 +69,20 @@ class TenenetProjectExpense(models.Model):
         for vals in vals_list:
             if "charged_to" not in vals or vals.get("charged_to") == "project":
                 vals["charged_to"] = self._compute_charged_to(vals)
-        return super().create(vals_list)
+        records = super().create(vals_list)
+        self.env["tenenet.project"]._sync_finance_monthly_comparison_pairs({
+            (record.project_id.id, record.date.year)
+            for record in records
+            if record.project_id and record.date
+        })
+        return records
 
     def write(self, vals):
+        old_pairs = {
+            (record.project_id.id, record.date.year)
+            for record in self
+            if record.project_id and record.date
+        }
         # Re-evaluate charged_to when amount or type changes, unless explicitly set.
         if ("amount" in vals or "allowed_type_id" in vals) and "charged_to" not in vals:
             for rec in self:
@@ -81,7 +92,15 @@ class TenenetProjectExpense(models.Model):
                 check_vals.setdefault("project_id", rec.project_id.id)
                 vals["charged_to"] = self._compute_charged_to(check_vals, exclude_id=rec.id)
                 break
-        return super().write(vals)
+        result = super().write(vals)
+        self.env["tenenet.project"]._sync_finance_monthly_comparison_pairs(
+            old_pairs | {
+                (record.project_id.id, record.date.year)
+                for record in self
+                if record.project_id and record.date
+            }
+        )
+        return result
 
     def _compute_charged_to(self, vals, exclude_id=None):
         """Return 'project' or 'internal' based on whether the type's budget allows it."""
@@ -101,3 +120,13 @@ class TenenetProjectExpense(models.Model):
             self.search(domain).mapped("amount")
         )
         return "project" if already_spent < expense_type.max_amount else "internal"
+
+    def unlink(self):
+        affected_pairs = {
+            (record.project_id.id, record.date.year)
+            for record in self
+            if record.project_id and record.date
+        }
+        result = super().unlink()
+        self.env["tenenet.project"]._sync_finance_monthly_comparison_pairs(affected_pairs)
+        return result

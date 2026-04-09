@@ -19,6 +19,7 @@ from . import tenenet_project_milestone
 from . import tenenet_project_receipt
 from . import tenenet_project_cashflow_distribute_wizard
 from . import tenenet_project_cashflow
+from . import tenenet_project_finance_monthly_line
 from . import tenenet_cashflow_global_override
 from . import tenenet_program_sales_entry
 from . import tenenet_fundraising_campaign

@@ -1,4 +1,5 @@
 from odoo import api, fields, models
+from odoo.exceptions import ValidationError
 
 
 class TenenetProjectCashflow(models.Model):
@@ -114,13 +115,36 @@ class TenenetProjectCashflow(models.Model):
             formatted = f"{rec.amount:,.0f}".replace(",", "\u00a0")
             rec.name = f"{formatted}\u00a0{symbol}"
 
+    @api.constrains("receipt_id", "date_start")
+    def _check_receipt_month_alignment(self):
+        for rec in self:
+            if not rec.receipt_id or not rec.date_start:
+                continue
+            receipt_date = rec.receipt_id.date_received
+            if not receipt_date:
+                continue
+            if rec.date_start.year != receipt_date.year:
+                raise ValidationError("Cashflow musí zostať v rovnakom roku ako prijatý príjem.")
+            if rec.date_start.month < receipt_date.month:
+                raise ValidationError("Cashflow nemôže začínať pred mesiacom prijatia príjmu.")
+
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
         records._sync_grid_labels()
+        self.env["tenenet.project"]._sync_finance_monthly_comparison_pairs({
+            (record.project_id.id, record.receipt_year)
+            for record in records
+            if record.project_id and record.receipt_year
+        })
         return records
 
     def write(self, vals):
+        old_pairs = {
+            (record.project_id.id, record.receipt_year)
+            for record in self
+            if record.project_id and record.receipt_year
+        }
         vals = dict(vals)
         # Months are fixed — ignore any date changes (gantt drag has no effect)
         vals.pop("date_start", None)
@@ -133,6 +157,13 @@ class TenenetProjectCashflow(models.Model):
         if "amount" in vals and not self.env.context.get("_cashflow_adjusting"):
             for receipt in self.mapped("receipt_id"):
                 self._adjust_last_month_for_receipt(receipt)
+        self.env["tenenet.project"]._sync_finance_monthly_comparison_pairs(
+            old_pairs | {
+                (record.project_id.id, record.receipt_year)
+                for record in self
+                if record.project_id and record.receipt_year
+            }
+        )
         return result
 
     @api.model
@@ -194,10 +225,16 @@ class TenenetProjectCashflow(models.Model):
 
     def unlink(self):
         affected_years = set(self.mapped("receipt_year"))
+        affected_pairs = {
+            (record.project_id.id, record.receipt_year)
+            for record in self
+            if record.project_id and record.receipt_year
+        }
         result = super().unlink()
         if affected_years:
             handler = self.env["tenenet.cashflow.report.handler"]
             override_model = self.env["tenenet.cashflow.global.override"]
             for year in affected_years:
                 override_model.sync_year_rows(year, handler._get_effective_editable_rows(year))
+        self.env["tenenet.project"]._sync_finance_monthly_comparison_pairs(affected_pairs)
         return result

@@ -1,0 +1,17 @@
+<odoo>
+    <data>
+        <record id="view_tenenet_project_finance_monthly_line_graph" model="ir.ui.view">
+            <field name="name">tenenet.project.finance.monthly.line.graph</field>
+            <field name="model">tenenet.project.finance.monthly.line</field>
+            <field name="arch" type="xml">
+                <graph string="Mesačné porovnanie cashflow a výdavkov"
+                       type="line"
+                       disable_linking="1">
+                    <field name="period" interval="month"/>
+                    <field name="series"/>
+                    <field name="amount" type="measure" string="Suma"/>
+                </graph>
+            </field>
+        </record>
+    </data>
+</odoo>

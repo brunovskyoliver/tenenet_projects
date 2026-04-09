@@ -249,6 +249,7 @@ export class TenenetCashflowPlannerField extends Component {
 
     setup() {
         this.orm = useService("orm");
+        this.action = useService("action");
         this.dialog = useService("dialog");
         this.notification = useService("notification");
         this.state = useState({
@@ -334,7 +335,7 @@ export class TenenetCashflowPlannerField extends Component {
     }
 
     onCellPointerDown(row, month, ev) {
-        if (!this.hasRecord || this.state.loading) {
+        if (!this.hasRecord || this.state.loading || !this.isEditableMonth(row, month)) {
             return;
         }
         ev.preventDefault();
@@ -345,7 +346,11 @@ export class TenenetCashflowPlannerField extends Component {
     }
 
     onCellPointerEnter(row, month) {
-        if (!this.state.drag.active || this.state.drag.receiptId !== row.receipt_id) {
+        if (
+            !this.state.drag.active
+            || this.state.drag.receiptId !== row.receipt_id
+            || !this.isEditableMonth(row, month)
+        ) {
             return;
         }
         this.state.drag.endMonth = month;
@@ -471,7 +476,7 @@ export class TenenetCashflowPlannerField extends Component {
                 this.buildUpdatedYearMonthAmounts(selection, payload),
             ]);
             this.notification.add(_t("Cashflow bol aktualizovaný."), { type: "success" });
-            await this.loadPlannerData();
+            await this.action.doAction({ type: "ir.actions.client", tag: "soft_reload" });
         } catch (error) {
             this.notification.add(error.data?.message || _t("Nepodarilo sa uložiť cashflow."), {
                 type: "danger",
@@ -479,6 +484,10 @@ export class TenenetCashflowPlannerField extends Component {
             return false;
         }
         return true;
+    }
+
+    isEditableMonth(row, month) {
+        return !row.receipt_month || month >= row.receipt_month;
     }
 
     isFilled(row, month) {

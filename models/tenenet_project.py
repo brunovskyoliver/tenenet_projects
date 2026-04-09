@@ -163,6 +163,21 @@ class TenenetProject(models.Model):
         "project_id",
         string="Predikovaný cashflow",
     )
+    finance_graph_year = fields.Integer(
+        string="Rok grafu",
+        default=lambda self: fields.Date.context_today(self).year,
+    )
+    finance_monthly_comparison_line_ids = fields.One2many(
+        "tenenet.project.finance.monthly.line",
+        "project_id",
+        compute="_compute_finance_monthly_comparison_line_ids",
+        string="Mesačné porovnanie cashflow a výdavkov",
+        readonly=True,
+    )
+    finance_monthly_comparison_state = fields.Json(
+        compute="_compute_finance_monthly_comparison_state",
+        string="Graf porovnania cashflow a výdavkov",
+    )
     receipt_line_ids = fields.One2many(
         "tenenet.project.receipt",
         "project_id",
@@ -454,6 +469,74 @@ class TenenetProject(models.Model):
     def _get_cashflow_override_map(self, year):
         return self.env["tenenet.cashflow.global.override"].get_year_row_data(year).get(f"income:{self.id}")
 
+    @api.depends("finance_graph_year")
+    def _compute_finance_monthly_comparison_line_ids(self):
+        line_model = self.env["tenenet.project.finance.monthly.line"]
+        for rec in self:
+            if not rec.id or not rec.finance_graph_year:
+                rec.finance_monthly_comparison_line_ids = line_model.browse()
+                continue
+            rec.finance_monthly_comparison_line_ids = line_model.search([
+                ("project_id", "=", rec.id),
+                ("year", "=", rec.finance_graph_year),
+            ], order="period asc, series")
+
+    @api.depends("finance_graph_year")
+    def _compute_finance_monthly_comparison_state(self):
+        for rec in self:
+            rec.finance_monthly_comparison_state = {
+                "project_id": rec.id or False,
+                "current_year": int(rec.finance_graph_year or fields.Date.context_today(self).year),
+            }
+
+    def get_finance_monthly_comparison_chart_data(self, year=None):
+        self.ensure_one()
+        month_labels = [
+            "Jan", "Feb", "Mar", "Apr", "Máj", "Jún",
+            "Júl", "Aug", "Sep", "Okt", "Nov", "Dec",
+        ]
+        selected_year = int(year or self.finance_graph_year or fields.Date.context_today(self).year)
+        available_years = set(self.receipt_line_ids.mapped("year"))
+        available_years |= set(self.cashflow_ids.mapped("receipt_year"))
+        available_years |= {
+            timesheet.period.year
+            for timesheet in self.timesheet_ids
+            if timesheet.period
+        }
+        available_years |= {
+            expense.date.year
+            for expense in self.expense_ids
+            if expense.date
+        }
+        available_years.add(selected_year)
+        planner_data = self.get_cashflow_planner_data(selected_year)
+        predicted_values = {month: 0.0 for month in range(1, 13)}
+        for row in planner_data.get("rows", []):
+            for month in range(1, 13):
+                predicted_values[month] += float((row.get("months") or {}).get(str(month), 0.0) or 0.0)
+        return {
+            "year": selected_year,
+            "available_years": sorted(available_years),
+            "months": month_labels,
+            "currency_symbol": self.currency_id.symbol or "",
+            "currency_position": self.currency_id.position or "after",
+            "series": [
+                {
+                    "key": "predicted_cf",
+                    "label": "Predikovaný CF",
+                    "values": [predicted_values.get(month, 0.0) for month in range(1, 13)],
+                },
+                {
+                    "key": "real_expense",
+                    "label": "Reálne výdavky",
+                    "values": [
+                        self._get_actual_project_spend_for_month(selected_year, month)
+                        for month in range(1, 13)
+                    ],
+                },
+            ],
+        }
+
     def _get_effective_cashflow_month_values(self, year):
         self.ensure_one()
         values = {month: 0.0 for month in range(1, 13)}
@@ -484,6 +567,40 @@ class TenenetProject(models.Model):
         if amount < -0.005:
             return "minus"
         return "neutral"
+
+    @api.model
+    def _sync_finance_monthly_comparison_pairs(self, project_year_pairs):
+        pairs_by_project = {}
+        for project_id, year in project_year_pairs or set():
+            project_id = int(project_id or 0)
+            year = int(year or 0)
+            if not project_id or not year:
+                continue
+            pairs_by_project.setdefault(project_id, set()).add(year)
+
+        if not pairs_by_project:
+            return
+
+        line_model = self.env["tenenet.project.finance.monthly.line"].sudo()
+        for project in self.sudo().browse(sorted(pairs_by_project)):
+            if not project.exists():
+                continue
+            for year in sorted(pairs_by_project[project.id]):
+                line_model.sync_project_year(project, year)
+
+    def _sync_finance_monthly_comparison_years(self, years=None):
+        self.ensure_one()
+        sync_years = {
+            int(year or 0)
+            for year in (years or [])
+            if int(year or 0)
+        }
+        if not sync_years:
+            sync_years.add(int(self.finance_graph_year or fields.Date.context_today(self).year))
+        self._sync_finance_monthly_comparison_pairs({
+            (self.id, year)
+            for year in sync_years
+        })
 
     @api.model
     def _default_recurring_anchor_from_vals(self, vals):
@@ -959,6 +1076,7 @@ class TenenetProject(models.Model):
                 user.write({"group_ids": [(3, group.id)]})
 
     def write(self, vals):
+        old_graph_pairs = set()
         vals = dict(vals)
         if vals.get("is_recurring_license_project") and not vals.get("recurring_clone_anchor_date"):
             vals["recurring_clone_anchor_date"] = self._default_recurring_anchor_from_vals({
@@ -967,6 +1085,12 @@ class TenenetProject(models.Model):
             })
         if vals.get("is_recurring_license_project") and not vals.get("recurring_base_name"):
             vals["recurring_base_name"] = vals.get("name") or self[:1].recurring_base_name or self[:1].name
+        if "finance_graph_year" in vals:
+            old_graph_pairs = {
+                (record.id, record.finance_graph_year)
+                for record in self
+                if record.id and record.finance_graph_year
+            }
         previous_site_ids = {}
         if "site_ids" in vals:
             previous_site_ids = {project.id: set(project.site_ids.ids) for project in self}
@@ -981,6 +1105,12 @@ class TenenetProject(models.Model):
             self._sync_garant_pm_group()
         if {"is_recurring_license_project", "recurring_clone_anchor_date", "recurring_base_name"} & set(vals):
             self._ensure_recurring_metadata()
+        if "finance_graph_year" in vals:
+            self._sync_finance_monthly_comparison_pairs(old_graph_pairs | {
+                (record.id, record.finance_graph_year)
+                for record in self
+                if record.id and record.finance_graph_year
+            })
         return result
 
     def _cleanup_assignment_sites_after_project_unlink(self, previous_site_ids):
@@ -1067,6 +1197,7 @@ class TenenetProject(models.Model):
             rows.append({
                 "receipt_id": receipt.id,
                 "date_received": fields.Date.to_string(receipt.date_received) if receipt.date_received else False,
+                "receipt_month": receipt.date_received.month if receipt.date_received else False,
                 "label": (
                     f"{cashflow_model._format_sk_date(receipt.date_received)} / "
                     f"{cashflow_model._format_sk_amount(receipt.amount)}"
@@ -1246,6 +1377,11 @@ class TenenetProject(models.Model):
         records = super().create(vals_list)
         records._ensure_recurring_metadata()
         records._sync_garant_pm_group()
+        records._sync_finance_monthly_comparison_pairs({
+            (record.id, record.finance_graph_year or fields.Date.context_today(self).year)
+            for record in records
+            if record.id
+        })
         return records
 
     @api.model

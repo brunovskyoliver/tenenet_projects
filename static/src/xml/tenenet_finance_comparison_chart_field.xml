@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="tenenet_projects.TenenetFinanceComparisonChartField">
+        <div class="o_tenenet_finance_chart w-100">
+            <t t-if="!hasRecord">
+                <div class="o_tenenet_finance_chart_empty">
+                    Graf bude dostupný po uložení projektu.
+                </div>
+            </t>
+            <t t-else="">
+                <div class="o_tenenet_finance_chart_header">
+                    <div>
+                        <div class="o_tenenet_finance_chart_title">Mesačné porovnanie cashflow a výdavkov</div>
+                        <div class="o_tenenet_finance_chart_subtitle">
+                            Predikovaný CF vs. reálne výdavky
+                        </div>
+                    </div>
+                    <div class="o_tenenet_finance_chart_year">
+                        <button class="btn btn-secondary btn-sm"
+                                t-att-disabled="chartState.loading || !canGoPrevious"
+                                t-on-click="() => this.changeYear(-1)">
+                            <i class="fa fa-chevron-left"/>
+                        </button>
+                        <span class="o_tenenet_finance_chart_year_value" t-out="chartState.year"/>
+                        <button class="btn btn-secondary btn-sm"
+                                t-att-disabled="chartState.loading || !canGoNext"
+                                t-on-click="() => this.changeYear(1)">
+                            <i class="fa fa-chevron-right"/>
+                        </button>
+                    </div>
+                </div>
+
+                <t t-if="chartState.loading">
+                    <div class="o_tenenet_finance_chart_loading">
+                        Načítavam porovnanie cashflow a výdavkov...
+                    </div>
+                </t>
+                <t t-elif="!(chartState.series || []).length">
+                    <div class="o_tenenet_finance_chart_empty">
+                        Pre tento rok zatiaľ nie sú dostupné dáta.
+                    </div>
+                </t>
+                <t t-else="">
+                    <div class="o_tenenet_finance_chart_legend">
+                        <t t-foreach="chartState.series" t-as="series" t-key="series.key">
+                            <div class="o_tenenet_finance_chart_legend_item">
+                                <span class="o_tenenet_finance_chart_legend_dot"
+                                      t-att-style="'background:' + this.colorFor(series.key)"/>
+                                <span t-out="series.label"/>
+                            </div>
+                        </t>
+                    </div>
+
+                    <svg class="o_tenenet_finance_chart_svg" viewBox="0 0 760 260" preserveAspectRatio="xMidYMid meet">
+                        <t t-foreach="yTicks" t-as="tick" t-key="tick.value">
+                            <line class="o_tenenet_finance_chart_grid"
+                                  t-att-x1="plotLeft" t-att-y1="tick.y"
+                                  t-att-x2="plotRight" t-att-y2="tick.y"/>
+                            <text class="o_tenenet_finance_chart_y_label"
+                                  t-att-x="yLabelX" t-att-y="tick.y + 4"
+                                  t-out="axisAmountLabel(tick.value)"/>
+                        </t>
+                        <line class="o_tenenet_finance_chart_axis"
+                              t-att-x1="plotLeft" t-att-y1="plotBottom"
+                              t-att-x2="plotRight" t-att-y2="plotBottom"/>
+                        <t t-foreach="monthPoints" t-as="month" t-key="month.label">
+                            <text class="o_tenenet_finance_chart_x_label"
+                                  t-att-x="month.x"
+                                  y="248"
+                                  t-out="month.label"/>
+                        </t>
+                        <t t-foreach="chartState.series" t-as="series" t-key="series.key">
+                            <polyline class="o_tenenet_finance_chart_line"
+                                      t-att-style="'stroke:' + this.colorFor(series.key)"
+                                      t-att-points="this.polyline(series)"/>
+                            <t t-foreach="series.values" t-as="value" t-key="series.key + '-' + value_index">
+                                <circle class="o_tenenet_finance_chart_point"
+                                        t-att-style="'fill:' + this.colorFor(series.key)"
+                                        t-att-cx="monthPoints[value_index].x"
+                                        t-att-cy="this.valueToY(value)"
+                                        r="3.5"/>
+                            </t>
+                        </t>
+                    </svg>
+
+                    <div class="o_tenenet_finance_chart_table table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Séria</th>
+                                    <t t-foreach="chartState.months" t-as="month" t-key="month">
+                                        <th t-out="month"/>
+                                    </t>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="chartState.series" t-as="series" t-key="series.key">
+                                    <tr>
+                                        <th t-out="series.label"/>
+                                        <t t-foreach="series.values" t-as="value" t-key="series.key + '-cell-' + value_index">
+                                            <td t-out="amountLabel(value)"/>
+                                        </t>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </div>
+    </t>
+</templates>

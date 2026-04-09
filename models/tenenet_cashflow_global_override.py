@@ -139,9 +139,14 @@ class TenenetCashflowGlobalOverride(models.Model):
         if not self.env.context.get("_cashflow_override_adjusting"):
             for row_key, year in {(rec.row_key, rec.year) for rec in records.filtered(lambda rec: rec.row_type == "income")}:
                 self._adjust_last_income_month(row_key, year)
+        if not self.env.context.get("_skip_finance_monthly_comparison_sync"):
+            self.env["tenenet.project"]._sync_finance_monthly_comparison_pairs(
+                self._finance_monthly_comparison_pairs_from_rows(records)
+            )
         return records
 
     def write(self, vals):
+        old_pairs = self._finance_monthly_comparison_pairs_from_rows(self)
         vals = dict(vals)
         if vals.get("period"):
             vals["period"] = self._normalize_period(vals["period"])
@@ -149,6 +154,10 @@ class TenenetCashflowGlobalOverride(models.Model):
         if "amount" in vals and not self.env.context.get("_cashflow_override_adjusting"):
             for row_key, year in {(rec.row_key, rec.year) for rec in self.filtered(lambda rec: rec.row_type == "income")}:
                 self._adjust_last_income_month(row_key, year)
+        if not self.env.context.get("_skip_finance_monthly_comparison_sync"):
+            self.env["tenenet.project"]._sync_finance_monthly_comparison_pairs(
+                old_pairs | self._finance_monthly_comparison_pairs_from_rows(self)
+            )
         return result
 
     @api.model
@@ -239,17 +248,23 @@ class TenenetCashflowGlobalOverride(models.Model):
                 }
                 existing = records_by_key_month.get((row["row_key"], month))
                 if existing:
-                    existing.with_context(_cashflow_override_adjusting=True).write(values)
+                    existing.with_context(
+                        _cashflow_override_adjusting=True,
+                        _skip_finance_monthly_comparison_sync=True,
+                    ).write(values)
                     synced_record_ids.add(existing.id)
                 else:
-                    created = self.with_context(_cashflow_override_adjusting=True).create(values)
+                    created = self.with_context(
+                        _cashflow_override_adjusting=True,
+                        _skip_finance_monthly_comparison_sync=True,
+                    ).create(values)
                     synced_record_ids.add(created.id)
 
         stale_records = existing_records.filtered(
             lambda rec: rec.row_key not in valid_row_keys or rec.id not in synced_record_ids
         )
         if stale_records:
-            stale_records.unlink()
+            stale_records.with_context(_skip_finance_monthly_comparison_sync=True).unlink()
         return self.browse(sorted(synced_record_ids))
 
     def action_prepare_grid_year(self):
@@ -324,3 +339,24 @@ class TenenetCashflowGlobalOverride(models.Model):
             "currency_id": template.currency_id.id,
         })
         return self._grid_reload_action()
+
+    @api.model
+    def _finance_monthly_comparison_pairs_from_rows(self, rows):
+        pairs = set()
+        for record in rows.filtered(lambda rec: rec.row_type == "income" and rec.row_key):
+            if not record.row_key.startswith("income:"):
+                continue
+            try:
+                project_id = int(record.row_key.split(":", 1)[1])
+            except (TypeError, ValueError):
+                continue
+            if project_id and record.year:
+                pairs.add((project_id, record.year))
+        return pairs
+
+    def unlink(self):
+        pairs = self._finance_monthly_comparison_pairs_from_rows(self)
+        result = super().unlink()
+        if not self.env.context.get("_skip_finance_monthly_comparison_sync"):
+            self.env["tenenet.project"]._sync_finance_monthly_comparison_pairs(pairs)
+        return result

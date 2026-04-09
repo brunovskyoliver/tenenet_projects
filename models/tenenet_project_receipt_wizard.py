@@ -34,4 +34,4 @@ class TenenetProjectReceiptWizard(models.TransientModel):
             "amount": self.amount,
             "note": self.note or False,
         })
-        return {"type": "ir.actions.act_window_close"}
+        return {"type": "ir.actions.client", "tag": "soft_reload"}

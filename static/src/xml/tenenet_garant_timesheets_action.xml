@@ -49,11 +49,29 @@
                     </div>
                 </t>
                 <t t-else="">
+                    <div class="o_tenenet_garant_matrix_controls">
+                        <button
+                            class="btn btn-sm btn-outline-secondary o_tenenet_garant_toggle_all"
+                            t-on-click="() => this.toggleAllMatrices()">
+                            <i t-att-class="`fa ${this.areAllMatricesCollapsed ? 'fa-expand' : 'fa-compress'} me-2`"/>
+                            <t t-out="this.areAllMatricesCollapsed ? 'Rozbaliť všetko' : 'Zbaliť všetko'"/>
+                        </button>
+                    </div>
                     <t t-foreach="state.matrices" t-as="matrix"
                        t-key="matrix.id + '_' + (matrix._key || 0)">
                         <div class="o_tenenet_my_matrix_block">
                             <div class="o_tenenet_my_matrix_title">
-                                <t t-out="matrix.employee_id[1]"/>
+                                <span class="o_tenenet_garant_matrix_employee">
+                                    <t t-out="matrix.employee_id[1]"/>
+                                </span>
+                                <button
+                                    type="button"
+                                    class="btn btn-sm btn-link o_tenenet_garant_matrix_toggle"
+                                    t-att-title="this.isMatrixCollapsed(matrix.id) ? 'Rozbaliť' : 'Zbaliť'"
+                                    t-on-click="() => this.toggleMatrix(matrix.id)">
+                                    <i t-att-class="`fa ${this.isMatrixCollapsed(matrix.id) ? 'fa-chevron-down' : 'fa-chevron-up'} me-1`"/>
+                                    <t t-out="this.isMatrixCollapsed(matrix.id) ? 'Rozbaliť' : 'Zbaliť'"/>
+                                </button>
                             </div>
                             <div class="table-responsive">
                                 <table class="table table-sm table-bordered o_tenenet_my_matrix_table">
@@ -66,10 +84,11 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <t t-foreach="matrix.lines" t-as="line" t-key="line.id">
+                                        <t t-foreach="this.getVisibleLines(matrix)" t-as="line" t-key="line.id">
                                             <tr t-att-class="{
                                                 'o_tenenet_my_total_row': line.is_total,
-                                                'o_tenenet_my_leave_row': line.leave_sync_managed
+                                                'o_tenenet_my_leave_row': line.leave_sync_managed,
+                                                'o_tenenet_garant_collapsed_row': this.isMatrixCollapsed(matrix.id)
                                             }">
                                                 <td class="o_tenenet_my_row_label" t-out="line.name"/>
                                                 <t t-foreach="months" t-as="month" t-key="month.field">

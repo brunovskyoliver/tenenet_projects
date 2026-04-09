@@ -56,6 +56,7 @@
                                         <t t-foreach="months" t-as="month" t-key="month.number">
                                             <td t-att-class="{
                                                     'o_tenenet_cashflow_planner_cell': true,
+                                                    'is-disabled': !this.isEditableMonth(row, month.number),
                                                     'is-filled': this.isFilled(row, month.number),
                                                     'is-selected': this.isSelected(row, month.number),
                                                     'is-selection-edge': this.isSelectionEdge(row, month.number),

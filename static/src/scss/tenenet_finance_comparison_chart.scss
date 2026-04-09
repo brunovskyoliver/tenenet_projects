@@ -1,0 +1,200 @@
+.o_tenenet_finance_chart {
+    --finance-chart-surface: var(--bs-body-bg, #212529);
+    --finance-chart-surface-soft: var(--bs-secondary-bg, rgba(255, 255, 255, 0.08));
+    --finance-chart-surface-strong: var(--bs-tertiary-bg, rgba(255, 255, 255, 0.12));
+    --finance-chart-border: var(--bs-border-color, rgba(255, 255, 255, 0.16));
+    --finance-chart-text: var(--bs-body-color, #f8f9fa);
+    --finance-chart-text-muted: var(--bs-secondary-color, rgba(248, 249, 250, 0.72));
+    --finance-chart-grid: rgba(255, 255, 255, 0.08);
+    --finance-chart-axis: rgba(255, 255, 255, 0.24);
+
+    display: block;
+    width: 100%;
+    margin-top: 12px;
+    border: 1px solid var(--finance-chart-border);
+    border-radius: 16px;
+    background: var(--finance-chart-surface);
+    color: var(--finance-chart-text);
+    padding: 16px;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+
+    .o_tenenet_finance_chart_header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+    }
+
+    .o_tenenet_finance_chart_title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--finance-chart-text);
+    }
+
+    .o_tenenet_finance_chart_subtitle {
+        color: var(--finance-chart-text-muted);
+        font-size: 13px;
+    }
+
+    .o_tenenet_finance_chart_year {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border: 1px solid var(--finance-chart-border);
+        border-radius: 999px;
+        background: var(--finance-chart-surface-soft);
+    }
+
+    .o_tenenet_finance_chart_year_value {
+        min-width: 56px;
+        text-align: center;
+        font-weight: 700;
+        color: var(--finance-chart-text);
+    }
+
+    .o_tenenet_finance_chart_empty,
+    .o_tenenet_finance_chart_loading {
+        padding: 20px;
+        border: 1px dashed var(--finance-chart-border);
+        border-radius: 12px;
+        background: var(--finance-chart-surface-soft);
+        color: var(--finance-chart-text-muted);
+        font-weight: 600;
+    }
+
+    .o_tenenet_finance_chart_legend {
+        display: flex;
+        gap: 18px;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+    }
+
+    .o_tenenet_finance_chart_legend_item {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        color: var(--finance-chart-text);
+    }
+
+    .o_tenenet_finance_chart_legend_dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        display: inline-block;
+    }
+
+    .o_tenenet_finance_chart_svg {
+        display: block;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 760 / 260;
+        margin-bottom: 12px;
+        overflow: hidden;
+    }
+
+    .o_tenenet_finance_chart_grid {
+        stroke: var(--finance-chart-grid);
+        stroke-width: 1;
+    }
+
+    .o_tenenet_finance_chart_axis {
+        stroke: var(--finance-chart-axis);
+        stroke-width: 1.2;
+    }
+
+    .o_tenenet_finance_chart_line {
+        fill: none;
+        stroke-width: 3;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    .o_tenenet_finance_chart_point {
+        stroke: var(--finance-chart-surface);
+        stroke-width: 1.5;
+    }
+
+    .o_tenenet_finance_chart_x_label,
+    .o_tenenet_finance_chart_y_label {
+        fill: var(--finance-chart-text-muted);
+        font-size: 11px;
+    }
+
+    .o_tenenet_finance_chart_x_label {
+        text-anchor: middle;
+    }
+
+    .o_tenenet_finance_chart_y_label {
+        text-anchor: end;
+    }
+
+    .o_tenenet_finance_chart_table {
+        border: 1px solid var(--finance-chart-border);
+        border-radius: 12px;
+        background: var(--finance-chart-surface-soft);
+        overflow: auto;
+
+        .table {
+            margin-bottom: 0;
+            color: var(--finance-chart-text);
+        }
+
+        thead th {
+            background: var(--finance-chart-surface-strong);
+            color: var(--finance-chart-text);
+            font-size: 12px;
+            font-weight: 700;
+            border-color: var(--finance-chart-border);
+        }
+
+        tbody th,
+        tbody td {
+            background: transparent;
+            color: var(--finance-chart-text);
+            border-color: var(--finance-chart-border);
+            font-size: 12px;
+        }
+    }
+
+    .o_tenenet_finance_chart_table th,
+    .o_tenenet_finance_chart_table td {
+        white-space: nowrap;
+        text-align: right;
+    }
+
+    .o_tenenet_finance_chart_table th:first-child {
+        text-align: left;
+        position: sticky;
+        left: 0;
+        background: var(--finance-chart-surface);
+        z-index: 1;
+    }
+
+    .btn.btn-secondary {
+        border-color: var(--finance-chart-border);
+        background: var(--finance-chart-surface-strong);
+        color: var(--finance-chart-text);
+
+        &:hover,
+        &:focus {
+            background: var(--finance-chart-surface-soft);
+            color: var(--finance-chart-text);
+        }
+
+        &:disabled {
+            opacity: 0.45;
+        }
+    }
+
+    @media (max-width: 767.98px) {
+        padding: 14px;
+
+        .o_tenenet_finance_chart_svg {
+            height: auto;
+        }
+    }
+}

@@ -40,6 +40,10 @@ class TenenetProjectReceipt(models.Model):
         for rec in self:
             rec.year = rec.date_received.year if rec.date_received else 0
 
+    def _get_min_cashflow_month(self):
+        self.ensure_one()
+        return self.date_received.month if self.date_received else 1
+
     @api.model
     def _month_bounds(self, year, month):
         date_start = datetime.date(year, month, 1)
@@ -73,6 +77,11 @@ class TenenetProjectReceipt(models.Model):
             "context": {"default_receipt_id": self.id},
         }
 
+    def action_delete_with_reload(self):
+        self.ensure_one()
+        self.unlink()
+        return {"type": "ir.actions.client", "tag": "soft_reload"}
+
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
@@ -81,10 +90,22 @@ class TenenetProjectReceipt(models.Model):
         return records
 
     def write(self, vals):
+        old_pairs = {
+            (record.project_id.id, record.year)
+            for record in self
+            if record.project_id and record.year
+        }
         result = super().write(vals)
         if "amount" in vals or "date_received" in vals:
             for rec in self:
                 rec._generate_equal_cashflow()
+            self.env["tenenet.project"]._sync_finance_monthly_comparison_pairs(
+                old_pairs | {
+                    (record.project_id.id, record.year)
+                    for record in self
+                    if record.project_id and record.year
+                }
+            )
         return result
 
     def _generate_equal_cashflow(self):
@@ -108,6 +129,12 @@ class TenenetProjectReceipt(models.Model):
 
     def _replace_cashflow_month_amounts(self, month_amounts):
         self.ensure_one()
+        min_month = self._get_min_cashflow_month()
+        invalid_months = [month for month in month_amounts if int(month) < min_month]
+        if invalid_months:
+            raise ValidationError(
+                "Cashflow nemôže začínať pred mesiacom prijatia príjmu."
+            )
         self.cashflow_ids.unlink()
         if not month_amounts:
             return True
@@ -139,6 +166,8 @@ class TenenetProjectReceipt(models.Model):
             raise ValidationError("Dátum od nemôže byť neskôr ako dátum do.")
         if date_from.year != self.year or date_to.year != self.year:
             raise ValidationError("Distribúcia cashflow musí zostať v roku príjmu.")
+        if date_from.month < self._get_min_cashflow_month():
+            raise ValidationError("Cashflow nemôže začínať pred mesiacom prijatia príjmu.")
 
         total_amount = amount if amount is not None else self.amount
         currency = self.currency_id or self.env.company.currency_id
@@ -185,11 +214,14 @@ class TenenetProjectReceipt(models.Model):
             raise ValidationError("Je potrebné zadať aspoň jeden mesiac cashflow.")
 
         currency = self.currency_id or self.env.company.currency_id
+        min_month = self._get_min_cashflow_month()
         normalized_amounts = {}
         for month_key, amount in month_amounts.items():
             month = int(month_key)
             if month < 1 or month > 12:
                 raise ValidationError("Mesiace cashflow musia byť v rozsahu 1 až 12.")
+            if month < min_month:
+                raise ValidationError("Cashflow nemôže začínať pred mesiacom prijatia príjmu.")
             amount_value = currency.round(float(amount or 0.0))
             if amount_value < 0:
                 raise ValidationError("Mesačný cashflow nemôže byť záporný.")
@@ -200,3 +232,13 @@ class TenenetProjectReceipt(models.Model):
             raise ValidationError("Súčet mesačných hodnôt nemôže byť vyšší ako celá suma príjmu.")
 
         return self._replace_cashflow_month_amounts(normalized_amounts)
+
+    def unlink(self):
+        affected_pairs = {
+            (record.project_id.id, record.year)
+            for record in self
+            if record.project_id and record.year
+        }
+        result = super().unlink()
+        self.env["tenenet.project"]._sync_finance_monthly_comparison_pairs(affected_pairs)
+        return result

@@ -37,6 +37,7 @@ export class TenenetGarantTimesheetsAction extends Component {
             selectedProjectId: null,
             year: new Date().getFullYear(),
             matrices: [],
+            collapsedMatrixIds: {},
         });
 
         onWillStart(() => this.loadProjects());
@@ -62,6 +63,7 @@ export class TenenetGarantTimesheetsAction extends Component {
     async loadMatrices() {
         if (!this.state.selectedProjectId) {
             this.state.matrices = [];
+            this.state.collapsedMatrixIds = {};
             return;
         }
         this.state.loading = true;
@@ -77,6 +79,7 @@ export class TenenetGarantTimesheetsAction extends Component {
 
         if (!matrices.length) {
             this.state.matrices = [];
+            this.state.collapsedMatrixIds = {};
             this.state.loading = false;
             return;
         }
@@ -100,6 +103,7 @@ export class TenenetGarantTimesheetsAction extends Component {
             _key: 0,
             lines: (linesByMatrix[m.id] || []).sort((a, b) => a.sequence - b.sequence),
         }));
+        this.state.collapsedMatrixIds = {};
         this.state.loading = false;
     }
 
@@ -112,6 +116,40 @@ export class TenenetGarantTimesheetsAction extends Component {
 
     isCellEditable(line, monthField) {
         return !line.is_total && !line.leave_sync_managed && line[`${monthField}_editable`];
+    }
+
+    get areAllMatricesCollapsed() {
+        return (
+            this.state.matrices.length > 0
+            && this.state.matrices.every((matrix) => this.isMatrixCollapsed(matrix.id))
+        );
+    }
+
+    isMatrixCollapsed(matrixId) {
+        return !!this.state.collapsedMatrixIds[matrixId];
+    }
+
+    toggleAllMatrices() {
+        const nextState = !this.areAllMatricesCollapsed;
+        const collapsedMatrixIds = {};
+        for (const matrix of this.state.matrices) {
+            collapsedMatrixIds[matrix.id] = nextState;
+        }
+        this.state.collapsedMatrixIds = collapsedMatrixIds;
+    }
+
+    toggleMatrix(matrixId) {
+        this.state.collapsedMatrixIds = {
+            ...this.state.collapsedMatrixIds,
+            [matrixId]: !this.isMatrixCollapsed(matrixId),
+        };
+    }
+
+    getVisibleLines(matrix) {
+        if (!this.isMatrixCollapsed(matrix.id)) {
+            return matrix.lines;
+        }
+        return matrix.lines.filter((line) => line.is_total || line.hour_type === "total");
     }
 
     async onCellChange(matrixId, lineId, monthField, event) {
