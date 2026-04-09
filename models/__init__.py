@@ -14,6 +14,7 @@ from . import tenenet_employee_service
 from . import hr_expense
 from . import tenenet_project
 from . import tenenet_project_budget_line
+from . import tenenet_project_budget_line_month
 from . import tenenet_project_budget_wizard
 from . import tenenet_project_milestone
 from . import tenenet_project_receipt

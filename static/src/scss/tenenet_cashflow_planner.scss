@@ -1,5 +1,7 @@
 .o_tenenet_cashflow_planner,
-.o_tenenet_cashflow_planner_dialog {
+.o_tenenet_budget_line_planner,
+.o_tenenet_cashflow_planner_dialog,
+.o_tenenet_month_planner_dialog {
     --planner-surface: var(--bs-body-bg, #212529);
     --planner-surface-soft: var(--bs-secondary-bg, rgba(255, 255, 255, 0.08));
     --planner-surface-strong: var(--bs-tertiary-bg, rgba(255, 255, 255, 0.12));
@@ -35,6 +37,30 @@
         font-weight: 700;
         letter-spacing: 0.01em;
         color: var(--planner-text);
+    }
+
+    .o_tenenet_cashflow_planner_controls {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .o_tenenet_cashflow_planner_toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border: 1px solid var(--planner-border);
+        border-radius: 999px;
+        background: var(--planner-surface-soft);
+        color: var(--planner-text);
+        font-size: 12px;
+        font-weight: 700;
+
+        input {
+            margin: 0;
+        }
     }
 
     .o_tenenet_cashflow_planner_year {
@@ -168,7 +194,8 @@
     }
 }
 
-.o_tenenet_cashflow_planner_dialog {
+.o_tenenet_cashflow_planner_dialog,
+.o_tenenet_month_planner_dialog {
     .modal-content,
     .modal-header,
     .modal-footer,
@@ -277,12 +304,33 @@
     }
 
     .o_tenenet_cashflow_dialog_table {
+        width: 100%;
         margin-bottom: 0;
+        table-layout: fixed;
+        border-collapse: separate;
+        border-spacing: 0;
+
+        .o_tenenet_cashflow_dialog_col_month {
+            width: 240px;
+        }
+
+        .o_tenenet_cashflow_dialog_col_amount {
+            width: auto;
+        }
+
+        .o_tenenet_cashflow_dialog_col_state {
+            width: 150px;
+        }
+
+        .o_tenenet_cashflow_dialog_col_remove {
+            width: 56px;
+        }
 
         th,
         td {
-            border-color: var(--planner-border);
+            border: 0;
             vertical-align: middle;
+            height: 68px;
         }
 
         thead th,
@@ -295,6 +343,54 @@
         tbody td {
             background: var(--planner-surface) !important;
             color: var(--planner-text) !important;
+        }
+
+        thead th,
+        tbody td,
+        tfoot th,
+        tfoot td {
+            padding: 0.9rem 0.65rem;
+        }
+
+        thead th,
+        tbody td,
+        tfoot th {
+            border-bottom: 1px solid var(--planner-border);
+        }
+
+        thead th,
+        tfoot th {
+            text-align: left;
+        }
+
+        .o_tenenet_cashflow_dialog_total_row {
+            th {
+                border-top: 1px solid var(--planner-border);
+            }
+        }
+
+        .o_tenenet_cashflow_dialog_head_amount,
+        .o_tenenet_cashflow_dialog_head_state,
+        .o_tenenet_cashflow_dialog_head_remove,
+        .o_tenenet_cashflow_dialog_total_amount,
+        .o_tenenet_cashflow_dialog_total_state,
+        .o_tenenet_cashflow_dialog_total_remove,
+        .o_tenenet_cashflow_dialog_amount,
+        .o_tenenet_cashflow_dialog_state,
+        .o_tenenet_cashflow_dialog_remove {
+            text-align: center;
+        }
+
+        .o_tenenet_cashflow_dialog_head_remove,
+        .o_tenenet_cashflow_dialog_total_remove,
+        .o_tenenet_cashflow_dialog_remove {
+            width: 56px;
+        }
+
+        .o_tenenet_cashflow_dialog_head_state,
+        .o_tenenet_cashflow_dialog_total_state,
+        .o_tenenet_cashflow_dialog_state {
+            width: 150px;
         }
     }
 
@@ -309,10 +405,35 @@
     .o_tenenet_cashflow_dialog_year {
         font-size: 12px;
         color: var(--planner-text-muted);
+        font-weight: 700;
     }
 
     .o_tenenet_cashflow_dialog_amount {
-        min-width: 160px;
+        min-width: 0;
+        text-align: center;
+    }
+
+    .o_tenenet_cashflow_dialog_input {
+        width: 100%;
+        max-width: 260px;
+        margin: 0 auto;
+    }
+
+    .o_tenenet_cashflow_dialog_state {
+        text-align: center;
+    }
+
+    .o_tenenet_cashflow_dialog_remove {
+        text-align: center;
+    }
+
+    .o_tenenet_cashflow_dialog_remove_btn {
+        color: var(--planner-text-muted);
+
+        &:hover,
+        &:focus {
+            color: var(--planner-text);
+        }
     }
 
     .o_tenenet_cashflow_dialog_badge {
@@ -336,34 +457,351 @@
     }
 }
 
+.o_tenenet_budget_line_planner {
+    margin-top: 4px;
+    border: 1px solid var(--planner-border);
+    border-radius: 16px;
+    background: var(--planner-surface);
+    color: var(--planner-text);
+    padding: 16px;
+
+    .o_tenenet_budget_line_planner_header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .o_tenenet_budget_line_planner_title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--planner-text);
+    }
+
+    .o_tenenet_budget_line_planner_subtitle {
+        margin-top: 4px;
+        color: var(--planner-text-muted);
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .o_tenenet_budget_line_planner_controls {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .o_tenenet_cashflow_planner_toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border: 1px solid var(--planner-border);
+        border-radius: 999px;
+        background: var(--planner-surface-soft);
+        color: var(--planner-text);
+        font-size: 12px;
+        font-weight: 700;
+
+        input {
+            margin: 0;
+        }
+    }
+
+    .o_tenenet_budget_line_planner_year {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 12px;
+        border: 1px solid var(--planner-border);
+        border-radius: 999px;
+        background: var(--planner-surface-soft);
+    }
+
+    .o_tenenet_budget_line_planner_year_value {
+        font-weight: 700;
+        color: var(--planner-text);
+    }
+
+    .o_tenenet_budget_line_planner_meta {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+    }
+
+    .o_tenenet_budget_line_planner_badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: var(--planner-surface-soft);
+        border: 1px solid var(--planner-border);
+        color: var(--planner-text);
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .o_tenenet_budget_line_planner_note,
+    .o_tenenet_budget_line_planner_empty,
+    .o_tenenet_budget_line_planner_loading {
+        margin-bottom: 12px;
+        color: var(--planner-text-muted);
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .o_tenenet_budget_line_planner_table {
+        margin-bottom: 0;
+        border-collapse: separate;
+        border-spacing: 0;
+
+        th,
+        td {
+            border: 1px solid var(--planner-border);
+            vertical-align: middle;
+        }
+
+        thead th {
+            background: var(--planner-surface-strong);
+        }
+    }
+
+    .o_tenenet_budget_line_planner_label_head,
+    .o_tenenet_budget_line_planner_label_cell {
+        min-width: 280px;
+        max-width: 280px;
+        background: var(--planner-surface);
+    }
+
+    .o_tenenet_budget_line_planner_label_head {
+        color: var(--planner-text);
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .o_tenenet_budget_line_planner_line_label {
+        color: var(--planner-text);
+        font-size: 14px;
+        font-weight: 700;
+    }
+
+    .o_tenenet_budget_line_planner_month_head {
+        min-width: 84px;
+        text-align: center;
+        color: var(--planner-text);
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .o_tenenet_budget_line_planner_cell {
+        min-width: 84px;
+        height: 70px;
+        text-align: center;
+        cursor: ew-resize;
+        user-select: none;
+        background: var(--planner-surface);
+        transition: background-color 120ms ease, box-shadow 120ms ease, color 120ms ease;
+
+        &:hover {
+            background: var(--planner-surface-soft);
+        }
+
+        &.is-filled {
+            background: var(--planner-accent-soft);
+        }
+
+        &.is-selected {
+            background: var(--planner-accent);
+            color: var(--planner-accent-text);
+        }
+
+        &.is-selection-edge {
+            box-shadow: inset 0 0 0 2px var(--planner-accent-soft-strong);
+        }
+    }
+
+    .o_tenenet_budget_line_planner_cell_value {
+        display: inline-block;
+        color: var(--planner-text);
+        font-size: 13px;
+        font-weight: 700;
+    }
+}
+
+.o_tenenet_budget_line_planner_action {
+    width: max-content;
+    min-width: 1288px;
+    max-width: calc(100vw - 2rem);
+    padding: 16px;
+    background: var(--planner-surface);
+    color: var(--planner-text);
+
+    .o_tenenet_budget_line_planner_action_meta {
+        margin-bottom: 16px;
+        padding: 14px 16px;
+        border: 1px solid var(--planner-border);
+        border-radius: 14px;
+        background: var(--planner-surface-soft);
+    }
+
+    .o_tenenet_budget_line_planner_action_grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(220px, 1fr));
+        gap: 12px 18px;
+    }
+
+    .o_tenenet_budget_line_planner_action_item {
+        min-width: 0;
+
+        strong {
+            display: block;
+            margin-top: 4px;
+            font-size: 14px;
+            color: var(--planner-text);
+            word-break: break-word;
+        }
+    }
+
+    .o_tenenet_budget_line_planner_action_label {
+        display: block;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--planner-text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .o_tenenet_budget_line_planner_action_footer {
+        display: flex;
+        justify-content: flex-start;
+        margin-top: 16px;
+    }
+}
+
+.modal.show .modal-dialog.modal-xl:has(.o_tenenet_budget_line_planner_action),
+.modal.show .modal-dialog:has(.o_tenenet_budget_line_planner_action) {
+    --bs-modal-width: 1320px !important;
+    --modal-width: 1320px !important;
+    width: 1320px !important;
+    max-width: calc(100vw - 2rem) !important;
+
+    .modal-content {
+        width: max-content;
+        max-width: calc(100vw - 2rem);
+    }
+
+    .modal-body {
+        overflow-x: auto;
+        background: var(--planner-surface);
+    }
+}
+
+.modal.show .modal-dialog:has(.o_tenenet_budget_line_planner_form) {
+    --bs-modal-width: max-content;
+    width: auto !important;
+    max-width: calc(100vw - 2rem) !important;
+
+    .modal-content {
+        width: max-content;
+        max-width: calc(100vw - 2rem);
+    }
+
+    .modal-body {
+        overflow-x: auto;
+    }
+
+    .o_form_view,
+    .o_form_view_container,
+    .o_content,
+    .o_form_renderer,
+    .o_form_sheet_bg {
+        width: max-content;
+        min-width: 100%;
+    }
+
+    .o_tenenet_budget_line_planner_form_sheet,
+    .o_form_sheet {
+        width: max-content;
+        min-width: 1120px;
+        max-width: none;
+    }
+}
+
 @media (max-width: 991.98px) {
-    .o_tenenet_cashflow_planner {
+    .o_tenenet_cashflow_planner,
+    .o_tenenet_budget_line_planner {
         padding: 12px;
 
-        .o_tenenet_cashflow_planner_header {
+        .o_tenenet_cashflow_planner_header,
+        .o_tenenet_budget_line_planner_header {
             flex-direction: column;
             align-items: stretch;
         }
 
         .o_tenenet_cashflow_planner_label_head,
-        .o_tenenet_cashflow_planner_label_cell {
+        .o_tenenet_cashflow_planner_label_cell,
+        .o_tenenet_budget_line_planner_label_head,
+        .o_tenenet_budget_line_planner_label_cell {
             min-width: 220px;
             max-width: 220px;
         }
 
         .o_tenenet_cashflow_planner_month_head,
-        .o_tenenet_cashflow_planner_cell {
+        .o_tenenet_cashflow_planner_cell,
+        .o_tenenet_budget_line_planner_month_head,
+        .o_tenenet_budget_line_planner_cell {
             min-width: 72px;
         }
     }
 
-    .o_tenenet_cashflow_planner_dialog {
+    .o_tenenet_cashflow_planner_dialog,
+    .o_tenenet_month_planner_dialog {
         .o_tenenet_cashflow_dialog_meta {
             flex-direction: column;
         }
 
         .o_tenenet_cashflow_dialog_total {
             min-width: 0;
+        }
+    }
+
+    .modal.show .modal-dialog:has(.o_tenenet_budget_line_planner_form) {
+        width: calc(100vw - 1rem);
+        max-width: calc(100vw - 1rem);
+
+        .modal-content,
+        .o_form_view,
+        .o_form_view_container,
+        .o_content,
+        .o_form_sheet {
+            min-width: 0;
+            width: 100%;
+            max-width: 100%;
+        }
+    }
+
+    .o_tenenet_budget_line_planner_action {
+        min-width: 0;
+        width: 100%;
+        padding: 12px;
+
+        .o_tenenet_budget_line_planner_action_grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .modal.show .modal-dialog.modal-xl:has(.o_tenenet_budget_line_planner_action),
+    .modal.show .modal-dialog:has(.o_tenenet_budget_line_planner_action) {
+        --bs-modal-width: calc(100vw - 1rem) !important;
+        --modal-width: calc(100vw - 1rem) !important;
+        width: calc(100vw - 1rem);
+        max-width: calc(100vw - 1rem);
+
+        .modal-content {
+            width: 100%;
+            max-width: 100%;
         }
     }
 }

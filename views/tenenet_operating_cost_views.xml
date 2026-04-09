@@ -5,7 +5,7 @@
             <field name="model">tenenet.operating.cost.pool</field>
             <field name="arch" type="xml">
                 <list string="Pool prevádzkových nákladov">
-                    <field name="year"/>
+                    <field name="year" options="{'enable_formatting': False}"/>
                     <field name="basis_year"/>
                     <field name="annual_amount"/>
                     <field name="is_locked"/>
@@ -21,7 +21,7 @@
                     <sheet>
                         <group>
                             <group>
-                                <field name="year"/>
+                                <field name="year" options="{'enable_formatting': False}"/>
                                 <field name="basis_year"/>
                                 <field name="annual_amount"/>
                                 <field name="is_locked"/>
@@ -55,7 +55,7 @@
             <field name="model">tenenet.operating.cost.pool</field>
             <field name="arch" type="xml">
                 <search string="Pool prevádzkových nákladov">
-                    <field name="year"/>
+                    <field name="year" options="{'enable_formatting': False}"/>
                     <field name="basis_year"/>
                 </search>
             </field>

@@ -9,9 +9,9 @@
                         <group>
                             <group>
                                 <field name="project_id" readonly="1"/>
-                                <field name="year"/>
+                                <field name="year" options="{'enable_formatting': False}"/>
                                 <field name="budget_type"/>
-                                <field name="program_id"/>
+                                <field name="program_id" domain="[('id', 'in', available_program_ids)]"/>
                             </group>
                             <group>
                                 <field name="year_received_amount" readonly="1"/>

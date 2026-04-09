@@ -7,6 +7,16 @@ from odoo import fields, models
 class TenenetPLReportingSupport(models.AbstractModel):
     _name = "tenenet.pl.reporting.support"
     _description = "TENENET P&L Reporting Support"
+    _BUDGET_INCOME_SECTION_METADATA = {
+        "labor": {
+            "label": "Mzdové rozpočty",
+            "markup": "tenenet_pl_budget_income_labor",
+        },
+        "other": {
+            "label": "Iné rozpočty",
+            "markup": "tenenet_pl_budget_income_other",
+        },
+    }
 
     _ROW_SPEC_METADATA = {
         "sales_cash_register": {
@@ -274,7 +284,8 @@ class TenenetPLReportingSupport(models.AbstractModel):
             if any(values.values()):
                 rows.append({**bucket, "values": values, "detail_rows": []})
 
-        rows.extend(self._get_admin_pausal_income_rows(program, selected_year))
+        if self._is_admin_tenenet_program(program):
+            rows.extend(self._get_admin_pausal_income_rows(program, selected_year))
 
         rows.sort(key=lambda row: (row["name"] or "").lower())
         return self._merge_project_income_rows(rows)
@@ -310,7 +321,7 @@ class TenenetPLReportingSupport(models.AbstractModel):
         rows = {}
         for line in budget_lines:
             project = line.project_id
-            line_values = defaultdict(float, project._allocate_annual_amount_by_project_plan(selected_year, line.amount))
+            line_values = defaultdict(float, line._get_effective_month_amounts())
             bucket = rows.setdefault(
                 project.id,
                 {
@@ -329,6 +340,35 @@ class TenenetPLReportingSupport(models.AbstractModel):
         result = list(rows.values())
         result.sort(key=lambda row: (row["name"] or "").lower())
         return result
+
+    def _get_budget_income_detail_label(self, line):
+        return f"{self._get_project_line_name(line.project_id)} / {line.name}".strip(" /")
+
+    def _get_budget_income_rows(self, program, selected_year, budget_type):
+        if budget_type not in self._BUDGET_INCOME_SECTION_METADATA:
+            return []
+        budget_lines = self.env["tenenet.project.budget.line"].search(
+            [
+                ("year", "=", selected_year),
+                ("budget_type", "=", budget_type),
+                ("program_id", "=", program.id),
+                ("amount", "!=", 0.0),
+            ],
+            order="project_id, sequence, id",
+        )
+        rows = []
+        for line in budget_lines:
+            values = defaultdict(float, line._get_effective_month_amounts())
+            if not any(values.values()) and not line.has_explicit_month_plan:
+                continue
+            rows.append({
+                "budget_line": line,
+                "project": line.project_id,
+                "name": self._get_budget_income_detail_label(line),
+                "values": values,
+            })
+        rows.sort(key=lambda row: (row["name"] or "").lower())
+        return rows
 
     def _get_program_income_override_rows(self, program, selected_year):
         rows_by_project = {
@@ -694,10 +734,9 @@ class TenenetPLReportingSupport(models.AbstractModel):
         project_rows = []
         for row in self._get_admin_pausal_income_rows(program, selected_year):
             row_copy = dict(row)
-            row_copy["values"] = self._predict_row_values(
+            row_copy["values"] = self._override_month_values(
                 row_copy["values"],
-                selected_year,
-                override_row=override_rows.get(f"income:{row_copy['project'].id}"),
+                override_rows.get(f"income:{row_copy['project'].id}"),
             )
             project_rows.append(row_copy)
 
@@ -734,12 +773,16 @@ class TenenetPLReportingSupport(models.AbstractModel):
 
         return {
             "project_rows": project_rows,
+            "budget_labor_income_rows": [],
+            "budget_other_income_rows": [],
             "sales_rows": [],
             "fundraising_rows": [],
             "labor_project_rows": labor_project_rows,
             "labor_non_project_rows": labor_non_project_rows,
             "admin_cost_detail_rows": [],
             "projects_total": projects_total,
+            "budget_labor_income_total": self._zero_by_month(),
+            "budget_other_income_total": self._zero_by_month(),
             "sales_cash_register": self._zero_by_month(),
             "sales_invoice": self._zero_by_month(),
             "sales_legacy_unclassified": self._zero_by_month(),
@@ -768,6 +811,8 @@ class TenenetPLReportingSupport(models.AbstractModel):
             selected_year,
             override_resolver=lambda row: override_rows.get(f"income:{row['project'].id}"),
         )
+        budget_labor_income_rows = self._get_budget_income_rows(program, selected_year, "labor")
+        budget_other_income_rows = self._get_budget_income_rows(program, selected_year, "other")
         sales_rows = self._get_sales_rows(program, selected_year)
         fundraising_rows = self._predict_report_rows(self._get_fundraising_rows(program, selected_year), selected_year)
         labor_project_rows = self._predict_report_rows(self._get_program_labor_cost_rows(program, selected_year), selected_year)
@@ -777,6 +822,8 @@ class TenenetPLReportingSupport(models.AbstractModel):
             admin_cost_detail_rows.append(admin_manual_detail_row)
 
         project_income = self._sum_month_dicts(*(row["values"] for row in project_rows))
+        budget_labor_income_total = self._sum_month_dicts(*(row["values"] for row in budget_labor_income_rows))
+        budget_other_income_total = self._sum_month_dicts(*(row["values"] for row in budget_other_income_rows))
 
         sales_values = {
             "sales_cash_register": self._zero_by_month(),
@@ -807,7 +854,13 @@ class TenenetPLReportingSupport(models.AbstractModel):
             sales_values["sales_legacy_unclassified"],
         )
         fundraising_total = self._sum_month_dicts(*(row["values"] for row in fundraising_rows))
-        income_total = self._sum_month_dicts(project_income, sales_total, fundraising_total)
+        income_total = self._sum_month_dicts(
+            project_income,
+            budget_labor_income_total,
+            budget_other_income_total,
+            sales_total,
+            fundraising_total,
+        )
         labor_cost = self._sum_month_dicts(*(row["values"] for row in labor_project_rows))
         stravne = self._predict_row_values(
             self._zero_by_month(),
@@ -825,12 +878,16 @@ class TenenetPLReportingSupport(models.AbstractModel):
 
         return {
             "project_rows": project_rows,
+            "budget_labor_income_rows": budget_labor_income_rows,
+            "budget_other_income_rows": budget_other_income_rows,
             "sales_rows": sales_rows,
             "fundraising_rows": fundraising_rows,
             "labor_project_rows": labor_project_rows,
             "labor_non_project_rows": [],
             "admin_cost_detail_rows": admin_cost_detail_rows,
             "projects_total": project_income,
+            "budget_labor_income_total": budget_labor_income_total,
+            "budget_other_income_total": budget_other_income_total,
             "sales_cash_register": sales_values["sales_cash_register"],
             "sales_invoice": sales_values["sales_invoice"],
             "sales_legacy_unclassified": sales_values["sales_legacy_unclassified"],

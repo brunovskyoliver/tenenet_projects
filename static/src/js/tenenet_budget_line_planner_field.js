@@ -6,7 +6,7 @@ import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { standardFieldProps } from "@web/views/fields/standard_field_props";
 
-import { Component, onWillStart, onWillUpdateProps, useExternalListener, useState } from "@odoo/owl";
+import { Component, onWillStart, useExternalListener, useState } from "@odoo/owl";
 
 import {
     MONTHS,
@@ -21,14 +21,14 @@ import {
     sumAmounts,
 } from "./tenenet_month_planner_utils";
 
-class TenenetCashflowPlannerDialog extends Component {
-    static template = "tenenet_projects.TenenetCashflowPlannerDialog";
+export class TenenetBudgetLinePlannerDialog extends Component {
+    static template = "tenenet_projects.TenenetBudgetLinePlannerDialog";
     static components = { Dialog };
     static props = {
         close: Function,
         rowLabel: String,
         year: Number,
-        receiptAmount: Number,
+        totalAmount: Number,
         distributeAmount: Number,
         maxDistributeAmount: Number,
         remainingAmount: Number,
@@ -112,7 +112,6 @@ class TenenetCashflowPlannerDialog extends Component {
         if (!entry) {
             return;
         }
-
         entry.manual = true;
         const otherManualTotal = sumAmounts(
             this.state.entries
@@ -176,22 +175,17 @@ class TenenetCashflowPlannerDialog extends Component {
     }
 }
 
-export class TenenetCashflowPlannerField extends Component {
-    static template = "tenenet_projects.TenenetCashflowPlannerField";
+export class TenenetBudgetLinePlannerField extends Component {
+    static template = "tenenet_projects.TenenetBudgetLinePlannerField";
     static props = { ...standardFieldProps };
 
     setup() {
         this.orm = useService("orm");
-        this.action = useService("action");
         this.dialog = useService("dialog");
         this.notification = useService("notification");
         this.state = useState({
             loading: true,
-            year: this.initialYear,
-            rows: [],
-            availableYears: [],
-            currencySymbol: "",
-            currencyPosition: "after",
+            row: null,
             zeroMode: false,
             drag: this._emptyDragState(),
         });
@@ -200,72 +194,49 @@ export class TenenetCashflowPlannerField extends Component {
             await this.loadPlannerData();
         });
 
-        onWillUpdateProps(async (nextProps) => {
-            const nextResId = nextProps.record.resId;
-            const currentResId = this.props.record.resId;
-            const nextYear = nextProps.record.data[nextProps.name]?.current_year || new Date().getFullYear();
-            if (nextResId !== currentResId) {
-                this.state.year = nextYear;
-                await this.loadPlannerData(nextResId);
-            }
-        });
-
         useExternalListener(window, "pointerup", this.onGlobalPointerUp.bind(this));
-    }
-
-    get initialYear() {
-        return this.props.record.data[this.props.name]?.current_year || new Date().getFullYear();
-    }
-
-    get hasRecord() {
-        return !!this.props.record.resId;
     }
 
     get months() {
         return MONTHS;
     }
 
+    get hasRecord() {
+        return !!this.props.record.resId;
+    }
+
+    get row() {
+        return this.state.row;
+    }
+
     _emptyDragState() {
         return {
             active: false,
-            receiptId: null,
             startMonth: null,
             endMonth: null,
         };
     }
 
-    async loadPlannerData(resId = this.props.record.resId) {
-        if (!resId) {
+    async loadPlannerData() {
+        if (!this.hasRecord) {
             this.state.loading = false;
-            this.state.rows = [];
-            this.state.availableYears = [];
+            this.state.row = null;
             return;
         }
         this.state.loading = true;
         try {
-            const data = await this.orm.call("tenenet.project", "get_cashflow_planner_data", [
-                [resId],
-                this.state.year,
+            this.state.row = await this.orm.call("tenenet.project.budget.line", "get_planner_data", [
+                [this.props.record.resId],
             ]);
-            this.state.rows = data.rows || [];
-            this.state.availableYears = data.available_years || [];
-            this.state.currencySymbol = data.currency_symbol || "";
-            this.state.currencyPosition = data.currency_position || "after";
-            this.state.year = data.year || this.state.year;
         } catch (error) {
-            this.notification.add(error.data?.message || _t("Nepodarilo sa načítať cashflow."), {
+            this.notification.add(error.data?.message || _t("Nepodarilo sa načítať plán rozpočtu."), {
                 type: "danger",
             });
-            this.state.rows = [];
+            this.state.row = null;
         } finally {
             this.state.loading = false;
             this.resetDrag();
         }
-    }
-
-    async changeYear(delta) {
-        this.state.year += delta;
-        await this.loadPlannerData();
     }
 
     onToggleZeroMode(ev) {
@@ -273,30 +244,25 @@ export class TenenetCashflowPlannerField extends Component {
         this.resetDrag();
     }
 
-    onCellPointerDown(row, month, ev) {
-        if (!this.hasRecord || this.state.loading || !this.isEditableMonth(row, month)) {
+    onCellPointerDown(month, ev) {
+        if (!this.row || this.state.loading) {
             return;
         }
         ev.preventDefault();
         this.state.drag.active = true;
-        this.state.drag.receiptId = row.receipt_id;
         this.state.drag.startMonth = month;
         this.state.drag.endMonth = month;
     }
 
-    onCellPointerEnter(row, month) {
-        if (
-            !this.state.drag.active
-            || this.state.drag.receiptId !== row.receipt_id
-            || !this.isEditableMonth(row, month)
-        ) {
+    onCellPointerEnter(month) {
+        if (!this.state.drag.active) {
             return;
         }
         this.state.drag.endMonth = month;
     }
 
     async onGlobalPointerUp() {
-        if (!this.state.drag.active) {
+        if (!this.state.drag.active || !this.row) {
             return;
         }
         const selection = this.getSelection();
@@ -332,59 +298,54 @@ export class TenenetCashflowPlannerField extends Component {
         Object.assign(this.state.drag, this._emptyDragState());
     }
 
-    getAllocatedSpan(row, month) {
+    isFilled(month) {
+        const value = this.row?.months?.[String(month)] || 0;
+        return Math.abs(value) > 0.00001;
+    }
+
+    getAllocatedSpan(month) {
         let startMonth = month;
         let endMonth = month;
-        while (startMonth > 1 && this.isFilled(row, startMonth - 1)) {
+        while (startMonth > 1 && this.isFilled(startMonth - 1)) {
             startMonth -= 1;
         }
-        while (endMonth < 12 && this.isFilled(row, endMonth + 1)) {
+        while (endMonth < 12 && this.isFilled(endMonth + 1)) {
             endMonth += 1;
         }
         return { startMonth, endMonth };
     }
 
     getSelection() {
-        const { receiptId, startMonth, endMonth } = this.state.drag;
-        if (!receiptId || !startMonth || !endMonth) {
+        if (!this.row || !this.state.drag.startMonth || !this.state.drag.endMonth) {
             return null;
         }
-        const row = this.state.rows.find((item) => item.receipt_id === receiptId);
-        if (!row) {
-            return null;
-        }
-
-        let normalized = normalizeRange(startMonth, endMonth);
+        let normalized = normalizeRange(this.state.drag.startMonth, this.state.drag.endMonth);
         if (
             !this.state.zeroMode
             && normalized.startMonth === normalized.endMonth
-            && this.isFilled(row, normalized.startMonth)
+            && this.isFilled(normalized.startMonth)
         ) {
-            normalized = this.getAllocatedSpan(row, normalized.startMonth);
+            normalized = this.getAllocatedSpan(normalized.startMonth);
         }
         const allMonths = this.months.map((month) => month.number);
         const selectedMonths = allMonths.filter(
             (month) => month >= normalized.startMonth && month <= normalized.endMonth
         );
         const selectedTotal = sumAmounts(
-            selectedMonths.map((month) => row.months?.[String(month)] || 0)
+            selectedMonths.map((month) => this.row.months?.[String(month)] || 0)
         );
         const totalDistributed = sumAmounts(
-            allMonths.map((month) => row.months?.[String(month)] || 0)
+            allMonths.map((month) => this.row.months?.[String(month)] || 0)
         );
         const outsideTotal = roundAmount(totalDistributed - selectedTotal);
-        const remainingAmount = Math.max(0, roundAmount(row.amount - totalDistributed));
-        const maxDistributeAmount = Math.max(0, roundAmount(row.amount - outsideTotal));
+        const remainingAmount = Math.max(0, roundAmount(this.row.amount - totalDistributed));
+        const maxDistributeAmount = Math.max(0, roundAmount(this.row.amount - outsideTotal));
         const initialDistributeAmount = selectedTotal > 0 ? selectedTotal : remainingAmount;
-
         return {
-            receiptId,
-            row,
             ...normalized,
             selectedMonths,
             selectedTotal,
             totalDistributed,
-            outsideTotal,
             remainingAmount,
             maxDistributeAmount,
             initialDistributeAmount,
@@ -395,7 +356,7 @@ export class TenenetCashflowPlannerField extends Component {
         return buildEntriesFromCurrentAmounts(
             selection.startMonth,
             selection.endMonth,
-            selection.row.months || {},
+            this.row.months || {},
             selection.initialDistributeAmount
         );
     }
@@ -409,34 +370,32 @@ export class TenenetCashflowPlannerField extends Component {
             return null;
         }
         return {
-            receiptId: selection.receiptId,
-            row: selection.row,
+            row: this.row,
             startMonth: retainedMonths[0],
             endMonth: retainedMonths[retainedMonths.length - 1],
             selectedMonths: retainedMonths,
             selectedTotal: sumAmounts(
-                retainedMonths.map((month) => selection.row.months?.[String(month)] || 0)
+                retainedMonths.map((month) => this.row.months?.[String(month)] || 0)
             ),
             totalDistributed: selection.totalDistributed,
-            outsideTotal: 0,
-            remainingAmount: Math.max(0, roundAmount(selection.row.amount - selection.totalDistributed)),
-            maxDistributeAmount: roundAmount(selection.row.amount),
+            remainingAmount: Math.max(0, roundAmount(this.row.amount - selection.totalDistributed)),
+            maxDistributeAmount: roundAmount(this.row.amount),
             initialDistributeAmount: selection.totalDistributed,
         };
     }
 
     openEditorDialog(selection, dialogOptions = {}) {
-        this.dialog.add(TenenetCashflowPlannerDialog, {
-            rowLabel: selection.row.label,
-            year: this.state.year,
-            receiptAmount: selection.row.amount,
+        this.dialog.add(TenenetBudgetLinePlannerDialog, {
+            rowLabel: this.row.label,
+            year: this.row.year,
+            totalAmount: this.row.amount,
             distributeAmount:
                 dialogOptions.distributeAmount ?? selection.initialDistributeAmount,
             maxDistributeAmount:
                 dialogOptions.maxDistributeAmount ?? selection.maxDistributeAmount,
             remainingAmount: dialogOptions.remainingAmount ?? selection.remainingAmount,
-            currencySymbol: this.state.currencySymbol,
-            currencyPosition: this.state.currencyPosition,
+            currencySymbol: this.row.currency_symbol,
+            currencyPosition: this.row.currency_position,
             entries: dialogOptions.entries ?? this.buildDialogEntries(selection),
             hasExistingAllocation:
                 dialogOptions.hasExistingAllocation ?? selection.selectedTotal > 0,
@@ -446,10 +405,10 @@ export class TenenetCashflowPlannerField extends Component {
         });
     }
 
-    buildUpdatedYearMonthAmounts(selection, payload) {
+    buildUpdatedMonthAmounts(selection, payload) {
         const updated = {};
         for (const month of this.months.map((item) => item.number)) {
-            updated[String(month)] = roundAmount(selection.row.months?.[String(month)] || 0);
+            updated[String(month)] = roundAmount(this.row.months?.[String(month)] || 0);
         }
         for (const month of selection.selectedMonths) {
             updated[String(month)] = roundAmount(payload.monthAmounts[String(month)] || 0);
@@ -459,15 +418,14 @@ export class TenenetCashflowPlannerField extends Component {
 
     async applySelection(selection, payload) {
         try {
-            await this.orm.call("tenenet.project.receipt", "set_cashflow_month_amounts", [
-                [selection.receiptId],
-                this.state.year,
-                this.buildUpdatedYearMonthAmounts(selection, payload),
+            await this.orm.call("tenenet.project.budget.line", "set_month_amounts", [
+                [this.props.record.resId],
+                this.buildUpdatedMonthAmounts(selection, payload),
             ]);
-            this.notification.add(_t("Cashflow bol aktualizovaný."), { type: "success" });
-            await this.action.doAction({ type: "ir.actions.client", tag: "soft_reload" });
+            this.notification.add(_t("Plán rozpočtu bol aktualizovaný."), { type: "success" });
+            await this.loadPlannerData();
         } catch (error) {
-            this.notification.add(error.data?.message || _t("Nepodarilo sa uložiť cashflow."), {
+            this.notification.add(error.data?.message || _t("Nepodarilo sa uložiť plán rozpočtu."), {
                 type: "danger",
             });
             return false;
@@ -475,54 +433,48 @@ export class TenenetCashflowPlannerField extends Component {
         return true;
     }
 
-    isEditableMonth(row, month) {
-        return !row.receipt_month || month >= row.receipt_month;
-    }
-
     async applyZeroSelection(selection) {
-        const monthAmounts = {};
+        const updated = {};
         for (const month of this.months.map((item) => item.number)) {
-            monthAmounts[String(month)] = roundAmount(selection.row.months?.[String(month)] || 0);
+            updated[String(month)] = roundAmount(this.row.months?.[String(month)] || 0);
         }
         for (const month of selection.selectedMonths) {
-            monthAmounts[String(month)] = 0;
+            updated[String(month)] = 0;
         }
         try {
-            await this.orm.call("tenenet.project.receipt", "set_cashflow_month_amounts", [
-                [selection.receiptId],
-                this.state.year,
-                monthAmounts,
+            await this.orm.call("tenenet.project.budget.line", "set_month_amounts", [
+                [this.props.record.resId],
+                updated,
             ]);
             this.notification.add(_t("Vybrané mesiace boli vynulované."), { type: "success" });
-            await this.action.doAction({ type: "ir.actions.client", tag: "soft_reload" });
+            await this.loadPlannerData();
         } catch (error) {
-            this.notification.add(error.data?.message || _t("Nepodarilo sa upraviť cashflow."), {
+            this.notification.add(error.data?.message || _t("Nepodarilo sa upraviť plán rozpočtu."), {
                 type: "danger",
             });
         }
     }
 
     async applyZeroSelectionWithAdjustment(zeroSelection, adjustmentSelection, payload) {
-        const monthAmounts = {};
+        const updated = {};
         for (const month of this.months.map((item) => item.number)) {
-            monthAmounts[String(month)] = roundAmount(adjustmentSelection.row.months?.[String(month)] || 0);
+            updated[String(month)] = roundAmount(this.row.months?.[String(month)] || 0);
         }
         for (const month of zeroSelection.selectedMonths) {
-            monthAmounts[String(month)] = 0;
+            updated[String(month)] = 0;
         }
         for (const month of adjustmentSelection.selectedMonths) {
-            monthAmounts[String(month)] = roundAmount(payload.monthAmounts[String(month)] || 0);
+            updated[String(month)] = roundAmount(payload.monthAmounts[String(month)] || 0);
         }
         try {
-            await this.orm.call("tenenet.project.receipt", "set_cashflow_month_amounts", [
-                [zeroSelection.receiptId],
-                this.state.year,
-                monthAmounts,
+            await this.orm.call("tenenet.project.budget.line", "set_month_amounts", [
+                [this.props.record.resId],
+                updated,
             ]);
-            this.notification.add(_t("Cashflow bol aktualizovaný."), { type: "success" });
-            await this.action.doAction({ type: "ir.actions.client", tag: "soft_reload" });
+            this.notification.add(_t("Plán rozpočtu bol aktualizovaný."), { type: "success" });
+            await this.loadPlannerData();
         } catch (error) {
-            this.notification.add(error.data?.message || _t("Nepodarilo sa upraviť cashflow."), {
+            this.notification.add(error.data?.message || _t("Nepodarilo sa upraviť plán rozpočtu."), {
                 type: "danger",
             });
             return false;
@@ -530,13 +482,8 @@ export class TenenetCashflowPlannerField extends Component {
         return true;
     }
 
-    isFilled(row, month) {
-        const value = row.months?.[String(month)] || 0;
-        return Math.abs(value) > 0.00001;
-    }
-
-    isSelected(row, month) {
-        if (!this.state.drag.active || this.state.drag.receiptId !== row.receipt_id) {
+    isSelected(month) {
+        if (!this.state.drag.active) {
             return false;
         }
         const { startMonth, endMonth } = normalizeRange(
@@ -546,8 +493,8 @@ export class TenenetCashflowPlannerField extends Component {
         return month >= startMonth && month <= endMonth;
     }
 
-    isSelectionEdge(row, month) {
-        if (!this.isSelected(row, month)) {
+    isSelectionEdge(month) {
+        if (!this.isSelected(month)) {
             return false;
         }
         const { startMonth, endMonth } = normalizeRange(
@@ -566,8 +513,8 @@ export class TenenetCashflowPlannerField extends Component {
         }).format(roundedValue);
     }
 
-    formatCellValue(row, month) {
-        const value = row.months?.[String(month)] || 0;
+    formatCellValue(month) {
+        const value = this.row?.months?.[String(month)] || 0;
         if (Math.abs(value) < 0.00001) {
             return "";
         }
@@ -575,7 +522,7 @@ export class TenenetCashflowPlannerField extends Component {
     }
 }
 
-registry.category("fields").add("tenenet_cashflow_planner", {
-    component: TenenetCashflowPlannerField,
+registry.category("fields").add("tenenet_budget_line_planner", {
+    component: TenenetBudgetLinePlannerField,
     supportedTypes: ["json"],
 });

@@ -11,7 +11,7 @@
                     <field name="row_type"/>
                     <field name="program_label"/>
                     <field name="period"/>
-                    <field name="year" readonly="1"/>
+                    <field name="year" readonly="1" options="{'enable_formatting': False}"/>
                     <field name="month" readonly="1"/>
                     <field name="amount"/>
                     <field name="note"/>
@@ -32,7 +32,7 @@
                             <field name="row_type"/>
                             <field name="program_label"/>
                             <field name="period"/>
-                            <field name="year" readonly="1"/>
+                            <field name="year" readonly="1" options="{'enable_formatting': False}"/>
                             <field name="month" readonly="1"/>
                             <field name="amount"/>
                             <field name="note"/>
@@ -77,7 +77,7 @@
                     <field name="row_type"/>
                     <field name="program_label"/>
                     <field name="period"/>
-                    <field name="year"/>
+                    <field name="year" options="{'enable_formatting': False}"/>
                     <filter string="Aktuálny rok" name="current_year"
                             domain="[('year', '=', context_today().year)]"/>
                     <filter string="Príjmy" name="section_income" domain="[('section_label', '=', 'Príjmy')]"/>

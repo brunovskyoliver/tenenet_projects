@@ -140,6 +140,8 @@ class TestTenenetPlan13PLReport(TransactionCase):
         return pool
 
     def _create_budget_line(self, project, year, budget_type, program, name, amount):
+        if budget_type == "pausal":
+            program = self.admin_program
         return self.env["tenenet.project.budget.line"].create({
             "project_id": project.id,
             "year": year,
@@ -148,6 +150,9 @@ class TestTenenetPlan13PLReport(TransactionCase):
             "name": name,
             "amount": amount,
         })
+
+    def _create_budget_line_months(self, budget_line, month_amounts):
+        budget_line.set_month_amounts({str(month): amount for month, amount in month_amounts.items()})
 
     def _set_pl_override(self, year, program, row_key, month, amount):
         override_model = self.env["tenenet.pl.program.override"].with_context(grid_anchor=f"{year}-01-01")
@@ -473,6 +478,33 @@ class TestTenenetPlan13PLReport(TransactionCase):
         self.assertAlmostEqual(non_project_columns["month_03"], -100.0, places=2)
         self.assertAlmostEqual(employee_cost_columns["month_03"], -100.0, places=2)
         self.assertNotIn("Projektový paušál A", program_names)
+
+    def test_program_budget_income_sections_are_added_separately(self):
+        year = fields.Date.context_today(self).year + 1
+        self._create_receipt(self.project_a, f"{year}-03-01", 1200.0)
+        self._set_income_override(year, self.project_a, 3, 1200.0)
+        labor_line = self._create_budget_line(self.project_a, year, "labor", self.program_a, "Mzdový plán", 180.0)
+        other_line = self._create_budget_line(self.project_a, year, "other", self.program_a, "Iný plán", 90.0)
+        self._create_budget_line_months(labor_line, {3: 100.0, 4: 80.0})
+        self._create_budget_line_months(other_line, {3: 60.0})
+
+        lines = self._get_detail_lines(year, self.program_a, unfold_all=True)
+        line_names = [line["name"] for line in lines]
+        income_total_columns = self._column_map(self._find_line(lines, "Príjmy spolu"))
+        labor_budget_columns = self._column_map(self._find_line(lines, "Mzdové rozpočty"))
+        other_budget_columns = self._column_map(self._find_line(lines, "Iné rozpočty"))
+        labor_detail_columns = self._column_map(self._find_line(lines, "Projekt Alpha / Mzdový plán"))
+        other_detail_columns = self._column_map(self._find_line(lines, "Projekt Alpha / Iný plán"))
+
+        self.assertIn("Mzdové rozpočty", line_names)
+        self.assertIn("Iné rozpočty", line_names)
+        self.assertIn("Projekt Alpha / Mzdový plán", line_names)
+        self.assertIn("Projekt Alpha / Iný plán", line_names)
+        self.assertAlmostEqual(labor_budget_columns["month_03"], 100.0, places=2)
+        self.assertAlmostEqual(other_budget_columns["month_03"], 60.0, places=2)
+        self.assertAlmostEqual(labor_detail_columns["month_04"], 80.0, places=2)
+        self.assertAlmostEqual(other_detail_columns["month_03"], 60.0, places=2)
+        self.assertAlmostEqual(income_total_columns["month_03"], 1360.0, places=2)
 
     def test_admin_tenenet_groups_labor_by_project_and_employee(self):
         year = fields.Date.context_today(self).year + 1

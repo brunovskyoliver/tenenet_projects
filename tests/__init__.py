@@ -27,3 +27,4 @@ from . import test_cashflow_distribute_wizard
 from . import test_project_finance_monthly_graph
 from . import test_project_assignment_wizard
 from . import test_project_recurring_clone
+from . import test_budget_line_planner

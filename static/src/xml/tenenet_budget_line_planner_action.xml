@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="tenenet_projects.TenenetBudgetLinePlannerAction">
+        <div class="o_tenenet_budget_line_planner_action" t-ref="root">
+            <t t-if="state.loading">
+                <div class="o_tenenet_budget_line_planner_loading">
+                    <i class="fa fa-spinner fa-spin me-2"/>Načítavam...
+                </div>
+            </t>
+            <t t-elif="!row">
+                <div class="o_tenenet_budget_line_planner_empty">
+                    Planner sa nepodarilo načítať.
+                </div>
+            </t>
+            <t t-else="">
+                <div class="o_tenenet_budget_line_planner_action_meta">
+                    <div class="o_tenenet_budget_line_planner_action_grid">
+                        <div class="o_tenenet_budget_line_planner_action_item">
+                            <span class="o_tenenet_budget_line_planner_action_label">Projekt</span>
+                            <strong t-out="row.project_name"/>
+                        </div>
+                        <div class="o_tenenet_budget_line_planner_action_item">
+                            <span class="o_tenenet_budget_line_planner_action_label">Názov položky</span>
+                            <strong t-out="row.name"/>
+                        </div>
+                        <div class="o_tenenet_budget_line_planner_action_item">
+                            <span class="o_tenenet_budget_line_planner_action_label">Rok</span>
+                            <strong t-out="row.year"/>
+                        </div>
+                        <div class="o_tenenet_budget_line_planner_action_item">
+                            <span class="o_tenenet_budget_line_planner_action_label">Suma</span>
+                            <strong t-out="formatAmount(row.amount)"/>
+                        </div>
+                        <div class="o_tenenet_budget_line_planner_action_item">
+                            <span class="o_tenenet_budget_line_planner_action_label">Typ rozpočtu</span>
+                            <strong t-out="row.budget_type_label"/>
+                        </div>
+                        <div class="o_tenenet_budget_line_planner_action_item">
+                            <span class="o_tenenet_budget_line_planner_action_label">Program</span>
+                            <strong t-out="row.program_label"/>
+                        </div>
+                    </div>
+                </div>
+                <div class="o_tenenet_budget_line_planner">
+                    <div class="o_tenenet_budget_line_planner_header">
+                        <div>
+                            <div class="o_tenenet_budget_line_planner_title">P&amp;L planner</div>
+                            <div class="o_tenenet_budget_line_planner_subtitle" t-out="row.label"/>
+                        </div>
+                        <div class="o_tenenet_budget_line_planner_controls">
+                            <label class="o_tenenet_cashflow_planner_toggle">
+                                <input type="checkbox"
+                                       t-att-checked="state.zeroMode"
+                                       t-on-change="onToggleZeroMode"/>
+                                <span>Nulovať výber</span>
+                            </label>
+                            <div class="o_tenenet_budget_line_planner_year">
+                                <span class="o_tenenet_budget_line_planner_year_value" t-out="row.year"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="o_tenenet_budget_line_planner_meta">
+                        <span class="o_tenenet_budget_line_planner_badge" t-out="row.program_label"/>
+                        <span class="o_tenenet_budget_line_planner_badge" t-out="row.budget_type_label"/>
+                    </div>
+                    <t t-if="row.note">
+                        <div class="o_tenenet_budget_line_planner_note" t-out="row.note"/>
+                    </t>
+                    <div class="table-responsive">
+                        <table class="table table-sm o_tenenet_budget_line_planner_table">
+                            <thead>
+                                <tr>
+                                    <th class="o_tenenet_budget_line_planner_label_head">Položka</th>
+                                    <t t-foreach="months" t-as="month" t-key="month.number">
+                                        <th class="o_tenenet_budget_line_planner_month_head" t-out="month.label"/>
+                                    </t>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="o_tenenet_budget_line_planner_label_cell">
+                                        <div class="o_tenenet_budget_line_planner_line_label" t-out="row.label"/>
+                                    </td>
+                                    <t t-foreach="months" t-as="month" t-key="month.number">
+                                        <td t-att-class="{
+                                                'o_tenenet_budget_line_planner_cell': true,
+                                                'is-filled': this.isFilled(month.number),
+                                                'is-selected': this.isSelected(month.number),
+                                                'is-selection-edge': this.isSelectionEdge(month.number),
+                                            }"
+                                            t-on-pointerdown="(ev) => this.onCellPointerDown(month.number, ev)"
+                                            t-on-pointerenter="() => this.onCellPointerEnter(month.number)">
+                                            <span class="o_tenenet_budget_line_planner_cell_value"
+                                                  t-out="this.formatCellValue(month.number)"/>
+                                        </td>
+                                    </t>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="o_tenenet_budget_line_planner_action_footer">
+                    <button class="btn btn-secondary" t-on-click="close">Zavrieť</button>
+                </div>
+            </t>
+        </div>
+    </t>
+</templates>

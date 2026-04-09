@@ -138,7 +138,7 @@
                                     <list string="Prijaté prostriedky" create="0" edit="0" delete="0"
                                           default_order="date_received desc">
                                         <field name="date_received"/>
-                                        <field name="year" readonly="1"/>
+                                        <field name="year" readonly="1" options="{'enable_formatting': False}"/>
                                         <field name="amount"/>
                                         <field name="note"/>
                                         <button name="action_open_cashflow_distribute_wizard"
@@ -186,31 +186,43 @@
                                 <separator string="Paušálne"/>
                                 <field name="budget_pausal_line_ids">
                                     <list string="Paušálne položky" create="0" edit="0">
-                                        <field name="year"/>
+                                        <field name="year" options="{'enable_formatting': False}"/>
                                         <field name="program_id"/>
                                         <field name="name"/>
                                         <field name="amount"/>
                                         <field name="note" optional="show"/>
+                                        <button name="action_open_planner"
+                                                type="object"
+                                                string="Planner"
+                                                class="btn-link"/>
                                     </list>
                                 </field>
                                 <separator string="Mzdové"/>
                                 <field name="budget_labor_line_ids">
                                     <list string="Mzdové položky" create="0" edit="0">
-                                        <field name="year"/>
+                                        <field name="year" options="{'enable_formatting': False}"/>
                                         <field name="program_id"/>
                                         <field name="name"/>
                                         <field name="amount"/>
                                         <field name="note" optional="show"/>
+                                        <button name="action_open_planner"
+                                                type="object"
+                                                string="Planner"
+                                                class="btn-link"/>
                                     </list>
                                 </field>
                                 <separator string="Iné"/>
                                 <field name="budget_other_line_ids">
                                     <list string="Iné položky" create="0" edit="0">
-                                        <field name="year"/>
+                                        <field name="year" options="{'enable_formatting': False}"/>
                                         <field name="program_id"/>
                                         <field name="name"/>
                                         <field name="amount"/>
                                         <field name="note" optional="show"/>
+                                        <button name="action_open_planner"
+                                                type="object"
+                                                string="Planner"
+                                                class="btn-link"/>
                                     </list>
                                 </field>
                             </page>

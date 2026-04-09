@@ -34,7 +34,7 @@
                         <group>
                             <field name="project_id" readonly="1"/>
                             <field name="receipt_id" readonly="1"/>
-                            <field name="year" readonly="1"/>
+                            <field name="year" readonly="1" options="{'enable_formatting': False}"/>
                             <field name="month" readonly="1"/>
                             <field name="amount"/>
                         </group>

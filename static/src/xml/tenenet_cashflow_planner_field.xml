@@ -15,16 +15,24 @@
             <t t-else="">
                 <div class="o_tenenet_cashflow_planner_header">
                     <div class="o_tenenet_cashflow_planner_title">Cashflow</div>
-                    <div class="o_tenenet_cashflow_planner_year">
-                        <button class="btn btn-secondary btn-sm"
-                                t-on-click="() => this.changeYear(-1)">
-                            <i class="fa fa-chevron-left"/>
-                        </button>
-                        <span class="o_tenenet_cashflow_planner_year_value" t-out="state.year"/>
-                        <button class="btn btn-secondary btn-sm"
-                                t-on-click="() => this.changeYear(1)">
-                            <i class="fa fa-chevron-right"/>
-                        </button>
+                    <div class="o_tenenet_cashflow_planner_controls">
+                        <label class="o_tenenet_cashflow_planner_toggle">
+                            <input type="checkbox"
+                                   t-att-checked="state.zeroMode"
+                                   t-on-change="onToggleZeroMode"/>
+                            <span>Nulovať výber</span>
+                        </label>
+                        <div class="o_tenenet_cashflow_planner_year">
+                            <button class="btn btn-secondary btn-sm"
+                                    t-on-click="() => this.changeYear(-1)">
+                                <i class="fa fa-chevron-left"/>
+                            </button>
+                            <span class="o_tenenet_cashflow_planner_year_value" t-out="state.year"/>
+                            <button class="btn btn-secondary btn-sm"
+                                    t-on-click="() => this.changeYear(1)">
+                                <i class="fa fa-chevron-right"/>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -102,11 +110,20 @@
             </div>
             <div class="table-responsive">
                 <table class="table table-sm o_tenenet_cashflow_dialog_table">
+                    <colgroup>
+                        <col class="o_tenenet_cashflow_dialog_col_month"/>
+                        <col class="o_tenenet_cashflow_dialog_col_amount"/>
+                        <col class="o_tenenet_cashflow_dialog_col_state"/>
+                        <col class="o_tenenet_cashflow_dialog_col_remove"/>
+                    </colgroup>
                     <thead>
                         <tr>
-                            <th>Mesiac</th>
-                            <th>Suma</th>
-                            <th>Stav</th>
+                            <th class="o_tenenet_cashflow_dialog_head_month">Mesiac</th>
+                            <th class="o_tenenet_cashflow_dialog_head_amount">Suma</th>
+                            <th class="o_tenenet_cashflow_dialog_head_state">Stav</th>
+                            <th class="o_tenenet_cashflow_dialog_head_remove">
+                                <span aria-hidden="true">&#160;</span>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -132,14 +149,27 @@
                                         }"
                                           t-out="entry.manual ? 'Fixné' : 'Auto'"/>
                                 </td>
+                                <td class="o_tenenet_cashflow_dialog_remove">
+                                    <button class="btn btn-link o_tenenet_cashflow_dialog_remove_btn"
+                                            t-on-click="() => this.onRemoveMonth(entry.month)"
+                                            t-att-disabled="state.saving">
+                                        <i class="fa fa-times"/>
+                                    </button>
+                                </td>
                             </tr>
                         </t>
                     </tbody>
                     <tfoot>
-                        <tr>
-                            <th>Spolu</th>
-                            <th t-out="formatAmountWithCurrency(totalAssigned)"/>
-                            <th/>
+                        <tr class="o_tenenet_cashflow_dialog_total_row">
+                            <th class="o_tenenet_cashflow_dialog_total_month">Spolu</th>
+                            <th class="o_tenenet_cashflow_dialog_total_amount"
+                                t-out="formatAmountWithCurrency(totalAssigned)"/>
+                            <th class="o_tenenet_cashflow_dialog_total_state">
+                                <span aria-hidden="true">&#160;</span>
+                            </th>
+                            <th class="o_tenenet_cashflow_dialog_total_remove">
+                                <span aria-hidden="true">&#160;</span>
+                            </th>
                         </tr>
                     </tfoot>
                 </table>

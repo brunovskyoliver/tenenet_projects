@@ -10,7 +10,7 @@
                     <field name="project_label"/>
                     <field name="row_label"/>
                     <field name="period"/>
-                    <field name="year" readonly="1"/>
+                    <field name="year" readonly="1" options="{'enable_formatting': False}"/>
                     <field name="month" readonly="1"/>
                     <field name="amount"/>
                     <field name="note"/>
@@ -30,7 +30,7 @@
                             <field name="project_label"/>
                             <field name="row_label"/>
                             <field name="period"/>
-                            <field name="year" readonly="1"/>
+                            <field name="year" readonly="1" options="{'enable_formatting': False}"/>
                             <field name="month" readonly="1"/>
                             <field name="amount"/>
                             <field name="note"/>
@@ -77,7 +77,7 @@
                     <field name="project_label"/>
                     <field name="row_label"/>
                     <field name="period"/>
-                    <field name="year"/>
+                    <field name="year" options="{'enable_formatting': False}"/>
                     <searchpanel view_types="grid,list">
                         <field name="program_id" enable_counters="1"/>
                     </searchpanel>

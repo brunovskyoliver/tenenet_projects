@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="tenenet_projects.TenenetBudgetLinePlannerField">
+        <div class="o_tenenet_budget_line_planner">
+            <t t-if="!hasRecord">
+                <div class="o_tenenet_budget_line_planner_empty">
+                    Planner bude dostupný po uložení položky.
+                </div>
+            </t>
+            <t t-elif="state.loading">
+                <div class="o_tenenet_budget_line_planner_loading">
+                    <i class="fa fa-spinner fa-spin me-2"/>Načítavam...
+                </div>
+            </t>
+            <t t-elif="row">
+                <div class="o_tenenet_budget_line_planner_header">
+                    <div>
+                        <div class="o_tenenet_budget_line_planner_title">P&amp;L planner</div>
+                        <div class="o_tenenet_budget_line_planner_subtitle" t-out="row.label"/>
+                    </div>
+                    <div class="o_tenenet_budget_line_planner_controls">
+                        <label class="o_tenenet_cashflow_planner_toggle">
+                            <input type="checkbox"
+                                   t-att-checked="state.zeroMode"
+                                   t-on-change="onToggleZeroMode"/>
+                            <span>Nulovať výber</span>
+                        </label>
+                        <div class="o_tenenet_budget_line_planner_year">
+                            <span class="o_tenenet_budget_line_planner_year_value" t-out="row.year"/>
+                        </div>
+                    </div>
+                </div>
+                <div class="o_tenenet_budget_line_planner_meta">
+                    <span class="o_tenenet_budget_line_planner_badge" t-out="row.program_label"/>
+                    <span class="o_tenenet_budget_line_planner_badge" t-out="row.budget_type_label"/>
+                </div>
+                <t t-if="row.note">
+                    <div class="o_tenenet_budget_line_planner_note" t-out="row.note"/>
+                </t>
+                <div class="table-responsive">
+                    <table class="table table-sm o_tenenet_budget_line_planner_table">
+                        <thead>
+                            <tr>
+                                <th class="o_tenenet_budget_line_planner_label_head">Položka</th>
+                                <t t-foreach="months" t-as="month" t-key="month.number">
+                                    <th class="o_tenenet_budget_line_planner_month_head" t-out="month.label"/>
+                                </t>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="o_tenenet_budget_line_planner_label_cell">
+                                    <div class="o_tenenet_budget_line_planner_line_label" t-out="row.label"/>
+                                </td>
+                                <t t-foreach="months" t-as="month" t-key="month.number">
+                                    <td t-att-class="{
+                                            'o_tenenet_budget_line_planner_cell': true,
+                                            'is-filled': this.isFilled(month.number),
+                                            'is-selected': this.isSelected(month.number),
+                                            'is-selection-edge': this.isSelectionEdge(month.number),
+                                        }"
+                                        t-on-pointerdown="(ev) => this.onCellPointerDown(month.number, ev)"
+                                        t-on-pointerenter="() => this.onCellPointerEnter(month.number)">
+                                        <span class="o_tenenet_budget_line_planner_cell_value"
+                                              t-out="this.formatCellValue(month.number)"/>
+                                    </td>
+                                </t>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </t>
+        </div>
+    </t>
+
+    <t t-name="tenenet_projects.TenenetBudgetLinePlannerDialog">
+        <Dialog size="'md'" title="'P&amp;L planner'" contentClass="'o_tenenet_month_planner_dialog'">
+            <div class="o_tenenet_cashflow_dialog_meta">
+                <div class="o_tenenet_cashflow_dialog_receipt_block">
+                    <div class="o_tenenet_cashflow_dialog_receipt" t-out="props.rowLabel"/>
+                    <div class="o_tenenet_cashflow_dialog_cap">
+                        Maximum
+                        <strong t-out="formatAmountWithCurrency(props.maxDistributeAmount)"/>
+                    </div>
+                </div>
+                <div class="o_tenenet_cashflow_dialog_total">
+                    <label class="o_tenenet_cashflow_dialog_total_label">Na rozdelenie</label>
+                    <input type="text"
+                           inputmode="decimal"
+                           class="form-control o_tenenet_cashflow_dialog_total_input"
+                           t-att-value="formatAmountInput(state.distributeAmount)"
+                           t-on-change="onDistributeAmountChange"/>
+                </div>
+                <div class="o_tenenet_cashflow_dialog_total">
+                    <span>Zostáva</span>
+                    <strong t-out="formatAmountWithCurrency(props.remainingAmount)"/>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm o_tenenet_cashflow_dialog_table">
+                    <thead>
+                        <tr>
+                            <th>Mesiac</th>
+                            <th>Suma</th>
+                            <th>Stav</th>
+                            <th/>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="entries" t-as="entry" t-key="entry.month">
+                            <tr>
+                                <td class="o_tenenet_cashflow_dialog_month">
+                                    <span t-out="getMonthLabel(entry.month)"/>
+                                    <span class="o_tenenet_cashflow_dialog_year" t-out="formatYear(props.year)"/>
+                                </td>
+                                <td class="o_tenenet_cashflow_dialog_amount">
+                                    <input type="text"
+                                           inputmode="decimal"
+                                           class="form-control form-control-sm o_tenenet_cashflow_dialog_input"
+                                           t-att-value="formatAmountInput(entry.amount)"
+                                           t-on-change="(ev) => this.onAmountChange(entry.month, ev)"
+                                           t-on-focus="(ev) => ev.target.select()"/>
+                                </td>
+                                <td class="o_tenenet_cashflow_dialog_state">
+                                    <span t-att-class="{
+                                            'o_tenenet_cashflow_dialog_badge': true,
+                                            'is-manual': entry.manual,
+                                            'is-auto': !entry.manual,
+                                        }"
+                                          t-out="entry.manual ? 'Fixné' : 'Auto'"/>
+                                </td>
+                                <td class="o_tenenet_cashflow_dialog_remove">
+                                    <button class="btn btn-link o_tenenet_cashflow_dialog_remove_btn"
+                                            t-on-click="() => this.onRemoveMonth(entry.month)"
+                                            t-att-disabled="state.saving">
+                                        <i class="fa fa-times"/>
+                                    </button>
+                                </td>
+                            </tr>
+                        </t>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th>Spolu</th>
+                            <th t-out="formatAmountWithCurrency(totalAssigned)"/>
+                            <th/>
+                            <th/>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            <t t-set-slot="footer">
+                <button t-if="props.hasExistingAllocation"
+                        class="btn btn-outline-secondary"
+                        t-on-click="() => this.onResetSelection()"
+                        t-att-disabled="state.saving">
+                    Resetovať rozsah
+                </button>
+                <button class="btn btn-primary"
+                        t-on-click="() => this.onSave()"
+                        t-att-disabled="state.saving">
+                    Uložiť
+                </button>
+                <button class="btn btn-secondary"
+                        t-on-click="() => props.close()"
+                        t-att-disabled="state.saving">
+                    Zrušiť
+                </button>
+            </t>
+        </Dialog>
+    </t>
+</templates>

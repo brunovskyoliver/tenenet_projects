@@ -74,10 +74,14 @@ class TenenetProjectBudgetWizard(models.TransientModel):
         sanitize=False,
     )
 
-    @api.depends("project_id")
+    @api.depends("project_id", "budget_type")
     def _compute_available_program_ids(self):
         for rec in self:
-            rec.available_program_ids = rec.project_id.program_ids
+            admin_program = self.env["tenenet.program"].search([("code", "=", "ADMIN_TENENET")], limit=1)
+            if rec.budget_type == "pausal":
+                rec.available_program_ids = admin_program
+            else:
+                rec.available_program_ids = rec.project_id.program_ids.filtered(lambda program: program != admin_program)
 
     @api.depends("project_id", "year")
     def _compute_amounts(self):
@@ -111,9 +115,9 @@ class TenenetProjectBudgetWizard(models.TransientModel):
     def _onchange_defaults(self):
         domain = {"program_id": [("id", "in", self.available_program_ids.ids)]}
         for rec in self:
+            admin_program = self.env["tenenet.program"].search([("code", "=", "ADMIN_TENENET")], limit=1)
             rows = rec.project_id._get_current_program_allocation_rows()
             if rec.budget_type == "pausal":
-                admin_program = rec.project_id.program_ids.filtered(lambda program: program.code == "ADMIN_TENENET")[:1]
                 rec.program_id = admin_program
             elif rows:
                 rec.program_id = rows[0]["program"]
@@ -173,7 +177,11 @@ class TenenetProjectBudgetWizard(models.TransientModel):
             "project_id": self.project_id.id,
             "year": self.year,
             "budget_type": self.budget_type,
-            "program_id": self.program_id.id,
+            "program_id": (
+                self.env["tenenet.program"].search([("code", "=", "ADMIN_TENENET")], limit=1).id
+                if self.budget_type == "pausal"
+                else self.program_id.id
+            ),
             "name": self.name,
             "amount": self.amount,
             "note": self.note,

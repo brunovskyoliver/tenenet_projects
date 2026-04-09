@@ -7,7 +7,7 @@
                 <list string="Mesačné matice hodín" create="0" delete="0">
                     <field name="employee_id"/>
                     <field name="project_id"/>
-                    <field name="year"/>
+                    <field name="year" options="{'enable_formatting': False}"/>
                     <field name="assignment_id" optional="hide"/>
                 </list>
             </field>
@@ -19,7 +19,7 @@
             <field name="arch" type="xml">
                 <list string="Moje timesheety" create="0" delete="0">
                     <field name="project_id"/>
-                    <field name="year"/>
+                    <field name="year" options="{'enable_formatting': False}"/>
                     <button name="action_open_grid"
                             type="object"
                             string="Otvoriť maticu"
@@ -36,7 +36,7 @@
                     <field name="name"/>
                     <field name="employee_id"/>
                     <field name="project_id"/>
-                    <field name="year"/>
+                    <field name="year" options="{'enable_formatting': False}"/>
                     <field name="period"/>
                     <field name="hours"/>
                     <field name="editable"/>
@@ -99,7 +99,7 @@
                     <field name="employee_id"/>
                     <field name="project_id"/>
                     <field name="name"/>
-                    <field name="year"/>
+                    <field name="year" options="{'enable_formatting': False}"/>
                     <filter string="Aktuálny rok" name="current_year"
                             domain="[('year', '=', context_today().year)]"/>
                     <filter string="Bez absencií" name="without_leave" domain="[('leave_sync_managed', '=', False)]"/>
@@ -145,7 +145,7 @@
                                             invisible="not can_go_previous"
                                             title="Predchádzajúci rok"/>
                                     <span class="o_tenenet_year_display">
-                                        <field name="year" readonly="1" nolabel="1"/>
+                                        <field name="year" readonly="1" nolabel="1" options="{'enable_formatting': False}"/>
                                     </span>
                                     <button name="action_next_year"
                                             type="object"
@@ -207,7 +207,7 @@
                 <search string="Mesačné matice hodín">
                     <field name="employee_id"/>
                     <field name="project_id"/>
-                    <field name="year"/>
+                    <field name="year" options="{'enable_formatting': False}"/>
                     <filter string="Aktuálny rok" name="current_year"
                             domain="[('year', '=', context_today().year)]"/>
                     <separator/>
