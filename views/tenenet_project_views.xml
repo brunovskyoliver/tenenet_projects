@@ -34,6 +34,19 @@
                                 <field name="name"/>
                                 <field name="description"/>
                                 <field name="active"/>
+                                <field name="is_recurring_license_project"/>
+                                <field name="recurring_clone_anchor_date"
+                                       invisible="not is_recurring_license_project"/>
+                                <field name="recurring_clone_interval_type"
+                                       invisible="not is_recurring_license_project"/>
+                                <field name="recurring_next_clone_date"
+                                       readonly="1"
+                                       invisible="not is_recurring_license_project"/>
+                                <button name="action_test_recurring_clone"
+                                        type="object"
+                                        string="Test klonovania"
+                                        class="btn btn-secondary"
+                                        invisible="not id or not is_recurring_license_project"/>
                                 <field name="semaphore"/>
                             </group>
                             <group>

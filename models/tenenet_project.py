@@ -1,6 +1,8 @@
 import logging
 from datetime import date
 
+from dateutil.relativedelta import relativedelta
+
 from odoo import _, Command, api, fields, models
 from odoo.exceptions import AccessError, ValidationError
 
@@ -18,6 +20,53 @@ class TenenetProject(models.Model):
     name = fields.Char(string="Názov projektu", required=True)
     description = fields.Text(string="Popis")
     active = fields.Boolean(string="Aktívny", default=True)
+    is_recurring_license_project = fields.Boolean(
+        string="Licenčný projekt (opakujúci sa)",
+        default=False,
+    )
+    recurring_clone_anchor_date = fields.Date(
+        string="Dátum ďalšieho klonovania",
+        copy=False,
+    )
+    recurring_clone_interval_type = fields.Selection(
+        [
+            ("days", "Denne"),
+            ("weeks", "Týždenne"),
+            ("months", "Mesačne"),
+            ("years", "Ročne"),
+        ],
+        string="Opakovanie",
+        default="years",
+        copy=False,
+    )
+    recurring_last_clone_date = fields.Date(
+        string="Naposledy klonované",
+        copy=False,
+        readonly=True,
+    )
+    recurring_next_clone_date = fields.Date(
+        string="Najbližšie klonovanie",
+        compute="_compute_recurring_next_clone_date",
+        store=True,
+    )
+    recurring_root_project_id = fields.Many2one(
+        "tenenet.project",
+        string="Koreň opakovaného projektu",
+        ondelete="set null",
+        copy=False,
+        readonly=True,
+    )
+    recurring_source_project_id = fields.Many2one(
+        "tenenet.project",
+        string="Zdroj posledného klonu",
+        ondelete="set null",
+        copy=False,
+        readonly=True,
+    )
+    recurring_base_name = fields.Char(
+        string="Základ názvu opakovaného projektu",
+        copy=False,
+    )
     is_tenenet_internal = fields.Boolean(
         string="Interný TENENET projekt",
         default=False,
@@ -274,6 +323,22 @@ class TenenetProject(models.Model):
                 rec.active_year_from = False
                 rec.active_year_to = False
 
+    @api.depends(
+        "is_recurring_license_project",
+        "recurring_clone_anchor_date",
+        "recurring_clone_interval_type",
+        "recurring_last_clone_date",
+    )
+    def _compute_recurring_next_clone_date(self):
+        for rec in self:
+            if not rec.is_recurring_license_project or not rec.recurring_clone_anchor_date:
+                rec.recurring_next_clone_date = False
+                continue
+            if rec.recurring_last_clone_date:
+                rec.recurring_next_clone_date = rec._shift_recurring_date(rec.recurring_last_clone_date)
+            else:
+                rec.recurring_next_clone_date = rec.recurring_clone_anchor_date
+
     def _compute_cashflow_planner_state(self):
         current_year = fields.Date.context_today(self).year
         for rec in self:
@@ -419,6 +484,264 @@ class TenenetProject(models.Model):
         if amount < -0.005:
             return "minus"
         return "neutral"
+
+    @api.model
+    def _default_recurring_anchor_from_vals(self, vals):
+        reference_date = (
+            fields.Date.to_date(vals.get("date_end"))
+            or fields.Date.to_date(vals.get("date_start"))
+            or fields.Date.context_today(self)
+        )
+        return date(reference_date.year, 12, 31)
+
+    @api.model
+    def _normalize_recurring_create_vals(self, vals):
+        normalized = dict(vals)
+        if normalized.get("is_recurring_license_project"):
+            normalized.setdefault(
+                "recurring_clone_anchor_date",
+                self._default_recurring_anchor_from_vals(normalized),
+            )
+            normalized.setdefault("recurring_clone_interval_type", "years")
+            base_name = (normalized.get("recurring_base_name") or normalized.get("name") or "").strip()
+            if base_name:
+                normalized.setdefault("recurring_base_name", base_name)
+        return normalized
+
+    def _ensure_recurring_metadata(self):
+        for rec in self.filtered("is_recurring_license_project"):
+            updates = {}
+            if not rec.recurring_root_project_id:
+                updates["recurring_root_project_id"] = rec.id
+            if not rec.recurring_clone_anchor_date:
+                updates["recurring_clone_anchor_date"] = rec._default_recurring_anchor_from_vals({
+                    "date_start": rec.date_start,
+                    "date_end": rec.date_end,
+                })
+            if not rec.recurring_base_name:
+                updates["recurring_base_name"] = rec.name
+            if updates:
+                super(TenenetProject, rec).write(updates)
+
+    def _get_recurring_delta(self):
+        self.ensure_one()
+        interval_type = self.recurring_clone_interval_type or "years"
+        return relativedelta(**{interval_type: 1})
+
+    def _shift_recurring_date(self, value):
+        self.ensure_one()
+        value = fields.Date.to_date(value)
+        return value + self._get_recurring_delta() if value else False
+
+    def _shift_date_by_recurrence(self, value):
+        self.ensure_one()
+        value = fields.Date.to_date(value)
+        if not value:
+            return False
+        return value + self._get_recurring_delta()
+
+    def _shift_year_by_recurrence(self, year):
+        self.ensure_one()
+        if not year:
+            return 0
+        shifted = date(int(year), 1, 1) + self._get_recurring_delta()
+        return shifted.year
+
+    def _get_recurring_root(self):
+        self.ensure_one()
+        return self.recurring_root_project_id or self
+
+    def _get_recurring_chain_projects(self):
+        self.ensure_one()
+        root = self._get_recurring_root()
+        return self.search([
+            ("active", "=", True),
+            "|",
+            ("id", "=", root.id),
+            ("recurring_root_project_id", "=", root.id),
+        ], order="create_date desc, id desc")
+
+    def _get_latest_recurring_source(self):
+        self.ensure_one()
+        chain_projects = self._get_recurring_chain_projects()
+        if chain_projects:
+            return chain_projects[:1]
+        root = self._get_recurring_root()
+        if root.active:
+            return root
+        raise ValidationError("Pre opakované klonovanie nie je dostupný žiadny aktívny zdrojový projekt.")
+
+    def _get_recurring_target_year(self, source_project):
+        self.ensure_one()
+        reference_date = (
+            self._shift_date_by_recurrence(source_project.date_start)
+            or self._shift_date_by_recurrence(source_project.date_end)
+            or self._shift_date_by_recurrence(self.recurring_next_clone_date)
+            or self._shift_date_by_recurrence(fields.Date.context_today(self))
+        )
+        return reference_date.year
+
+    def _get_recurring_clone_name(self, source_project):
+        self.ensure_one()
+        root = self._get_recurring_root()
+        base_name = root.recurring_base_name or root.name
+        return f"{base_name} {self._get_recurring_target_year(source_project)}"
+
+    def _prepare_recurring_project_clone_vals(self, source_project):
+        self.ensure_one()
+        root = self._get_recurring_root()
+        return {
+            "name": self._get_recurring_clone_name(source_project),
+            "description": source_project.description,
+            "active": True,
+            "is_recurring_license_project": False,
+            "contract_number": source_project.contract_number,
+            "recipient_partner_id": source_project.recipient_partner_id.id or False,
+            "date_contract": self._shift_date_by_recurrence(source_project.date_contract),
+            "date_start": self._shift_date_by_recurrence(source_project.date_start),
+            "date_end": self._shift_date_by_recurrence(source_project.date_end),
+            "partner_id": source_project.partner_id.id or False,
+            "portal": source_project.portal,
+            "semaphore": source_project.semaphore,
+            "program_ids": [Command.set(source_project.program_ids.ids)],
+            "reporting_program_id": source_project.reporting_program_id.id or False,
+            "site_ids": [Command.set(source_project.site_ids.ids)],
+            "contact_ids": [Command.set(source_project.contact_ids.ids)],
+            "donor_id": source_project.donor_id.id or False,
+            "international": source_project.international,
+            "odborny_garant_id": source_project.odborny_garant_id.id or False,
+            "project_manager_id": source_project.project_manager_id.id or False,
+            "currency_id": source_project.currency_id.id or False,
+            "default_max_monthly_wage_hm": source_project.default_max_monthly_wage_hm,
+            "recurring_root_project_id": root.id,
+            "recurring_source_project_id": source_project.id,
+            "recurring_base_name": root.recurring_base_name or root.name,
+        }
+
+    def _clone_project_related_records(self, new_project, source_project):
+        self.ensure_one()
+        LeaveRule = self.env["tenenet.project.leave.rule"].sudo()
+        AllowedExpenseType = self.env["tenenet.project.allowed.expense.type"].sudo()
+        BudgetLine = self.env["tenenet.project.budget.line"].sudo()
+        Milestone = self.env["tenenet.project.milestone"].sudo()
+        Receipt = self.env["tenenet.project.receipt"].sudo()
+        Assignment = self.env["tenenet.project.assignment"].sudo()
+
+        for rule in source_project.leave_rule_ids:
+            LeaveRule.create({
+                "project_id": new_project.id,
+                "leave_type_id": rule.leave_type_id.id,
+                "included": rule.included,
+                "max_leaves_per_year_days": rule.max_leaves_per_year_days,
+            })
+        for expense_type in source_project.allowed_expense_type_ids:
+            AllowedExpenseType.create({
+                "project_id": new_project.id,
+                "config_id": expense_type.config_id.id or False,
+                "name": expense_type.name,
+                "description": expense_type.description,
+                "max_amount": expense_type.max_amount,
+            })
+        for budget_line in source_project.budget_line_ids:
+            BudgetLine.create({
+                "project_id": new_project.id,
+                "name": budget_line.name,
+                "sequence": budget_line.sequence,
+                "year": self._shift_year_by_recurrence(budget_line.year),
+                "budget_type": budget_line.budget_type,
+                "program_id": budget_line.program_id.id,
+                "amount": budget_line.amount,
+                "note": budget_line.note,
+            })
+        for milestone in source_project.milestone_ids:
+            Milestone.create({
+                "project_id": new_project.id,
+                "sequence": milestone.sequence,
+                "name": milestone.name,
+                "date": self._shift_date_by_recurrence(milestone.date),
+                "note": milestone.note,
+                "attachment_ids": [Command.set(milestone.attachment_ids.ids)],
+            })
+        for receipt in source_project.receipt_line_ids:
+            cloned_receipt = Receipt.create({
+                "project_id": new_project.id,
+                "date_received": self._shift_date_by_recurrence(receipt.date_received),
+                "amount": receipt.amount,
+                "note": receipt.note,
+            })
+            shifted_cashflow_amounts = {}
+            for cashflow in receipt.cashflow_ids:
+                shifted_date = self._shift_date_by_recurrence(cashflow.date_start)
+                if not shifted_date:
+                    continue
+                shifted_cashflow_amounts[shifted_date.month] = (
+                    shifted_cashflow_amounts.get(shifted_date.month, 0.0) + (cashflow.amount or 0.0)
+                )
+            if shifted_cashflow_amounts:
+                cloned_receipt.set_cashflow_month_amounts(cloned_receipt.year, shifted_cashflow_amounts)
+        for assignment in source_project.assignment_ids.filtered(lambda rec: rec.active):
+            Assignment.create({
+                "employee_id": assignment.employee_id.id,
+                "project_id": new_project.id,
+                "program_id": assignment.program_id.id or False,
+                "site_ids": [Command.set(assignment.site_ids.ids)],
+                "date_start": self._shift_date_by_recurrence(assignment.date_start),
+                "date_end": self._shift_date_by_recurrence(assignment.date_end),
+                "allocation_ratio": assignment.allocation_ratio,
+                "settlement_only": assignment.settlement_only,
+                "wage_hm": assignment.wage_hm,
+                "max_monthly_wage_hm": assignment.max_monthly_wage_hm,
+                "active": assignment.active,
+            })
+
+    def _run_recurring_clone(self, force=False):
+        self.ensure_one()
+        root = self._get_recurring_root()
+        if not root.is_recurring_license_project:
+            raise ValidationError("Opakované klonovanie je dostupné iba pre licenčný opakujúci sa projekt.")
+        if not root.recurring_next_clone_date:
+            raise ValidationError("Projekt nemá nastavený dátum ďalšieho klonovania.")
+        today = fields.Date.context_today(self)
+        if not force and root.recurring_next_clone_date > today:
+            raise ValidationError("Projekt ešte nie je pripravený na ďalšie klonovanie.")
+
+        source_project = root._get_latest_recurring_source().sudo()
+        project_vals = root._prepare_recurring_project_clone_vals(source_project)
+        new_project = self.sudo().with_context(
+            tracking_disable=True,
+            mail_create_nosubscribe=True,
+        ).create(project_vals)
+        root._clone_project_related_records(new_project, source_project)
+        root.sudo().write({
+            "recurring_last_clone_date": root.recurring_next_clone_date,
+            "recurring_source_project_id": source_project.id,
+        })
+        return new_project
+
+    def action_test_recurring_clone(self):
+        self.ensure_one()
+        new_project = self._run_recurring_clone(force=True)
+        return {
+            "type": "ir.actions.act_window",
+            "name": new_project.display_name,
+            "res_model": "tenenet.project",
+            "view_mode": "form",
+            "res_id": new_project.id,
+            "target": "current",
+        }
+
+    @api.model
+    def _cron_run_recurring_project_clones(self):
+        today = fields.Date.context_today(self)
+        due_projects = self.search([
+            ("active", "=", True),
+            ("is_tenenet_internal", "=", False),
+            ("is_recurring_license_project", "=", True),
+            ("recurring_next_clone_date", "!=", False),
+            ("recurring_next_clone_date", "<=", today),
+        ], order="recurring_next_clone_date asc, id asc")
+        for project in due_projects:
+            project._run_recurring_clone(force=False)
 
     def _allocate_annual_amount_by_project_plan(self, year, amount):
         self.ensure_one()
@@ -635,13 +958,15 @@ class TenenetProject(models.Model):
             elif not still_qualifies and in_group:
                 user.write({"group_ids": [(3, group.id)]})
 
-    @api.model_create_multi
-    def create(self, vals_list):
-        records = super().create(vals_list)
-        records._sync_garant_pm_group()
-        return records
-
     def write(self, vals):
+        vals = dict(vals)
+        if vals.get("is_recurring_license_project") and not vals.get("recurring_clone_anchor_date"):
+            vals["recurring_clone_anchor_date"] = self._default_recurring_anchor_from_vals({
+                "date_start": vals.get("date_start", self[:1].date_start),
+                "date_end": vals.get("date_end", self[:1].date_end),
+            })
+        if vals.get("is_recurring_license_project") and not vals.get("recurring_base_name"):
+            vals["recurring_base_name"] = vals.get("name") or self[:1].recurring_base_name or self[:1].name
         previous_site_ids = {}
         if "site_ids" in vals:
             previous_site_ids = {project.id: set(project.site_ids.ids) for project in self}
@@ -654,6 +979,8 @@ class TenenetProject(models.Model):
             self.mapped("assignment_ids.timesheet_ids")._check_wage_cap()
         if "odborny_garant_id" in vals or "project_manager_id" in vals or "active" in vals:
             self._sync_garant_pm_group()
+        if {"is_recurring_license_project", "recurring_clone_anchor_date", "recurring_base_name"} & set(vals):
+            self._ensure_recurring_metadata()
         return result
 
     def _cleanup_assignment_sites_after_project_unlink(self, previous_site_ids):
@@ -894,6 +1221,7 @@ class TenenetProject(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        vals_list = [self._normalize_recurring_create_vals(vals) for vals in vals_list]
         admin_program = self.env["tenenet.program"].with_context(active_test=False).search(
             [("code", "=", self.ADMIN_TENENET_PROGRAM_CODE)],
             limit=1,
@@ -915,7 +1243,10 @@ class TenenetProject(models.Model):
             if admin_program.id not in existing_ids:
                 commands.append((4, admin_program.id))
             vals["program_ids"] = commands
-        return super().create(vals_list)
+        records = super().create(vals_list)
+        records._ensure_recurring_metadata()
+        records._sync_garant_pm_group()
+        return records
 
     @api.model
     def _format_partner_contact(self, partner):
@@ -947,6 +1278,8 @@ class TenenetProject(models.Model):
         return "\n".join(lines) if lines else False
 
     def _check_milestone_manage_access(self):
+        if self.env.is_superuser():
+            return
         current_user = self.env.user
         is_manager = current_user.has_group("tenenet_projects.group_tenenet_manager")
         employee_ids = set(current_user.employee_ids.ids)

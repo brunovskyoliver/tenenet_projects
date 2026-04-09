@@ -76,6 +76,7 @@ and P&L reporting by program.
         'data/tenenet_project_terrain_data.xml',
         'data/tenenet_alert_mail_template.xml',
         'data/tenenet_alert_cron.xml',
+        'data/tenenet_project_recurring_clone_cron.xml',
         'data/tenenet_alert_allowed_models_data.xml',
         'views/tenenet_alert_allowed_model_views.xml',
         'views/tenenet_alert_views.xml',
