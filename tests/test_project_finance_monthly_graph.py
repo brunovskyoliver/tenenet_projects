@@ -80,7 +80,7 @@ class TestProjectFinanceMonthlyGraph(TransactionCase):
         ])
         self.assertEqual(len(all_rows), 24)
         self.assertAlmostEqual(self._line_amount(self.current_year, 1, "predicted_cf"), 100.0, places=2)
-        self.assertAlmostEqual(self._line_amount(self.current_year, 2, "predicted_cf"), 250.0, places=2)
+        self.assertAlmostEqual(self._line_amount(self.current_year, 2, "predicted_cf"), 200.0, places=2)
         self.assertAlmostEqual(self._line_amount(self.current_year, 3, "predicted_cf"), 300.0, places=2)
         self.assertAlmostEqual(self._line_amount(self.current_year, 3, "real_expense"), 250.0, places=2)
         self.assertAlmostEqual(self._line_amount(self.current_year, 4, "real_expense"), 0.0, places=2)

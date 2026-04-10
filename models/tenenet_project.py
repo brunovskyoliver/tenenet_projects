@@ -421,9 +421,21 @@ class TenenetProject(models.Model):
             reverse=True,
         )
 
+    def _get_cashflow_planner_month_values(self, year, planner_rows=None):
+        self.ensure_one()
+        month_values = {month: 0.0 for month in range(1, 13)}
+        rows = planner_rows
+        if rows is None:
+            rows = self.get_cashflow_planner_data(year).get("rows", [])
+        for row in rows:
+            row_months = row.get("months") or {}
+            for month in range(1, 13):
+                month_values[month] += float(row_months.get(str(month), 0.0) or 0.0)
+        return month_values
+
     def _get_cashflow_breakdown_for_month(self, year, month):
         self.ensure_one()
-        total = self._get_effective_cashflow_month_values(year).get(month, 0.0)
+        total = self._get_cashflow_planner_month_values(year).get(month, 0.0)
         return {
             "total": total,
             "items": [
@@ -571,7 +583,10 @@ class TenenetProject(models.Model):
         }
         available_years.add(selected_year)
         planner_data = self.get_cashflow_planner_data(selected_year)
-        predicted_values = self._get_effective_cashflow_month_values(selected_year)
+        predicted_values = self._get_cashflow_planner_month_values(
+            selected_year,
+            planner_rows=planner_data.get("rows", []),
+        )
         real_expense_breakdowns = {
             month: self._get_actual_project_spend_breakdown_for_month(selected_year, month)
             for month in range(1, 13)

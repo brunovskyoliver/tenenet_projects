@@ -67,7 +67,7 @@ class TenenetProjectFinanceMonthlyLine(models.Model):
 
     @api.model
     def _series_amount_map_for_project_year(self, project, year):
-        predicted_values = project._get_effective_cashflow_month_values(year)
+        predicted_values = project._get_cashflow_planner_month_values(year)
         return {
             "predicted_cf": {
                 month: predicted_values.get(month, 0.0)
