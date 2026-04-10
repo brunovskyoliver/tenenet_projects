@@ -167,6 +167,33 @@ class TestHrLeaveSync(TransactionCase):
         self.assertEqual(sync_entry.assignment_id, min(self.assignment_a | self.assignment_b, key=lambda rec: rec.id))
         self.assertFalse(self._internal_expenses_for_leave(leave))
 
+    def test_mapped_leave_refreshes_matrix_storage_without_opening_grid(self):
+        leave_type = self._create_leave_type("Dovolenka matica", tenenet_hour_type="vacation")
+        self._create_leave_rule(self.project_a, leave_type)
+        matrix = self.env["tenenet.project.timesheet.matrix"].create({
+            "assignment_id": self.assignment_a.id,
+            "year": 2026,
+        })
+        vacation_row = matrix.line_ids.filtered(lambda line: line.hour_type == "vacation")[:1]
+        vacation_entry = vacation_row.entry_ids.filtered(
+            lambda entry: entry.period == fields.Date.to_date("2026-05-01")
+        )[:1]
+
+        self.assertAlmostEqual(vacation_row.month_05, 0.0)
+        self.assertAlmostEqual(vacation_entry.hours, 0.0)
+
+        self._approve_leave(self._create_leave(
+            self.employee,
+            leave_type,
+            "2026-05-14",
+            tenenet_override_assignment_id=self.assignment_a,
+        ))
+
+        vacation_row.invalidate_recordset(["month_05"])
+        vacation_entry.invalidate_recordset(["hours"])
+        self.assertAlmostEqual(vacation_row.month_05, 8.0)
+        self.assertAlmostEqual(vacation_entry.hours, 8.0)
+
     def test_leave_limit_is_per_employee_and_over_limit_goes_internal(self):
         leave_type = self._create_leave_type("Lekár test", tenenet_hour_type="doctor")
         shared_project = self.env["tenenet.project"].create({"name": "Projekt Shared"})

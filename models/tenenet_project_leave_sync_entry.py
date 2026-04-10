@@ -98,6 +98,7 @@ class TenenetProjectLeaveSyncEntry(models.Model):
     def _rebuild_timesheets(self, affected_keys):
         Timesheet = self.env["tenenet.project.timesheet"].sudo().with_context(from_hr_leave_sync=True)
         Assignment = self.env["tenenet.project.assignment"].sudo()
+        Matrix = self.env["tenenet.project.timesheet.matrix"].sudo()
         leave_fields = {field_name: 0.0 for field_name in LEAVE_HOUR_FIELDS}
 
         for assignment_id, period in sorted(affected_keys, key=lambda item: (item[1], item[0])):
@@ -119,3 +120,6 @@ class TenenetProjectLeaveSyncEntry(models.Model):
             vals["leave_auto_synced"] = bool(entries)
 
             timesheet.write(vals)
+
+        if affected_keys:
+            Matrix._refresh_for_assignment_periods(affected_keys)

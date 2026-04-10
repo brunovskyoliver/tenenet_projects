@@ -188,6 +188,31 @@ class TenenetProjectTimesheetMatrix(models.Model):
         for rec in self:
             rec.line_ids._load_month_values_from_timesheets()
 
+    @api.model
+    def _refresh_for_assignment_periods(self, assignment_periods):
+        """Persist matrix line and grid-entry values for the affected assignment/year pairs."""
+        if not assignment_periods:
+            return self.browse()
+
+        Assignment = self.env["tenenet.project.assignment"].sudo()
+        refreshed = self.browse()
+        years_by_assignment = {}
+        for assignment_id, period in assignment_periods:
+            period_date = fields.Date.to_date(period) if period else False
+            if not assignment_id or not period_date:
+                continue
+            years_by_assignment.setdefault(assignment_id, set()).add(period_date.year)
+
+        for assignment_id, years in years_by_assignment.items():
+            assignment = Assignment.browse(assignment_id).exists()
+            if not assignment or not years:
+                continue
+            matrices = self.sudo()._ensure_for_assignment_years(assignment, sorted(years))
+            if matrices:
+                matrices._load_from_timesheets()
+                refreshed |= matrices
+        return refreshed
+
     def action_open_form(self):
         self.ensure_one()
         self.assignment_id._sync_precreated_timesheets()
