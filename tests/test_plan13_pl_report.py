@@ -7,7 +7,7 @@ from odoo.tests import TransactionCase, tagged
 class TestTenenetPlan13PLReport(TransactionCase):
     def setUp(self):
         super().setUp()
-        self.base_wage_hm = 1.0 / 1.362
+        self.base_wage_hm = 1.0
         self.detail_report = self.env.ref("tenenet_projects.tenenet_pl_report")
         self.summary_report = self.env.ref("tenenet_projects.tenenet_pl_summary_report")
         self.admin_program = self.env["tenenet.program"].search([("code", "=", "ADMIN_TENENET")], limit=1)
@@ -172,6 +172,27 @@ class TestTenenetPlan13PLReport(TransactionCase):
             "company_id": self.env.company.id,
             "company_ids": [Command.set([self.env.company.id])],
             "group_ids": [Command.set(group_ids)],
+        })
+
+    def _create_hr_expense_type(self, name):
+        product = self.env["product.product"].create({
+            "name": f"{name} produkt",
+            "type": "service",
+            "can_be_expensed": True,
+        })
+        return self.env["tenenet.expense.type.config"].create({
+            "name": name,
+            "hr_expense_product_id": product.id,
+        })
+
+    def _create_project_hr_expense(self, employee, project, config, amount, expense_date):
+        return self.env["hr.expense"].create({
+            "name": f"{config.name} test",
+            "employee_id": employee.id,
+            "date": expense_date,
+            "total_amount_currency": amount,
+            "tenenet_project_id": project.id,
+            "tenenet_expense_type_config_id": config.id,
         })
 
     def test_detail_report_uses_projects_sales_fundraising_and_operating_pool(self):
@@ -375,7 +396,7 @@ class TestTenenetPlan13PLReport(TransactionCase):
         self.assertAlmostEqual(labor_a["month_03"], -100.0, places=2)
         self.assertAlmostEqual(pre_admin_a["month_03"], 1300.0, places=2)
         self.assertAlmostEqual(pre_admin_b["month_03"], 250.0, places=2)
-        self.assertAlmostEqual(final_total["year_total"], 1400.0, places=2)
+        self.assertAlmostEqual(final_total["year_total"], 1550.0, places=2)
 
     def test_program_override_grid_prepares_new_row_set(self):
         year = fields.Date.context_today(self).year + 1
@@ -507,8 +528,22 @@ class TestTenenetPlan13PLReport(TransactionCase):
 
     def test_admin_tenenet_groups_labor_by_project_and_employee(self):
         year = fields.Date.context_today(self).year + 1
-        self._create_timesheet(self.assignment_a, f"{year}-03-01", 100.0)
-        self._create_timesheet(self.assignment_b, f"{year}-03-01", 50.0)
+        self.env["tenenet.internal.expense"].create({
+            "employee_id": self.employee_a.id,
+            "period": f"{year}-03-01",
+            "category": "wage",
+            "source_assignment_id": self.assignment_a.id,
+            "wage_hm": self.assignment_a.wage_hm,
+            "cost_hm": 100.0,
+        })
+        self.env["tenenet.internal.expense"].create({
+            "employee_id": self.employee_b.id,
+            "period": f"{year}-03-01",
+            "category": "wage",
+            "source_assignment_id": self.assignment_b.id,
+            "wage_hm": self.assignment_b.wage_hm,
+            "cost_hm": 50.0,
+        })
 
         lines = self._get_detail_lines(year, self.admin_program, unfold_all=True)
         labor_columns = self._column_map(self._find_line(lines, "Mzdové náklady"))
@@ -522,6 +557,101 @@ class TestTenenetPlan13PLReport(TransactionCase):
         self.assertAlmostEqual(beta_columns["month_03"], -50.0, places=2)
         self.assertAlmostEqual(adam_columns["month_03"], -100.0, places=2)
         self.assertAlmostEqual(beata_columns["month_03"], -50.0, places=2)
+
+    def test_admin_tenenet_does_not_show_fully_covered_project_labor(self):
+        year = fields.Date.context_today(self).year + 1
+        self._create_timesheet(self.assignment_a, f"{year}-03-01", 100.0)
+
+        lines = self._get_detail_lines(year, self.admin_program, unfold_all=True)
+        line_names = [line["name"] for line in lines]
+        labor_columns = self._column_map(self._find_line(lines, "Mzdové náklady"))
+
+        self.assertAlmostEqual(labor_columns["month_03"], 0.0, places=2)
+        self.assertNotIn("Projekt Alpha", line_names)
+        self.assertNotIn("Adam Zamestnanec", line_names)
+
+    def test_program_and_admin_split_wage_cap_excess_by_hm(self):
+        year = fields.Date.context_today(self).year + 1
+        self.assignment_a.write({
+            "wage_hm": 10.0,
+            "max_monthly_wage_hm": 700.0,
+        })
+        self._create_timesheet(self.assignment_a, f"{year}-03-01", 90.0)
+
+        program_lines = self._get_detail_lines(year, self.program_a, unfold_all=True)
+        admin_lines = self._get_detail_lines(year, self.admin_program, unfold_all=True)
+
+        program_labor = self._column_map(self._find_line(program_lines, "Mzdové náklady - program"))
+        project_labor = self._column_map(self._find_line(program_lines, "Projekt Alpha"))
+        program_admin_cost = self._column_map(self._find_line(program_lines, "Admin TENENET náklady"))
+        admin_labor = self._column_map(self._find_line(admin_lines, "Mzdové náklady"))
+        admin_project = self._column_map(self._find_line(admin_lines, "Projekt Alpha"))
+        admin_employee = self._column_map(self._find_line(admin_lines, "Adam Zamestnanec"))
+
+        self.assertAlmostEqual(program_labor["month_03"], -700.0, places=2)
+        self.assertAlmostEqual(project_labor["month_03"], -700.0, places=2)
+        self.assertAlmostEqual(program_admin_cost["month_03"], -200.0, places=2)
+        self.assertAlmostEqual(admin_labor["month_03"], -200.0, places=2)
+        self.assertAlmostEqual(admin_project["month_03"], -200.0, places=2)
+        self.assertAlmostEqual(admin_employee["month_03"], -200.0, places=2)
+
+    def test_program_stravne_uses_covered_hr_expenses_and_admin_gets_internal_remainder(self):
+        year = fields.Date.context_today(self).year + 1
+        travel_type = self._create_hr_expense_type("Cestovné")
+        self.project_a.allowed_expense_type_ids = [(0, 0, {
+            "config_id": travel_type.id,
+            "name": travel_type.name,
+            "max_amount": 100.0,
+        })]
+        self._create_project_hr_expense(
+            self.employee_a,
+            self.project_a,
+            travel_type,
+            150.0,
+            f"{year}-04-01",
+        )
+
+        program_lines = self._get_detail_lines(year, self.program_a, unfold_all=True)
+        admin_lines = self._get_detail_lines(year, self.admin_program, unfold_all=True)
+
+        stravne_columns = self._column_map(self._find_line(program_lines, "Stravné a iné"))
+        program_admin_cost = self._column_map(self._find_line(program_lines, "Admin TENENET náklady"))
+        admin_labor = self._column_map(self._find_line(admin_lines, "Mzdové náklady"))
+        admin_project = self._column_map(self._find_line(admin_lines, "Projekt Alpha"))
+
+        self.assertAlmostEqual(stravne_columns["month_04"], -100.0, places=2)
+        self.assertAlmostEqual(program_admin_cost["month_04"], -50.0, places=2)
+        self.assertAlmostEqual(admin_labor["month_04"], -50.0, places=2)
+        self.assertAlmostEqual(admin_project["month_04"], -50.0, places=2)
+
+    def test_program_labor_keeps_covered_leave_and_admin_gets_uncovered_leave(self):
+        year = fields.Date.context_today(self).year + 1
+        self.env["tenenet.project.timesheet"].with_context(from_hr_leave_sync=True).create({
+            "assignment_id": self.assignment_a.id,
+            "period": f"{year}-03-01",
+            "hours_vacation": 8.0,
+        })
+        self.env["tenenet.internal.expense"].create({
+            "employee_id": self.employee_a.id,
+            "period": f"{year}-04-01",
+            "category": "leave",
+            "source_assignment_id": self.assignment_a.id,
+            "hour_type": "vacation",
+            "hours": 4.0,
+            "wage_hm": self.assignment_a.wage_hm,
+        })
+
+        program_lines = self._get_detail_lines(year, self.program_a, unfold_all=True)
+        admin_lines = self._get_detail_lines(year, self.admin_program, unfold_all=True)
+
+        program_labor = self._column_map(self._find_line(program_lines, "Mzdové náklady - program"))
+        program_admin_cost = self._column_map(self._find_line(program_lines, "Admin TENENET náklady"))
+        admin_labor = self._column_map(self._find_line(admin_lines, "Mzdové náklady"))
+
+        self.assertAlmostEqual(program_labor["month_03"], -8.0, places=2)
+        self.assertAlmostEqual(program_labor["month_04"], 0.0, places=2)
+        self.assertAlmostEqual(program_admin_cost["month_04"], -4.0, places=2)
+        self.assertAlmostEqual(admin_labor["month_04"], -4.0, places=2)
 
     def test_admin_tenenet_separates_management_labor(self):
         year = fields.Date.context_today(self).year + 1

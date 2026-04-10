@@ -746,6 +746,10 @@ class TenenetPLReportingSupport(models.AbstractModel):
     def _get_program_labor_cost_rows(self, program, selected_year):
         year_start = date(selected_year, 1, 1)
         year_end = date(selected_year, 12, 31)
+        internal_wage_by_assignment_month = self._get_internal_wage_by_assignment_month(
+            selected_year,
+            program=program,
+        )
         timesheets = self.env["tenenet.project.timesheet"].with_context(active_test=False).search(
             [
                 ("project_id.reporting_program_id", "=", program.id),
@@ -761,29 +765,78 @@ class TenenetPLReportingSupport(models.AbstractModel):
                 project.id,
                 {"project": project, "name": self._get_project_line_name(project), "values": defaultdict(float)},
             )
-            bucket["values"][timesheet.period.month] -= timesheet.total_labor_cost or 0.0
+            covered_amount = max(
+                0.0,
+                (timesheet.gross_salary or 0.0)
+                - internal_wage_by_assignment_month.get(
+                    (timesheet.assignment_id.id, timesheet.period.month),
+                    0.0,
+                ),
+            )
+            bucket["values"][timesheet.period.month] -= covered_amount
         rows = [row for row in project_values.values() if any(row["values"].values())]
         rows.sort(key=lambda row: (row["name"] or "").lower())
         return rows
 
     def _get_internal_expense_amount(self, expense):
-        return expense.cost_ccp or expense.expense_amount or 0.0
+        if expense.category in ("wage", "leave"):
+            return expense.cost_hm or 0.0
+        return expense.expense_amount or expense.cost_ccp or 0.0
+
+    def _get_internal_expense_project(self, expense):
+        return expense.source_project_id or expense.source_assignment_id.project_id
+
+    def _get_year_internal_expenses(self, selected_year):
+        return self.env["tenenet.internal.expense"].search(
+            [
+                ("period", ">=", date(selected_year, 1, 1)),
+                ("period", "<=", date(selected_year, 12, 31)),
+            ],
+            order="employee_id, period, id",
+        )
+
+    def _get_internal_wage_by_assignment_month(self, selected_year, program=None):
+        wage_by_assignment_month = defaultdict(float)
+        expenses = self._get_year_internal_expenses(selected_year).filtered(
+            lambda exp: exp.category == "wage" and exp.source_assignment_id
+        )
+        for expense in expenses:
+            project = self._get_internal_expense_project(expense)
+            if (
+                program
+                and project
+                and project.reporting_program_id != program
+            ):
+                continue
+            wage_by_assignment_month[(expense.source_assignment_id.id, expense.period.month)] += (
+                expense.cost_hm or 0.0
+            )
+        return wage_by_assignment_month
+
+    def _get_program_project_expense_values(self, program, selected_year):
+        values = self._zero_by_month()
+        expenses = self.env["tenenet.project.expense"].search(
+            [
+                ("project_id.reporting_program_id", "=", program.id),
+                ("date", ">=", date(selected_year, 1, 1)),
+                ("date", "<=", date(selected_year, 12, 31)),
+                ("charged_to", "=", "project"),
+            ],
+            order="project_id, date, id",
+        )
+        for expense in expenses:
+            values[expense.date.month] -= expense.amount or 0.0
+        return values
 
     def _get_admin_labor_cost_by_project_and_employee(self, selected_year):
-        year_start = date(selected_year, 1, 1)
-        year_end = date(selected_year, 12, 31)
-        timesheets = self.env["tenenet.project.timesheet"].with_context(active_test=False).search(
-            [
-                ("project_id.is_tenenet_internal", "=", False),
-                ("period", ">=", year_start),
-                ("period", "<=", year_end),
-            ],
-            order="project_id, employee_id, period",
-        )
+        expenses = self._get_year_internal_expenses(selected_year)
         project_rows = {}
-        for timesheet in timesheets:
-            project = timesheet.project_id
-            employee = timesheet.employee_id
+        for expense in expenses:
+            project = self._get_internal_expense_project(expense)
+            if not project or expense.employee_id.is_mgmt:
+                continue
+
+            employee = expense.employee_id
             project_bucket = project_rows.setdefault(
                 project.id,
                 {
@@ -802,9 +855,11 @@ class TenenetPLReportingSupport(models.AbstractModel):
                     "values": defaultdict(float),
                 },
             )
-            amount = timesheet.total_labor_cost or 0.0
-            project_bucket["values"][timesheet.period.month] -= amount
-            employee_bucket["values"][timesheet.period.month] -= amount
+            amount = self._get_internal_expense_amount(expense)
+            if not amount:
+                continue
+            project_bucket["values"][expense.period.month] -= amount
+            employee_bucket["values"][expense.period.month] -= amount
 
         rows = []
         for bucket in project_rows.values():
@@ -818,18 +873,10 @@ class TenenetPLReportingSupport(models.AbstractModel):
         return rows
 
     def _get_admin_non_project_expense_rows(self, selected_year):
-        year_start = date(selected_year, 1, 1)
-        year_end = date(selected_year, 12, 31)
-        expenses = self.env["tenenet.internal.expense"].search(
-            [
-                ("period", ">=", year_start),
-                ("period", "<=", year_end),
-            ],
-            order="employee_id, period",
-        )
+        expenses = self._get_year_internal_expenses(selected_year)
         rows = {}
         for expense in expenses:
-            project = expense.source_project_id or expense.source_assignment_id.project_id
+            project = self._get_internal_expense_project(expense)
             if project or expense.employee_id.is_mgmt:
                 continue
             employee = expense.employee_id
@@ -847,19 +894,12 @@ class TenenetPLReportingSupport(models.AbstractModel):
         return result
 
     def _get_admin_mgmt_labor(self, selected_year):
-        year_start = date(selected_year, 1, 1)
-        year_end = date(selected_year, 12, 31)
         values = self._zero_by_month()
-        expenses = self.env["tenenet.internal.expense"].search(
-            [
-                ("employee_id.is_mgmt", "=", True),
-                ("period", ">=", year_start),
-                ("period", "<=", year_end),
-            ],
-            order="employee_id, period",
+        expenses = self._get_year_internal_expenses(selected_year).filtered(
+            lambda exp: exp.employee_id.is_mgmt
         )
         for expense in expenses:
-            project = expense.source_project_id or expense.source_assignment_id.project_id
+            project = self._get_internal_expense_project(expense)
             if project:
                 continue
             values[expense.period.month] -= self._get_internal_expense_amount(expense)
@@ -887,17 +927,14 @@ class TenenetPLReportingSupport(models.AbstractModel):
         return {"values": admin_values}
 
     def _get_admin_cost_detail_rows(self, program, selected_year):
-        if not self._is_admin_tenenet_program(program):
+        if self._is_admin_tenenet_program(program):
             return []
         rows = {}
-        expenses = self.env["tenenet.internal.expense"].search(
-            [
-                ("period", ">=", date(selected_year, 1, 1)),
-                ("period", "<=", date(selected_year, 12, 31)),
-            ],
-            order="employee_id, period",
-        )
+        expenses = self._get_year_internal_expenses(selected_year)
         for expense in expenses:
+            project = self._get_internal_expense_project(expense)
+            if not project or project.reporting_program_id != program:
+                continue
             employee = expense.employee_id
             bucket = rows.setdefault(
                 employee.id,
@@ -907,11 +944,20 @@ class TenenetPLReportingSupport(models.AbstractModel):
                     "values": defaultdict(float),
                 },
             )
-            bucket["values"][expense.period.month] -= expense.cost_ccp or expense.expense_amount or 0.0
+            bucket["values"][expense.period.month] -= self._get_internal_expense_amount(expense)
         return sorted(rows.values(), key=lambda row: (row["name"] or "").lower())
 
     def _get_admin_manual_detail_row(self, override_rows):
-        values = self._legacy_admin_override(override_rows)["values"]
+        values = self._zero_by_month()
+        for row_key in ("admin_tenenet_cost", "support_admin", "management"):
+            row = override_rows.get(row_key)
+            if not row:
+                continue
+            row_values = row.get("values") or {}
+            manual_months = row.get("manual_months") or {}
+            for month in range(1, 13):
+                if manual_months.get(month):
+                    values[month] += row_values.get(month, 0.0)
         if not any(values.values()):
             return None
         return {
@@ -1121,7 +1167,7 @@ class TenenetPLReportingSupport(models.AbstractModel):
         )
         labor_cost = self._sum_month_value_bundles(*(row["value_bundle"] for row in labor_project_rows))
         stravne = self._predict_row_bundle(
-            self._zero_by_month(),
+            self._get_program_project_expense_values(program, selected_year),
             selected_year,
             override_row=override_rows.get("stravne"),
         )

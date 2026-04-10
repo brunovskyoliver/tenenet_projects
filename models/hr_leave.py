@@ -1,8 +1,8 @@
+from collections import defaultdict
 import logging
 from datetime import date, timedelta
 
 from odoo import api, fields, models
-from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -24,7 +24,6 @@ class HrLeave(models.Model):
 
     def action_approve(self, check_state=True):
         """Approve leave and synchronize TENENET leave timesheets from this action."""
-        self._ensure_tenenet_leave_mapping()
         result = super(HrLeave, self.with_context(skip_tenenet_leave_sync=True)).action_approve(
             check_state=check_state
         )
@@ -83,7 +82,6 @@ class HrLeave(models.Model):
         4. If no eligible assignment → create tenenet.internal.expense (category=leave).
         """
         Assignment = self.env["tenenet.project.assignment"].sudo()
-        LeaveRule = self.env["tenenet.project.leave.rule"].sudo()
         SyncEntry = self.env["tenenet.project.leave.sync.entry"].sudo()
         InternalExpense = self.env["tenenet.internal.expense"].sudo()
         affected_employee_periods = set()
@@ -102,11 +100,6 @@ class HrLeave(models.Model):
 
             leave_type = leave.holiday_status_id
             hour_type = self._get_hour_type_for_leave(leave_type)
-            if not hour_type:
-                raise ValidationError(
-                    f"Typ dovolenky '{leave_type.display_name}' nemá mapovanie na TENENET kategóriu hodín. "
-                    "Nastavte pole 'Tenenet typ hodín' na type dovolenky."
-                )
 
             date_from = leave.date_from.date() if leave.date_from else False
             date_to = leave.date_to.date() if leave.date_to else date_from
@@ -134,88 +127,32 @@ class HrLeave(models.Model):
                 if leave_hours_for_month <= 0.001:
                     continue
 
-                # ── Override: force to internal expense ──────────────────────
-                if leave.tenenet_override_is_internal:
-                    source = leave.tenenet_override_assignment_id or False
-                    self._create_leave_internal_expense(
-                        leave, employee, period_first,
-                        leave_hours_for_month, hour_type, source,
-                        note="Manuálne nastavené ako interný náklad.",
-                    )
-                    continue
-
-                # ── Override: force to a specific assignment ──────────────────
-                if leave.tenenet_override_assignment_id:
+                resolution = self._resolve_leave_target(
+                    leave,
+                    employee,
+                    leave_type,
+                    hour_type,
+                    period_first,
+                    all_assignments,
+                )
+                if resolution["mode"] == "assignment":
                     allocations.append({
-                        "assignment_id": leave.tenenet_override_assignment_id.id,
+                        "assignment_id": resolution["assignment"].id,
                         "period": period_first,
                         "hour_type": hour_type,
                         "hours": leave_hours_for_month,
                     })
                     continue
 
-                # ── Auto algorithm ─────────────────────────────────────────────
-                in_scope = all_assignments.filtered(
-                    lambda a: a._is_period_in_scope(period_first)
+                self._create_leave_internal_expense(
+                    leave,
+                    employee,
+                    period_first,
+                    leave_hours_for_month,
+                    hour_type,
+                    resolution["source_assignment"],
+                    note=resolution["note"],
                 )
-
-                rules = LeaveRule.search([
-                    ("leave_type_id", "=", leave_type.id),
-                    ("included", "=", True),
-                    ("project_id", "in", in_scope.mapped("project_id").ids),
-                ])
-                allowed_project_ids = set(rules.mapped("project_id").ids)
-                rule_by_project = {r.project_id.id: r for r in rules}
-
-                # Candidates: assignments whose project allows this leave type
-                candidates = in_scope.filtered(
-                    lambda a: a.project_id.id in allowed_project_ids
-                )
-
-                # Filter by yearly max limit
-                year = period_first.year
-                used_map = self._get_used_leave_hours_for_year(
-                    employee.id,
-                    candidates.ids,
-                    leave_type.id,
-                    year,
-                )
-                eligible = self.env["tenenet.project.assignment"]
-                over_limit_candidate = self.env["tenenet.project.assignment"]
-
-                for assignment in candidates:
-                    rule = rule_by_project.get(assignment.project_id.id)
-                    max_days = rule.max_leaves_per_year_days if rule else 0.0
-                    if max_days > 0.0:
-                        max_hours = max_days * (employee.work_hours or 8.0)
-                        used_hours = used_map.get(assignment.id, 0.0)
-                        if used_hours >= max_hours:
-                            if not over_limit_candidate:
-                                over_limit_candidate = assignment
-                            continue
-                    eligible |= assignment
-
-                if eligible:
-                    chosen = self._pick_assignment_least_used(eligible, used_map)
-                    allocations.append({
-                        "assignment_id": chosen.id,
-                        "period": period_first,
-                        "hour_type": hour_type,
-                        "hours": leave_hours_for_month,
-                    })
-                else:
-                    # No eligible assignment → internal expense
-                    source = over_limit_candidate or (candidates[:1] or all_assignments[:1])
-                    note = (
-                        "Žiadne priradenie s platným pravidlom dovolenky pre tento typ."
-                        if not candidates
-                        else "Všetky priradenia prekročili ročný limit dovolenky."
-                    )
-                    self._create_leave_internal_expense(
-                        leave, employee, period_first,
-                        leave_hours_for_month, hour_type, source or False,
-                        note=note,
-                    )
 
             _logger.info(
                 "TENENET leave sync for leave %s -> %d ledger rows",
@@ -233,37 +170,170 @@ class HrLeave(models.Model):
 
     # ── Helpers ──────────────────────────────────────────────────────────────
 
-    def _get_used_leave_hours_for_year(self, employee_id, assignment_ids, leave_type_id, year):
+    def _get_used_leave_hours_for_year(self, employee_id, assignment_ids, leave_type_id, year, exclude_leave_id=False):
         """Return {assignment_id: total_hours} for the given employee/assignments/leave_type/year."""
         if not assignment_ids:
             return {}
         SyncEntry = self.env["tenenet.project.leave.sync.entry"].sudo()
+        InternalExpense = self.env["tenenet.internal.expense"].sudo()
         year_start = date(year, 1, 1)
         year_end = date(year, 12, 31)
 
-        # Map leave_type_id → hour_type first
-        leave_type = self.env["hr.leave.type"].browse(leave_type_id)
-        hour_type = self._get_hour_type_for_leave(leave_type)
-
-        domain = [
+        sync_domain = [
             ("employee_id", "=", employee_id),
             ("assignment_id", "in", list(assignment_ids)),
             ("period", ">=", year_start),
             ("period", "<=", year_end),
+            ("leave_id.holiday_status_id", "=", leave_type_id),
         ]
-        if hour_type:
-            domain.append(("hour_type", "=", hour_type))
+        if exclude_leave_id:
+            sync_domain.append(("leave_id", "!=", exclude_leave_id))
+        sync_groups = SyncEntry._read_group(
+            sync_domain,
+            groupby=["assignment_id"],
+            aggregates=["hours:sum"],
+        )
 
-        groups = SyncEntry.read_group(domain, ["assignment_id", "hours:sum"], ["assignment_id"])
-        return {g["assignment_id"][0]: g["hours"] for g in groups if g["assignment_id"]}
+        internal_domain = [
+            ("employee_id", "=", employee_id),
+            ("source_assignment_id", "in", list(assignment_ids)),
+            ("category", "=", "leave"),
+            ("period", ">=", year_start),
+            ("period", "<=", year_end),
+            ("leave_id.holiday_status_id", "=", leave_type_id),
+        ]
+        if exclude_leave_id:
+            internal_domain.append(("leave_id", "!=", exclude_leave_id))
+        internal_groups = InternalExpense._read_group(
+            internal_domain,
+            groupby=["source_assignment_id"],
+            aggregates=["hours:sum"],
+        )
+
+        totals = defaultdict(float)
+        for assignment, hours_sum in sync_groups:
+            if assignment:
+                totals[assignment.id] += hours_sum or 0.0
+        for assignment, hours_sum in internal_groups:
+            if assignment:
+                totals[assignment.id] += hours_sum or 0.0
+        return dict(totals)
 
     @api.model
     def _pick_assignment_least_used(self, eligible_assignments, used_map):
         """Return the assignment with the fewest used leave hours (prefers 0)."""
         return min(
             eligible_assignments,
-            key=lambda a: used_map.get(a.id, 0.0),
+            key=lambda a: (used_map.get(a.id, 0.0), a.id),
         )
+
+    @api.model
+    def _get_best_fit_leave_assignment(self, leave, employee, leave_type, period_first, all_assignments):
+        LeaveRule = self.env["tenenet.project.leave.rule"].sudo()
+        in_scope = all_assignments.filtered(lambda assignment: assignment._is_period_in_scope(period_first))
+        rules = LeaveRule.search([
+            ("leave_type_id", "=", leave_type.id),
+            ("included", "=", True),
+            ("project_id", "in", in_scope.mapped("project_id").ids),
+        ])
+        allowed_project_ids = set(rules.mapped("project_id").ids)
+        rule_by_project = {rule.project_id.id: rule for rule in rules}
+        candidates = in_scope.filtered(lambda assignment: assignment.project_id.id in allowed_project_ids)
+
+        year = period_first.year
+        used_map = self._get_used_leave_hours_for_year(
+            employee.id,
+            candidates.ids,
+            leave_type.id,
+            year,
+            exclude_leave_id=leave.id,
+        )
+        eligible = self.env["tenenet.project.assignment"]
+        over_limit_candidate = self.env["tenenet.project.assignment"]
+
+        for assignment in candidates.sorted("id"):
+            rule = rule_by_project.get(assignment.project_id.id)
+            max_days = rule.max_leaves_per_year_days if rule else 0.0
+            if max_days > 0.0:
+                max_hours = max_days * (employee.work_hours or 8.0)
+                used_hours = used_map.get(assignment.id, 0.0)
+                if used_hours >= max_hours:
+                    if not over_limit_candidate:
+                        over_limit_candidate = assignment
+                    continue
+            eligible |= assignment
+
+        if eligible:
+            chosen = self._pick_assignment_least_used(eligible, used_map)
+            return {
+                "assignment": chosen,
+                "source_assignment": chosen,
+                "note": "",
+            }
+
+        source_assignment = over_limit_candidate or candidates.sorted("id")[:1] or all_assignments.sorted("id")[:1]
+        return {
+            "assignment": self.env["tenenet.project.assignment"],
+            "source_assignment": source_assignment or self.env["tenenet.project.assignment"],
+            "note": (
+                "Žiadne priradenie s platným pravidlom dovolenky pre tento typ."
+                if not candidates
+                else "Všetky priradenia prekročili ročný limit dovolenky."
+            ),
+        }
+
+    @api.model
+    def _resolve_leave_target(self, leave, employee, leave_type, hour_type, period_first, all_assignments):
+        override_assignment = leave.tenenet_override_assignment_id
+        if leave.tenenet_override_is_internal:
+            return {
+                "mode": "internal",
+                "assignment": self.env["tenenet.project.assignment"],
+                "source_assignment": override_assignment or self.env["tenenet.project.assignment"],
+                "note": "Manuálne nastavené ako interný náklad.",
+            }
+
+        if override_assignment:
+            if hour_type:
+                return {
+                    "mode": "assignment",
+                    "assignment": override_assignment,
+                    "source_assignment": override_assignment,
+                    "note": "",
+                }
+            return {
+                "mode": "internal",
+                "assignment": self.env["tenenet.project.assignment"],
+                "source_assignment": override_assignment,
+                "note": "Typ dovolenky nemá mapovanie na TENENET kategóriu hodín.",
+            }
+
+        best_fit = self._get_best_fit_leave_assignment(
+            leave,
+            employee,
+            leave_type,
+            period_first,
+            all_assignments,
+        )
+        if hour_type and best_fit["assignment"]:
+            return {
+                "mode": "assignment",
+                "assignment": best_fit["assignment"],
+                "source_assignment": best_fit["assignment"],
+                "note": "",
+            }
+
+        note = best_fit["note"]
+        if not hour_type:
+            note = "Typ dovolenky nemá mapovanie na TENENET kategóriu hodín."
+            if best_fit["note"]:
+                note = f"{note} {best_fit['note']}"
+        return {
+            "mode": "internal",
+            "assignment": self.env["tenenet.project.assignment"],
+            "source_assignment": best_fit["source_assignment"],
+            "note": note,
+        }
 
     def _create_leave_internal_expense(self, leave, employee, period, hours, hour_type, source_assignment, note=""):
         """Create (or replace) a tenenet.internal.expense record for an uncovered leave."""
@@ -297,17 +367,6 @@ class HrLeave(models.Model):
 
     # ── Preserved helpers (unchanged from original) ──────────────────────────
 
-    def _ensure_tenenet_leave_mapping(self):
-        """Validation guard: each approved leave must resolve to a TENENET leave category."""
-        for leave in self:
-            leave_type = leave.holiday_status_id
-            if leave_type and not self._get_hour_type_for_leave(leave_type):
-                raise ValidationError(
-                    f"Typ dovolenky '{leave_type.display_name}' nemá mapovanie na TENENET kategóriu hodín. "
-                    "Nastavte pole 'Tenenet typ hodín' na type dovolenky."
-                )
-
-    @api.model
     def _split_hours_evenly(self, total_hours, count):
         if count <= 0:
             return []

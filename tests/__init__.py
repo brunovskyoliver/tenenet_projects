@@ -10,6 +10,7 @@ from . import test_plan12_project_yearly_labor_report
 from . import test_plan13_pl_report
 from . import test_plan15_cashflow_report
 from . import test_plan14_alerts
+from . import test_hr_leave_sync
 from . import test_contact_classification
 from . import test_employee_availability
 from . import test_project_assignment_overlap
