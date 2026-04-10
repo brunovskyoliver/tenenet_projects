@@ -197,3 +197,8 @@ class TenenetProjectBudgetLine(models.Model):
             },
             "context": dict(self.env.context, dialog_size="extra-large"),
         }
+
+    def action_delete_with_reload(self):
+        self.ensure_one()
+        self.unlink()
+        return {"type": "ir.actions.client", "tag": "soft_reload"}

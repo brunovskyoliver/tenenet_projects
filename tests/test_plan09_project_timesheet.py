@@ -15,12 +15,14 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
         self.assignment = self.env["tenenet.project.assignment"].create({
             "employee_id": self.employee.id,
             "project_id": self.project.id,
+            "allocation_ratio": 50.0,
             "wage_hm": 10.0,
             "wage_ccp": 13.62,
         })
         self.assignment2 = self.env["tenenet.project.assignment"].create({
             "employee_id": self.employee.id,
             "project_id": self.project2.id,
+            "allocation_ratio": 50.0,
             "wage_hm": 12.0,
             "wage_ccp": 16.0,
         })
@@ -149,6 +151,23 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
         ))
         self.assertAlmostEqual(ts.gross_salary, 0.0)
         self.assertAlmostEqual(ts.total_labor_cost, 0.0)
+
+    def test_zero_assignment_cap_falls_back_to_project_default(self):
+        self.project.write({"default_max_monthly_wage_hm": 500.0})
+        self.assignment.write({"max_monthly_wage_hm": 0.0})
+
+        self.env["tenenet.project.timesheet"].create(self._timesheet_vals(
+            hours_pp=100.0, hours_np=0.0, hours_vacation=0.0
+        ))
+
+        wage_expense = self.env["tenenet.internal.expense"].search([
+            ("source_assignment_id", "=", self.assignment.id),
+            ("period", "=", "2026-01-01"),
+            ("category", "=", "wage"),
+        ], limit=1)
+
+        self.assertTrue(wage_expense)
+        self.assertAlmostEqual(wage_expense.cost_ccp, 681.0, places=2)
 
     def test_tenenet_cost_residual_auto_created_and_computed(self):
         self.env["tenenet.project.timesheet"].create(self._timesheet_vals(

@@ -1,3 +1,4 @@
+from odoo import fields
 from odoo.exceptions import ValidationError
 from odoo.tests import TransactionCase, tagged
 
@@ -41,6 +42,52 @@ class TestTenenetBudgetLinePlanner(TransactionCase):
         self.assertEqual(action["tag"], "tenenet_budget_line_planner_action")
         self.assertEqual(action["target"], "new")
         self.assertEqual(action["params"]["budget_line_id"], budget_line.id)
+
+    def test_project_budget_add_action_opens_custom_modal(self):
+        action = self.project.action_open_budget_wizard()
+
+        self.assertEqual(action["type"], "ir.actions.client")
+        self.assertEqual(action["tag"], "tenenet_budget_add_action")
+        self.assertEqual(action["target"], "new")
+        self.assertEqual(action["params"]["project_id"], self.project.id)
+
+    def test_project_budget_add_flow_creates_line_and_opens_planner(self):
+        year = fields.Date.context_today(self).year
+        self.env["tenenet.project.receipt"].create({
+            "project_id": self.project.id,
+            "date_received": f"{year}-03-01",
+            "amount": 1000.0,
+        })
+
+        action = self.project.action_create_budget_line_from_quick_add(
+            "labor",
+            200.0,
+            20.0,
+            "Poznámka",
+        )
+        budget_line = self.project.budget_line_ids.filtered(lambda line: line.amount == 200.0)
+
+        self.assertEqual(len(budget_line), 1)
+        self.assertEqual(budget_line.program_id, self.program)
+        self.assertEqual(budget_line.note, "Poznámka")
+        self.assertEqual(action["tag"], "tenenet_budget_line_planner_action")
+        self.assertEqual(action["params"]["budget_line_id"], budget_line.id)
+
+    def test_budget_line_delete_action_removes_record(self):
+        budget_line = self.env["tenenet.project.budget.line"].create({
+            "project_id": self.project.id,
+            "year": 2027,
+            "budget_type": "labor",
+            "program_id": self.program.id,
+            "name": "Mazaná položka",
+            "amount": 150.0,
+        })
+
+        action = budget_line.action_delete_with_reload()
+
+        self.assertFalse(budget_line.exists())
+        self.assertEqual(action["type"], "ir.actions.client")
+        self.assertEqual(action["tag"], "soft_reload")
 
     def test_budget_line_can_store_explicit_month_amounts(self):
         budget_line = self.env["tenenet.project.budget.line"].create({

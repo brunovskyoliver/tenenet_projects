@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="tenenet_projects.TenenetBudgetAddAction">
+        <div class="o_tenenet_budget_add_action" t-ref="root">
+            <t t-if="state.loading">
+                <div class="o_tenenet_budget_line_planner_loading">
+                    <i class="fa fa-spinner fa-spin me-2"/>Načítavam...
+                </div>
+            </t>
+            <t t-elif="!data">
+                <div class="o_tenenet_budget_line_planner_empty">
+                    Formulár sa nepodarilo načítať.
+                </div>
+            </t>
+            <t t-else="">
+                <div class="o_tenenet_budget_line_planner_action_meta">
+                    <div class="o_tenenet_budget_line_planner_action_grid">
+                        <div class="o_tenenet_budget_line_planner_action_item">
+                            <span class="o_tenenet_budget_line_planner_action_label">Projekt</span>
+                            <strong t-out="data.project_name"/>
+                        </div>
+                        <div class="o_tenenet_budget_line_planner_action_item o_tenenet_budget_add_type_picker">
+                            <span class="o_tenenet_budget_line_planner_action_label">Typ</span>
+                            <div class="o_tenenet_budget_add_type_badges">
+                                <t t-foreach="budgetTypeOptions" t-as="option" t-key="option.value">
+                                    <button type="button"
+                                            class="o_selection_badge btn mb-1"
+                                            t-att-class="state.budgetType === option.value ? 'btn-primary' : 'btn-secondary'"
+                                            t-att-data-value="option.value"
+                                            t-att-value="option.value"
+                                            t-on-click="onBudgetTypeBadgeClick">
+                                        <t t-out="option.label"/>
+                                    </button>
+                                </t>
+                            </div>
+                        </div>
+                        <div class="o_tenenet_budget_line_planner_action_item">
+                            <span class="o_tenenet_budget_line_planner_action_label">Prijaté financie za rok</span>
+                            <strong t-out="formatAmountWithCurrency(data.received_amount)"/>
+                        </div>
+                        <div class="o_tenenet_budget_line_planner_action_item">
+                            <span class="o_tenenet_budget_line_planner_action_label">Rozpočtované za rok</span>
+                            <strong t-out="formatAmountWithCurrency(data.budgeted_amount)"/>
+                        </div>
+                        <div class="o_tenenet_budget_line_planner_action_item">
+                            <span class="o_tenenet_budget_line_planner_action_label">Ešte dostupné</span>
+                            <strong t-out="formatAmountWithCurrency(data.available_amount)"/>
+                        </div>
+                    </div>
+                </div>
+                <div class="o_tenenet_budget_add_form">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Suma</label>
+                            <input class="form-control"
+                                   inputmode="decimal"
+                                   t-att-value="state.amountInput"
+                                   t-on-input="onAmountChange"
+                                   t-on-blur="onAmountBlur"/>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Percento</label>
+                            <input class="form-control"
+                                   inputmode="decimal"
+                                   t-att-value="state.percentageInput"
+                                   t-on-input="onPercentageChange"
+                                   t-on-blur="onPercentageBlur"/>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Poznámka</label>
+                            <textarea class="form-control"
+                                      rows="4"
+                                      t-att-value="state.note"
+                                      t-on-input="onNoteChange"/>
+                        </div>
+                    </div>
+                </div>
+                <div class="o_tenenet_budget_line_planner_action_footer">
+                    <button class="btn btn-secondary" t-on-click="close">Zrušiť</button>
+                    <button class="btn btn-primary" t-on-click="onSubmit" t-att-disabled="state.saving">
+                        <t t-if="state.saving">
+                            <i class="fa fa-spinner fa-spin me-1"/>
+                        </t>
+                        Pridať položku
+                    </button>
+                </div>
+            </t>
+        </div>
+    </t>
+</templates>

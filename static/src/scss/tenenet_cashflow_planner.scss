@@ -715,6 +715,54 @@
     }
 }
 
+.o_tenenet_budget_add_action {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    padding: 8px;
+
+    .o_tenenet_budget_line_planner_action_meta {
+        margin-bottom: 14px;
+    }
+
+    .o_tenenet_budget_line_planner_action_grid {
+        grid-template-columns: repeat(2, minmax(220px, 1fr));
+        gap: 14px 18px;
+    }
+
+    .o_tenenet_budget_line_planner_action_item {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .o_tenenet_budget_line_planner_action_item strong {
+        margin-top: 0;
+        line-height: 1.35;
+    }
+
+    .o_tenenet_budget_add_type_picker {
+        grid-column: 1 / -1;
+    }
+
+    .o_tenenet_budget_add_type_badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .o_selection_badge {
+        border-radius: 999px;
+        padding: 0.45rem 0.85rem;
+        font-weight: 600;
+    }
+
+    .o_tenenet_budget_add_form .form-label {
+        margin-bottom: 0.35rem;
+        font-weight: 600;
+    }
+}
+
 .modal.show .modal-dialog.modal-xl:has(.o_tenenet_budget_line_planner_action),
 .modal.show .modal-dialog:has(.o_tenenet_budget_line_planner_action) {
     --bs-modal-width: 1320px !important;
@@ -730,6 +778,22 @@
     .modal-body {
         overflow-x: auto;
         background: var(--planner-surface);
+    }
+}
+
+.modal.show .modal-dialog:has(.o_tenenet_budget_add_action) {
+    --bs-modal-width: 680px !important;
+    --modal-width: 680px !important;
+    width: 680px !important;
+    max-width: calc(100vw - 2rem) !important;
+
+    .modal-content {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .modal-body {
+        overflow-x: hidden;
     }
 }
 
@@ -827,6 +891,14 @@
         }
     }
 
+    .o_tenenet_budget_add_action {
+        padding: 0;
+
+        .o_tenenet_budget_line_planner_action_grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
     .modal.show .modal-dialog.modal-xl:has(.o_tenenet_budget_line_planner_action),
     .modal.show .modal-dialog:has(.o_tenenet_budget_line_planner_action) {
         --bs-modal-width: calc(100vw - 1rem) !important;
@@ -838,5 +910,12 @@
             width: 100%;
             max-width: 100%;
         }
+    }
+
+    .modal.show .modal-dialog:has(.o_tenenet_budget_add_action) {
+        --bs-modal-width: calc(100vw - 1rem) !important;
+        --modal-width: calc(100vw - 1rem) !important;
+        width: calc(100vw - 1rem) !important;
+        max-width: calc(100vw - 1rem) !important;
     }
 }

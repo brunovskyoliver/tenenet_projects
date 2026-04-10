@@ -1338,12 +1338,68 @@ class TenenetProject(models.Model):
         self.ensure_one()
         return {
             "name": "Pridať rozpočtovú položku",
-            "type": "ir.actions.act_window",
-            "res_model": "tenenet.project.budget.wizard",
-            "view_mode": "form",
+            "type": "ir.actions.client",
+            "tag": "tenenet_budget_add_action",
             "target": "new",
-            "context": {"default_project_id": self.id},
+            "params": {"project_id": self.id},
         }
+
+    def get_budget_add_action_data(self):
+        self.ensure_one()
+        year = fields.Date.context_today(self).year
+        received = sum(self.receipt_line_ids.filtered(lambda line: line.year == year).mapped("amount"))
+        budgeted = sum(self.budget_line_ids.filtered(lambda line: line.year == year).mapped("amount"))
+        available = received - budgeted
+        return {
+            "project_id": self.id,
+            "project_name": self.display_name,
+            "year": year,
+            "currency_symbol": self.currency_id.symbol or "",
+            "currency_position": self.currency_id.position or "after",
+            "received_amount": received,
+            "budgeted_amount": budgeted,
+            "available_amount": available,
+            "default_budget_type": "labor",
+            "budget_type_options": [
+                {"value": value, "label": label}
+                for value, label in self.env["tenenet.project.budget.line"]._fields["budget_type"].selection
+            ],
+        }
+
+    def action_create_budget_line_from_quick_add(self, budget_type, amount, allocation_percentage=0.0, note=None):
+        self.ensure_one()
+        year = fields.Date.context_today(self).year
+        received = sum(self.receipt_line_ids.filtered(lambda line: line.year == year).mapped("amount"))
+        budgeted = sum(self.budget_line_ids.filtered(lambda line: line.year == year).mapped("amount"))
+        available = received - budgeted
+        amount = float(amount or 0.0)
+        allocation_percentage = float(allocation_percentage or 0.0)
+        if allocation_percentage < 0.0 or allocation_percentage > 100.0:
+            raise ValidationError(_("Percento alokácie musí byť medzi 0 a 100."))
+        if amount <= 0.0:
+            raise ValidationError(_("Rozpočtová položka musí mať kladnú sumu."))
+        if amount > available:
+            raise ValidationError(_("Rozpočtová položka prekračuje dostupné prijaté financie za zvolený rok."))
+
+        admin_program = self.env["tenenet.program"].search([("code", "=", self.ADMIN_TENENET_PROGRAM_CODE)], limit=1)
+        if budget_type == "pausal":
+            program = admin_program
+        else:
+            program = self.reporting_program_id or self.program_ids.filtered(lambda rec: rec != admin_program)[:1]
+        if not program:
+            raise ValidationError(_("Pre tento projekt nie je dostupný vhodný program rozpočtu."))
+
+        type_label = dict(self.env["tenenet.project.budget.line"]._fields["budget_type"].selection).get(budget_type, "Rozpočet")
+        budget_line = self.env["tenenet.project.budget.line"].create({
+            "project_id": self.id,
+            "year": year,
+            "budget_type": budget_type,
+            "program_id": program.id,
+            "name": _("%s %s") % (type_label, year),
+            "amount": amount,
+            "note": note or False,
+        })
+        return budget_line.action_open_planner()
 
     def action_open_site_wizard(self):
         self.ensure_one()

@@ -176,10 +176,10 @@ class TestTenenetPlan13PLReport(TransactionCase):
 
     def test_detail_report_uses_projects_sales_fundraising_and_operating_pool(self):
         year = fields.Date.context_today(self).year + 1
-        self._create_receipt(self.project_a, f"{year}-03-01", 1200.0)
-        self._create_receipt(self.multi_project, f"{year}-03-01", 300.0)
-        self._set_income_override(year, self.project_a, 3, 1200.0)
-        self._set_income_override(year, self.multi_project, 3, 300.0)
+        project_a_income = self._create_budget_line(self.project_a, year, "other", self.program_a, "Projektový príjem A", 1200.0)
+        project_multi_income = self._create_budget_line(self.multi_project, year, "other", self.program_a, "Projektový príjem Multi", 300.0)
+        self._create_budget_line_months(project_a_income, {3: 1200.0})
+        self._create_budget_line_months(project_multi_income, {3: 300.0})
         self._create_sales_entry(self.program_a, f"{year}-03-01", "cash_register", 200.0)
         self._create_sales_entry(self.program_a, f"{year}-03-01", "invoice", 400.0)
         self._create_fundraising_entry(self.program_a, year, 3, 500.0, target_amount=1000.0, name="Jarná zbierka")
@@ -208,7 +208,9 @@ class TestTenenetPlan13PLReport(TransactionCase):
             "Príjmy/výnosy",
             "Projekty",
             "Projekt Alpha",
+            "Iné rozpočty",
             "Projekt Multi",
+            "Iné rozpočty",
             "Tržby",
             "Tržby z registračky",
             "Tržby z faktúr",
@@ -287,8 +289,8 @@ class TestTenenetPlan13PLReport(TransactionCase):
 
     def test_report_uses_reporting_program_not_program_tags(self):
         year = fields.Date.context_today(self).year + 1
-        self._create_receipt(self.multi_project, f"{year}-03-01", 250.0)
-        self._set_income_override(year, self.multi_project, 3, 250.0)
+        project_multi_income = self._create_budget_line(self.multi_project, year, "other", self.program_a, "Projektový príjem Multi", 250.0)
+        self._create_budget_line_months(project_multi_income, {3: 250.0})
 
         lines_a = self._get_detail_lines(year, self.program_a, unfold_all=True)
         lines_b = self._get_detail_lines(year, self.program_b, unfold_all=True)
@@ -300,8 +302,8 @@ class TestTenenetPlan13PLReport(TransactionCase):
 
     def test_pl_override_is_limited_to_adjustment_rows(self):
         year = fields.Date.context_today(self).year + 1
-        self._create_receipt(self.project_a, f"{year}-03-01", 1200.0)
-        self._set_income_override(year, self.project_a, 3, 1200.0)
+        project_a_income = self._create_budget_line(self.project_a, year, "other", self.program_a, "Projektový príjem A", 1200.0)
+        self._create_budget_line_months(project_a_income, {3: 1200.0})
         self._create_sales_entry(self.program_a, f"{year}-03-01", "cash_register", 200.0)
         self._create_timesheet(self.assignment_a, f"{year}-03-01", 100.0)
 
@@ -328,8 +330,8 @@ class TestTenenetPlan13PLReport(TransactionCase):
 
     def test_project_income_override_row_updates_program_report(self):
         year = fields.Date.context_today(self).year + 1
-        self._create_receipt(self.project_a, f"{year}-03-01", 1200.0)
-        self._set_income_override(year, self.project_a, 3, 1200.0)
+        project_a_income = self._create_budget_line(self.project_a, year, "other", self.program_a, "Projektový príjem A", 1200.0)
+        self._create_budget_line_months(project_a_income, {3: 1200.0})
 
         self._set_pl_override(year, self.program_a, f"income:{self.project_a.id}", 3, 1500.0)
 
@@ -342,10 +344,10 @@ class TestTenenetPlan13PLReport(TransactionCase):
 
     def test_summary_report_aggregates_new_engine(self):
         year = fields.Date.context_today(self).year + 1
-        self._create_receipt(self.project_a, f"{year}-03-01", 1200.0)
-        self._create_receipt(self.project_b, f"{year}-03-01", 300.0)
-        self._set_income_override(year, self.project_a, 3, 1200.0)
-        self._set_income_override(year, self.project_b, 3, 300.0)
+        project_a_income = self._create_budget_line(self.project_a, year, "other", self.program_a, "Projektový príjem A", 1200.0)
+        project_b_income = self._create_budget_line(self.project_b, year, "other", self.program_b, "Projektový príjem B", 300.0)
+        self._create_budget_line_months(project_a_income, {3: 1200.0})
+        self._create_budget_line_months(project_b_income, {3: 300.0})
         self._create_sales_entry(self.program_a, f"{year}-03-01", "cash_register", 200.0)
         self._create_timesheet(self.assignment_a, f"{year}-03-01", 100.0)
         self._create_timesheet(self.assignment_b, f"{year}-03-01", 50.0)
@@ -377,10 +379,6 @@ class TestTenenetPlan13PLReport(TransactionCase):
 
     def test_program_override_grid_prepares_new_row_set(self):
         year = fields.Date.context_today(self).year + 1
-        self._create_receipt(self.project_a, f"{year}-03-01", 1200.0)
-        self._create_receipt(self.multi_project, f"{year}-03-01", 300.0)
-        self._set_income_override(year, self.project_a, 3, 1200.0)
-        self._set_income_override(year, self.multi_project, 3, 300.0)
         self._create_sales_entry(self.program_a, f"{year}-03-01", "cash_register", 100.0)
         self.env["tenenet.pl.program.override"].with_context(grid_anchor=f"{year}-01-01").action_prepare_grid_year()
 
@@ -417,8 +415,6 @@ class TestTenenetPlan13PLReport(TransactionCase):
 
     def test_program_override_editable_only_context_hides_calculated_rows(self):
         year = fields.Date.context_today(self).year + 1
-        self._create_receipt(self.project_a, f"{year}-03-01", 1200.0)
-        self._set_income_override(year, self.project_a, 3, 1200.0)
         override_model = self.env["tenenet.pl.program.override"].with_context(grid_anchor=f"{year}-01-01")
         override_model.action_prepare_grid_year()
 
@@ -481,8 +477,6 @@ class TestTenenetPlan13PLReport(TransactionCase):
 
     def test_program_budget_income_sections_are_added_separately(self):
         year = fields.Date.context_today(self).year + 1
-        self._create_receipt(self.project_a, f"{year}-03-01", 1200.0)
-        self._set_income_override(year, self.project_a, 3, 1200.0)
         labor_line = self._create_budget_line(self.project_a, year, "labor", self.program_a, "Mzdový plán", 180.0)
         other_line = self._create_budget_line(self.project_a, year, "other", self.program_a, "Iný plán", 90.0)
         self._create_budget_line_months(labor_line, {3: 100.0, 4: 80.0})
@@ -491,20 +485,25 @@ class TestTenenetPlan13PLReport(TransactionCase):
         lines = self._get_detail_lines(year, self.program_a, unfold_all=True)
         line_names = [line["name"] for line in lines]
         income_total_columns = self._column_map(self._find_line(lines, "Príjmy spolu"))
-        labor_budget_columns = self._column_map(self._find_line(lines, "Mzdové rozpočty"))
-        other_budget_columns = self._column_map(self._find_line(lines, "Iné rozpočty"))
-        labor_detail_columns = self._column_map(self._find_line(lines, "Projekt Alpha / Mzdový plán"))
-        other_detail_columns = self._column_map(self._find_line(lines, "Projekt Alpha / Iný plán"))
+        project_line = self._find_line(lines, "Projekt Alpha")
+        project_columns = self._column_map(project_line)
+        labor_budget_columns = self._column_map(
+            next(line for line in lines if line["name"] == "Mzdové rozpočty" and line.get("parent_id") == project_line["id"])
+        )
+        other_budget_columns = self._column_map(
+            next(line for line in lines if line["name"] == "Iné rozpočty" and line.get("parent_id") == project_line["id"])
+        )
 
-        self.assertIn("Mzdové rozpočty", line_names)
-        self.assertIn("Iné rozpočty", line_names)
-        self.assertIn("Projekt Alpha / Mzdový plán", line_names)
-        self.assertIn("Projekt Alpha / Iný plán", line_names)
+        self.assertNotIn("Projekt Alpha / Mzdový plán", line_names)
+        self.assertNotIn("Projekt Alpha / Iný plán", line_names)
+        self.assertAlmostEqual(project_columns["month_03"], 160.0, places=2)
+        self.assertNotIn("Príjmy projektu", [
+            line["name"] for line in lines if line.get("parent_id") == project_line["id"]
+        ])
         self.assertAlmostEqual(labor_budget_columns["month_03"], 100.0, places=2)
         self.assertAlmostEqual(other_budget_columns["month_03"], 60.0, places=2)
-        self.assertAlmostEqual(labor_detail_columns["month_04"], 80.0, places=2)
-        self.assertAlmostEqual(other_detail_columns["month_03"], 60.0, places=2)
-        self.assertAlmostEqual(income_total_columns["month_03"], 1360.0, places=2)
+        self.assertAlmostEqual(labor_budget_columns["month_04"], 80.0, places=2)
+        self.assertAlmostEqual(income_total_columns["month_03"], 160.0, places=2)
 
     def test_admin_tenenet_groups_labor_by_project_and_employee(self):
         year = fields.Date.context_today(self).year + 1
@@ -559,23 +558,68 @@ class TestTenenetPlan13PLReport(TransactionCase):
         if today.month == 1:
             self.skipTest("Prediction test requires at least one past month.")
 
-        past_months = [today.month - 1]
-        expected = 120.0
-        self._create_sales_entry(self.program_a, f"{today.year}-{past_months[0]:02d}-01", "cash_register", 120.0)
-        if today.month > 2:
-            past_months.insert(0, today.month - 2)
-            self._create_sales_entry(self.program_a, f"{today.year}-{past_months[0]:02d}-01", "cash_register", 240.0)
-            expected = 180.0
+        if today.month == 2:
+            self.skipTest("Split prediction test requires at least two historical months.")
+
+        self._create_sales_entry(self.program_a, f"{today.year}-{today.month - 1:02d}-01", "cash_register", 120.0)
+        self._create_sales_entry(self.program_a, f"{today.year}-{today.month - 2:02d}-01", "cash_register", 240.0)
+        expected = 180.0
+
+        lines = self._get_detail_lines(today.year, self.program_a, unfold_all=True)
+        cash_register_real = self._column_map(self._find_line(lines, "Tržby z registračky - Realita"))
+        cash_register_predicted = self._column_map(self._find_line(lines, "Tržby z registračky - Predikcia"))
+        income_total_predicted = self._column_map(self._find_line(lines, "Príjmy spolu - Predikcia"))
+        current_label = f"month_{today.month:02d}"
+        self.assertAlmostEqual(cash_register_real[current_label], 0.0, places=2)
+        self.assertAlmostEqual(cash_register_predicted[current_label], expected, places=2)
+        self.assertAlmostEqual(income_total_predicted[current_label], expected, places=2)
+
+        self._set_pl_override(today.year, self.program_a, "sales_cash_register", today.month, 999.0)
+        lines = self._get_detail_lines(today.year, self.program_a, unfold_all=True)
+        cash_register_predicted = self._column_map(self._find_line(lines, "Tržby z registračky - Predikcia"))
+        self.assertAlmostEqual(cash_register_predicted[current_label], 999.0, places=2)
+
+    def test_current_year_sales_prediction_does_not_fill_with_single_historical_month(self):
+        today = fields.Date.context_today(self)
+        if today.month == 1:
+            self.skipTest("Prediction test requires at least one past month.")
+
+        self._create_sales_entry(self.program_a, f"{today.year}-{today.month - 1:02d}-01", "cash_register", 120.0)
 
         lines = self._get_detail_lines(today.year, self.program_a, unfold_all=True)
         cash_register_columns = self._column_map(self._find_line(lines, "Tržby z registračky"))
         current_label = f"month_{today.month:02d}"
-        self.assertAlmostEqual(cash_register_columns[current_label], expected, places=2)
 
-        self._set_pl_override(today.year, self.program_a, "sales_cash_register", today.month, 999.0)
+        self.assertAlmostEqual(cash_register_columns[current_label], 0.0, places=2)
+
+    def test_current_year_project_prediction_ignores_receipts_and_uses_planner_budgets_only(self):
+        today = fields.Date.context_today(self)
+        if today.month <= 2:
+            self.skipTest("Planner prediction test requires at least two historical months.")
+
+        self._create_receipt(self.project_a, f"{today.year}-{today.month - 1:02d}-01", 100000.0)
+        project_a_income = self._create_budget_line(
+            self.project_a,
+            today.year,
+            "other",
+            self.program_a,
+            "Projektový príjem A",
+            6000.0,
+        )
+        self._create_budget_line_months(project_a_income, {
+            today.month - 2: 3000.0,
+            today.month - 1: 3000.0,
+        })
+
         lines = self._get_detail_lines(today.year, self.program_a, unfold_all=True)
-        cash_register_columns = self._column_map(self._find_line(lines, "Tržby z registračky"))
-        self.assertAlmostEqual(cash_register_columns[current_label], 999.0, places=2)
+        project_real = self._column_map(self._find_line(lines, "Projekt Alpha - Realita"))
+        project_predicted = self._column_map(self._find_line(lines, "Projekt Alpha - Predikcia"))
+        income_total_predicted = self._column_map(self._find_line(lines, "Príjmy spolu - Predikcia"))
+        current_label = f"month_{today.month:02d}"
+
+        self.assertAlmostEqual(project_real[current_label], 0.0, places=2)
+        self.assertAlmostEqual(project_predicted[current_label], 3000.0, places=2)
+        self.assertAlmostEqual(income_total_predicted[current_label], 3000.0, places=2)
 
     def test_get_garant_projects_excludes_internal_project_for_manager_and_garant(self):
         manager_group = self.env.ref("tenenet_projects.group_tenenet_manager")

@@ -29,6 +29,7 @@ export class TenenetBudgetLinePlannerAction extends Component {
         this.budgetLineId = this.props.action.params?.budget_line_id;
         this.state = useState({
             loading: true,
+            deleting: false,
             row: null,
             zeroMode: false,
             drag: this._emptyDragState(),
@@ -85,6 +86,26 @@ export class TenenetBudgetLinePlannerAction extends Component {
         } finally {
             this.state.loading = false;
             this.resetDrag();
+        }
+    }
+
+    async onDelete() {
+        if (this.state.deleting || !this.budgetLineId) {
+            return;
+        }
+        this.state.deleting = true;
+        try {
+            await this.orm.call("tenenet.project.budget.line", "action_delete_with_reload", [
+                [this.budgetLineId],
+            ]);
+            this.notification.add(_t("Rozpočtová položka bola odstránená."), { type: "success" });
+            this.close();
+        } catch (error) {
+            this.notification.add(error.data?.message || _t("Nepodarilo sa odstrániť rozpočtovú položku."), {
+                type: "danger",
+            });
+        } finally {
+            this.state.deleting = false;
         }
     }
 

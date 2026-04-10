@@ -1,8 +1,9 @@
-.tenenet_pl_report {
+.account_report.tenenet_pl_report {
     tr[data-id="column_headers_row"] {
         display: none;
     }
 
+    td.line_cell,
     .line_cell.numeric {
         text-align: center !important;
 
@@ -13,6 +14,25 @@
         > .wrapper > .content {
             justify-content: center;
             width: 100%;
+        }
+    }
+
+    .line_cell.tenenet_pl_cell_predicted {
+        background: transparent !important;
+        color: inherit;
+
+        .name,
+        a,
+        .content {
+            color: #f4df74 !important;
+        }
+    }
+
+    .line_name.tenenet_pl_row_predicted {
+        .name,
+        a,
+        .content {
+            color: #f4df74 !important;
         }
     }
 }
