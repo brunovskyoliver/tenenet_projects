@@ -362,7 +362,7 @@ class TestTenenetPlan02Project(TransactionCase):
         self.assertIn(admin_program.allocation_pct, (False, 0.0))
         self.assertIn(admin_program.allocation_pct_percentage, (False, 0.0))
 
-    def test_finance_kpis_use_predicted_to_date_and_total_income(self):
+    def test_finance_kpis_use_cashflow_plan_to_date_and_total_income(self):
         project = self.env["tenenet.project"].create(
             {
                 "name": "Projekt KPI",
@@ -372,10 +372,16 @@ class TestTenenetPlan02Project(TransactionCase):
             }
         )
         year = fields.Date.context_today(self).year
-        self.env["tenenet.project.receipt"].create({
+        receipt = self.env["tenenet.project.receipt"].create({
             "project_id": project.id,
             "date_received": f"{year}-02-01",
             "amount": 1000.0,
+        })
+        receipt.set_cashflow_month_amounts(year, {
+            2: 100.0,
+            3: 100.0,
+            4: 133.32,
+            5: 666.68,
         })
         assignment = self.env["tenenet.project.assignment"].create({
             "employee_id": self.employee.id,

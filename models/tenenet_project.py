@@ -658,6 +658,19 @@ class TenenetProject(models.Model):
                     total += values.get(month, 0.0)
         return total
 
+    def _get_cashflow_planner_total_to_date(self, today):
+        self.ensure_one()
+        total = 0.0
+        years = set(self.receipt_line_ids.mapped("year")) | set(self.cashflow_ids.mapped("receipt_year"))
+        if today.year not in years:
+            years.add(today.year)
+        for year in years:
+            values = self._get_cashflow_planner_month_values(year)
+            for month in range(1, 13):
+                if date(year, month, 1) <= today.replace(day=1):
+                    total += values.get(month, 0.0)
+        return total
+
     def _get_state_from_amount(self, amount):
         if amount > 0.005:
             return "plus"
@@ -1073,8 +1086,7 @@ class TenenetProject(models.Model):
             )
             total_income = sum(rec.receipt_line_ids.mapped("amount"))
             actual_spend_to_date = rec._get_actual_project_spend_to_date(today)
-            cashflow_to_date = rec._get_effective_cashflow_total_to_date(today)
-
+            cashflow_to_date = rec._get_cashflow_planner_total_to_date(today)
             predicted_balance_to_date = cashflow_to_date - actual_spend_to_date
             remaining_finance_balance = total_income - actual_spend_to_date
 
