@@ -6,6 +6,8 @@ class TenenetEmployeeTenenetCost(models.Model):
     _description = "Náklady zamestnanca – Tenenet (reziduum)"
     _order = "period desc, employee_id"
 
+    CCP_MULTIPLIER = 1.362
+
     employee_id = fields.Many2one(
         "hr.employee",
         string="Zamestnanec",
@@ -33,9 +35,15 @@ class TenenetEmployeeTenenetCost(models.Model):
         help="Celková cena práce zamestnanca za daný mesiac (z mzdovej agendy)",
     )
     monthly_gross_salary_target = fields.Monetary(
-        string="Mesačná hrubá mzda - cieľ",
+        string="Mesačný cieľ CCP",
         currency_field="currency_id",
         related="employee_id.monthly_gross_salary_target",
+        readonly=True,
+    )
+    monthly_gross_salary_target_hm = fields.Monetary(
+        string="Mesačný cieľ HM (brutto)",
+        currency_field="currency_id",
+        related="employee_id.monthly_gross_salary_target_hm",
         readonly=True,
     )
     project_billed_gross = fields.Monetary(
@@ -97,21 +105,25 @@ class TenenetEmployeeTenenetCost(models.Model):
 
             rec.project_billed_gross = billed_gross
             rec.project_billed_ccp = billed_ccp
-            rec.tenenet_residual_hm = (rec.gross_salary_employee or 0.0) - billed_gross
-            rec.tenenet_residual_ccp = (rec.total_labor_cost_employee or 0.0) - billed_ccp
+            target_ccp = rec.total_labor_cost_employee or rec.monthly_gross_salary_target or 0.0
+            target_hm = rec.gross_salary_employee or (target_ccp / self.CCP_MULTIPLIER if target_ccp else 0.0)
+            rec.tenenet_residual_hm = target_hm - billed_gross
+            rec.tenenet_residual_ccp = target_ccp - billed_ccp
 
     def _sync_internal_residual_expense(self):
         InternalExpense = self.env["tenenet.internal.expense"].sudo()
         internal_project = self.env["tenenet.project"].sudo()._ensure_admin_tenenet_entities()
         for rec in self:
             existing = InternalExpense.search([("tenenet_cost_id", "=", rec.id)], limit=1)
-            target_hm = rec.employee_id.monthly_gross_salary_target or 0.0
-            gap_hm = max(0.0, target_hm - (rec.project_billed_gross or 0.0))
-            if gap_hm <= 0.001:
+            target_ccp = rec.employee_id.monthly_gross_salary_target or 0.0
+            gap_ccp = max(0.0, target_ccp - (rec.project_billed_ccp or 0.0))
+            if gap_ccp <= 0.001:
                 if existing:
                     existing.unlink()
                 continue
 
+            gap_hm = gap_ccp / self.CCP_MULTIPLIER
+            hourly_ccp = rec.employee_id.with_context(tenenet_period=rec.period).hourly_rate or 0.0
             vals = {
                 "employee_id": rec.employee_id.id,
                 "period": rec.period,
@@ -119,7 +131,8 @@ class TenenetEmployeeTenenetCost(models.Model):
                 "source_project_id": internal_project.id,
                 "tenenet_cost_id": rec.id,
                 "cost_hm": gap_hm,
-                "note": "Dorovnanie mesačnej hrubej mzdy do cieľovej hodnoty.",
+                "wage_hm": hourly_ccp / self.CCP_MULTIPLIER if hourly_ccp else 0.0,
+                "note": "Dorovnanie mesačnej CCP do cieľovej hodnoty; HM/brutto je odvodené z CCP.",
             }
             if existing:
                 existing.write(vals)

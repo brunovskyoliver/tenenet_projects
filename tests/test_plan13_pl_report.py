@@ -655,7 +655,11 @@ class TestTenenetPlan13PLReport(TransactionCase):
 
     def test_admin_tenenet_separates_management_labor(self):
         year = fields.Date.context_today(self).year + 1
-        self.employee_b.is_mgmt = True
+        admin_job = self.env["hr.job"].create({
+            "name": "Administratíva",
+            "is_tenenet_admin_management": True,
+        })
+        self.employee_b.job_id = admin_job
         self.env["tenenet.internal.expense"].create({
             "employee_id": self.employee_a.id,
             "period": f"{year}-03-01",

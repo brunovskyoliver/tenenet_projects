@@ -190,6 +190,13 @@
                   action="action_tenenet_expense_type_config"
                   sequence="25"/>
 
+        <menuitem id="menu_tenenet_employee_asset_handovers"
+                  name="Preberacie protokoly"
+                  parent="menu_tenenet_configuration"
+                  action="action_tenenet_employee_asset_handover"
+                  sequence="35"
+                  groups="tenenet_projects.group_tenenet_manager"/>
+
         <menuitem id="menu_tenenet_project_cashflow_editor"
                   name="Cashflow projektov"
                   parent="menu_tenenet_projects"

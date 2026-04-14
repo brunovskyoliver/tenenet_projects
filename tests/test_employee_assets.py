@@ -1,8 +1,13 @@
+import base64
+from unittest.mock import patch
+
 from lxml import etree
 
 from odoo import Command
-from odoo.exceptions import AccessError, ValidationError
+from odoo.addons.tenenet_projects.models.tenenet_employee_asset_handover import TenenetEmployeeAssetHandover
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
+from odoo.tools import file_open
 
 
 @tagged("post_install", "-at_install")
@@ -11,6 +16,7 @@ class TestTenenetEmployeeAssets(TransactionCase):
         super().setUp()
         self.employee = self.env["hr.employee"].create({
             "name": "Majetkový Zamestnanec",
+            "work_email": "majetkovy.zamestnanec@example.com",
             "work_ratio": 100.0,
         })
         self.employee2 = self.env["hr.employee"].create({
@@ -32,13 +38,15 @@ class TestTenenetEmployeeAssets(TransactionCase):
             "site_type": "centrum",
         })
         self.site_teren = self.env["tenenet.project.site"].create({
-            "name": "Terén Test",
+            "name": "Košický samosprávny kraj",
             "site_type": "teren",
+            "kraj": "Košický samosprávny kraj",
         })
         self.company = self.env.company
         self.base_user_group = self.env.ref("base.group_user")
         self.tenenet_user_group = self.env.ref("tenenet_projects.group_tenenet_user")
         self.tenenet_manager_group = self.env.ref("tenenet_projects.group_tenenet_manager")
+        self.env.user.email = self.env.user.email or "admin@example.com"
         self.user_user = self.env["res.users"].with_context(no_reset_password=True).create(
             {
                 "name": "Použ. Majetok",
@@ -64,6 +72,8 @@ class TestTenenetEmployeeAssets(TransactionCase):
         asset = self.env["tenenet.employee.asset"].create({
             "employee_id": self.employee.id,
             "asset_type_id": self.asset_type_laptop.id,
+            "serial_number": "SN-LAPTOP-001",
+            "handover_date": "2026-04-14",
             "cost": 1200.0,
             "note": "Inventár 123",
         })
@@ -71,6 +81,8 @@ class TestTenenetEmployeeAssets(TransactionCase):
         self.assertEqual(asset.employee_id, self.employee)
         self.assertEqual(asset.asset_type_id, self.asset_type_laptop)
         self.assertEqual(asset.name, "Laptop")
+        self.assertEqual(asset.serial_number, "SN-LAPTOP-001")
+        self.assertEqual(str(asset.handover_date), "2026-04-14")
         self.assertEqual(asset.cost, 1200.0)
         self.assertEqual(asset.note, "Inventár 123")
 
@@ -78,16 +90,19 @@ class TestTenenetEmployeeAssets(TransactionCase):
         self.env["tenenet.employee.asset"].create({
             "employee_id": self.employee.id,
             "asset_type_id": self.asset_type_laptop.id,
+            "serial_number": "SN-TOTAL-001",
             "cost": 1200.0,
         })
         self.env["tenenet.employee.asset"].create({
             "employee_id": self.employee.id,
             "asset_type_id": self.asset_type_phone.id,
+            "serial_number": "SN-TOTAL-002",
             "cost": 300.0,
         })
         self.env["tenenet.employee.asset"].create({
             "employee_id": self.employee.id,
             "asset_type_id": self.asset_type_phone.id,
+            "serial_number": "SN-TOTAL-003",
             "cost": 50.0,
             "active": False,
         })
@@ -268,6 +283,7 @@ class TestTenenetEmployeeAssets(TransactionCase):
         asset = asset_model_manager.create({
             "employee_id": self.employee.id,
             "asset_type_id": self.asset_type_laptop.id,
+            "serial_number": "SN-ACL-001",
         })
         self.assertTrue(asset.exists())
         self.assertEqual(asset_model_user.search_count([("id", "=", asset.id)]), 1)
@@ -276,6 +292,105 @@ class TestTenenetEmployeeAssets(TransactionCase):
             asset_model_user.create({
                 "employee_id": self.employee.id,
                 "asset_type_id": self.asset_type_phone.id,
+                "serial_number": "SN-ACL-002",
+            })
+
+    def test_asset_handover_wizard_creates_batch_and_sign_request(self):
+        wizard = self.env["tenenet.employee.asset.handover.wizard"].create({
+            "employee_id": self.employee.id,
+            "handover_date": "2026-04-14",
+            "line_ids": [
+                Command.create({
+                    "asset_type_id": self.asset_type_laptop.id,
+                    "serial_number": "SN-WIZ-001",
+                    "cost": 1200.0,
+                    "note": "Notebook",
+                }),
+                Command.create({
+                    "asset_type_id": self.asset_type_phone.id,
+                    "serial_number": "SN-WIZ-002",
+                    "cost": 300.0,
+                    "note": "Mobil",
+                }),
+            ],
+        })
+
+        with self._patch_handover_pdf():
+            action = wizard.action_confirm()
+
+        handover = self.env["tenenet.employee.asset.handover"].browse(action["res_id"])
+        self.assertEqual(handover.employee_id, self.employee)
+        self.assertEqual(str(handover.handover_date), "2026-04-14")
+        self.assertEqual(len(handover.asset_ids), 2)
+        self.assertEqual(set(handover.asset_ids.mapped("serial_number")), {"SN-WIZ-001", "SN-WIZ-002"})
+        self.assertEqual(set(handover.asset_ids.mapped("handover_id").ids), {handover.id})
+
+        self.assertTrue(handover.sign_template_id)
+        self.assertTrue(handover.sign_request_id)
+        self.assertEqual(handover.sign_request_id.reference_doc, handover)
+        self.assertEqual(len(handover.sign_request_id.request_item_ids), 1)
+        self.assertEqual(
+            handover.sign_request_id.request_item_ids.partner_id.email_normalized,
+            "majetkovy.zamestnanec@example.com",
+        )
+        signature_items = handover.sign_template_id.sign_item_ids.filtered(
+            lambda item: item.type_id == self.env.ref("sign.sign_item_type_signature")
+        )
+        self.assertEqual(len(signature_items), 1)
+        self.assertEqual(signature_items.page, handover.sign_template_id.document_ids[:1].num_pages)
+
+    def test_asset_handover_wizard_requires_work_email(self):
+        self.employee.work_email = False
+        wizard = self.env["tenenet.employee.asset.handover.wizard"].create({
+            "employee_id": self.employee.id,
+            "handover_date": "2026-04-14",
+            "line_ids": [Command.create({
+                "asset_type_id": self.asset_type_laptop.id,
+                "serial_number": "SN-NO-MAIL",
+            })],
+        })
+
+        with self.assertRaises(UserError):
+            wizard.action_confirm()
+
+    def test_asset_handover_report_contains_asset_details(self):
+        handover = self.env["tenenet.employee.asset.handover"].create({
+            "employee_id": self.employee.id,
+            "handover_date": "2026-04-14",
+        })
+        self.env["tenenet.employee.asset"].create({
+            "employee_id": self.employee.id,
+            "asset_type_id": self.asset_type_laptop.id,
+            "serial_number": "SN-REPORT-001",
+            "handover_date": "2026-04-14",
+            "handover_id": handover.id,
+        })
+
+        html, _report_type = self.env["ir.actions.report"]._render_qweb_html(
+            "tenenet_projects.action_report_employee_asset_handover",
+            handover.ids,
+        )
+        html = html.decode() if isinstance(html, bytes) else html
+        self.assertIn("Majetkový Zamestnanec", html)
+        self.assertIn("Laptop", html)
+        self.assertIn("SN-REPORT-001", html)
+        self.assertIn("2026", html)
+
+    def test_asset_handover_acl_user_read_only_manager_full(self):
+        handover_model_user = self.env["tenenet.employee.asset.handover"].with_user(self.user_user)
+        handover_model_manager = self.env["tenenet.employee.asset.handover"].with_user(self.manager_user)
+
+        handover = handover_model_manager.create({
+            "employee_id": self.employee.id,
+            "handover_date": "2026-04-14",
+        })
+        self.assertTrue(handover.exists())
+        self.assertEqual(handover_model_user.search_count([("id", "=", handover.id)]), 1)
+
+        with self.assertRaises(AccessError):
+            handover_model_user.create({
+                "employee_id": self.employee.id,
+                "handover_date": "2026-04-14",
             })
 
     def test_site_key_acl_user_read_only_manager_full(self):
@@ -317,3 +432,32 @@ class TestTenenetEmployeeAssets(TransactionCase):
             root.xpath("//field[@name='site_key_ids']//field[@name='note']"),
             "site_key_ids subview should not request note on tenenet.employee.site.key.",
         )
+
+    def test_employee_form_contains_asset_handover_button_and_columns(self):
+        arch = self.env["hr.employee"].get_view(
+            view_id=self.env.ref("tenenet_projects.view_hr_employee_form_tenenet").id,
+            view_type="form",
+        )["arch"]
+        root = etree.fromstring(arch.encode())
+
+        self.assertTrue(
+            root.xpath("//button[@string='Pridať majetok']"),
+            "Expected a button opening the asset handover wizard.",
+        )
+        self.assertTrue(
+            root.xpath("//field[@name='asset_ids']//field[@name='serial_number']"),
+            "Expected serial number in asset subview.",
+        )
+        self.assertTrue(
+            root.xpath("//field[@name='asset_ids']//field[@name='handover_date']"),
+            "Expected handover date in asset subview.",
+        )
+        self.assertTrue(
+            root.xpath("//field[@name='asset_ids']//field[@name='sign_state']"),
+            "Expected sign state in asset subview.",
+        )
+
+    def _patch_handover_pdf(self):
+        with file_open("sign/static/demo/sample_contract.pdf", "rb") as pdf_file:
+            pdf_data = base64.b64encode(pdf_file.read())
+        return patch.object(TenenetEmployeeAssetHandover, "_render_pdf_for_sign", return_value=pdf_data)

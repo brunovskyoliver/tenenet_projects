@@ -241,7 +241,10 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
         self.assertTrue(expense.source_project_id.is_tenenet_internal)
         self.assertFalse(expense.source_assignment_id)
         self.assertAlmostEqual(cost.project_billed_gross, 500.0, places=2)
-        self.assertAlmostEqual(expense.cost_hm, 400.0, places=2)
+        self.assertAlmostEqual(cost.project_billed_ccp, 681.0, places=2)
+        self.assertAlmostEqual(expense.cost_hm, 160.79, places=2)
+        self.assertAlmostEqual(expense.cost_ccp, 219.0, places=2)
+        self.assertAlmostEqual(self.employee.with_context(tenenet_period="2026-07-01").hourly_rate, 1.99, places=2)
 
         ts.write({"hours_pp": 90.0})
         expense.invalidate_recordset()

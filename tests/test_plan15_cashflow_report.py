@@ -372,8 +372,8 @@ class TestTenenetPlan15CashflowReport(TransactionCase):
 
         self.assertTrue(residual)
         self.assertTrue(residual.source_project_id.is_tenenet_internal)
-        self.assertAlmostEqual(residual.cost_hm, 50.0, places=2)
-        self.assertAlmostEqual(residual.cost_ccp, 68.1, places=2)
+        self.assertAlmostEqual(residual.cost_hm, 10.13, places=2)
+        self.assertAlmostEqual(residual.cost_ccp, 13.8, places=2)
 
         cashflow_salary = self._column_map(self._find_named_line(self._get_lines(year), "Mzdy"))
         allocation_ccp = self._column_map(self._find_allocation_line(self._get_allocation_lines(year), "CCP"))
@@ -381,9 +381,9 @@ class TestTenenetPlan15CashflowReport(TransactionCase):
             self._find_allocation_line(self._get_allocation_lines(year), "Interné náklady - mzda (CCP)")
         )
 
-        self.assertAlmostEqual(cashflow_salary["month_03"], -204.3, places=2)
+        self.assertAlmostEqual(cashflow_salary["month_03"], -150.0, places=2)
         self.assertAlmostEqual(allocation_ccp["month_03"], 136.2, places=2)
-        self.assertAlmostEqual(allocation_internal_wage["month_03"], 68.1, places=2)
+        self.assertAlmostEqual(allocation_internal_wage["month_03"], 13.8, places=2)
 
     def test_income_override_rebalances_last_active_month_to_project_total(self):
         selected_year = fields.Date.context_today(self).year + 1

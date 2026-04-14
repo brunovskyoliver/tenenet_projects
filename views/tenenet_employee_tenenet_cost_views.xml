@@ -7,10 +7,12 @@
                 <list string="Tenenet náklady (reziduum)" decoration-danger="tenenet_residual_ccp &gt; 0">
                     <field name="employee_id"/>
                     <field name="period"/>
-                    <field name="gross_salary_employee"/>
+                    <field name="monthly_gross_salary_target"/>
+                    <field name="monthly_gross_salary_target_hm"/>
+                    <field name="gross_salary_employee" optional="hide"/>
                     <field name="project_billed_gross" readonly="1"/>
                     <field name="tenenet_residual_hm" readonly="1"/>
-                    <field name="total_labor_cost_employee"/>
+                    <field name="total_labor_cost_employee" optional="hide"/>
                     <field name="project_billed_ccp" readonly="1"/>
                     <field name="tenenet_residual_ccp" readonly="1"/>
                     <field name="currency_id" column_invisible="1"/>
@@ -31,7 +33,11 @@
                                 <field name="currency_id" invisible="1"/>
                             </group>
                         </group>
-                        <group string="Hrubá mzda">
+                        <group string="Mesačný cieľ">
+                            <field name="monthly_gross_salary_target" readonly="1"/>
+                            <field name="monthly_gross_salary_target_hm" readonly="1"/>
+                        </group>
+                        <group string="Hrubá mzda / HM (brutto)">
                             <field name="gross_salary_employee"/>
                             <field name="project_billed_gross" readonly="1"/>
                             <field name="tenenet_residual_hm" readonly="1"/>

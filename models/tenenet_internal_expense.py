@@ -96,7 +96,7 @@ class TenenetInternalExpense(models.Model):
         help="Počet hodín (len pre kategóriu Dovolenka).",
     )
     wage_hm = fields.Float(
-        string="Hodinová mzda HM",
+        string="Hodinová mzda HM (brutto)",
         digits=(10, 4),
         help="Hodinová brutto mzda prevzatá zo zdrojového priradenia.",
     )
@@ -108,12 +108,12 @@ class TenenetInternalExpense(models.Model):
         help="Celková cena práce za hodinu = mzda HM × 1.362",
     )
     cost_hm = fields.Monetary(
-        string="Náklad HM",
+        string="Náklad HM (brutto)",
         currency_field="currency_id",
         compute="_compute_costs",
         store=True,
         readonly=False,
-        help="Pre dovolenku: hodiny × mzda HM. Pre mzdu: priamy prebytok nad stropom.",
+        help="Pre dovolenku: hodiny × mzda HM. Pre mzdu: HM/brutto odvodené z CCP alebo priamy prebytok nad stropom.",
     )
     expense_amount = fields.Monetary(
         string="Suma výdavku",

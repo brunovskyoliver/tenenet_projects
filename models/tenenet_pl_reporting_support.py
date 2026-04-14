@@ -875,7 +875,7 @@ class TenenetPLReportingSupport(models.AbstractModel):
         project_rows = {}
         for expense in expenses:
             project = self._get_internal_expense_project(expense)
-            if not project or expense.employee_id.is_mgmt:
+            if not project or expense.employee_id._is_tenenet_admin_management():
                 continue
 
             employee = expense.employee_id
@@ -919,7 +919,7 @@ class TenenetPLReportingSupport(models.AbstractModel):
         rows = {}
         for expense in expenses:
             project = self._get_internal_expense_project(expense)
-            if project or expense.employee_id.is_mgmt:
+            if project or expense.employee_id._is_tenenet_admin_management():
                 continue
             employee = expense.employee_id
             bucket = rows.setdefault(
@@ -938,7 +938,7 @@ class TenenetPLReportingSupport(models.AbstractModel):
     def _get_admin_mgmt_labor(self, selected_year):
         values = self._zero_by_month()
         expenses = self._get_year_internal_expenses(selected_year).filtered(
-            lambda exp: exp.employee_id.is_mgmt
+            lambda exp: exp.employee_id._is_tenenet_admin_management()
         )
         for expense in expenses:
             project = self._get_internal_expense_project(expense)

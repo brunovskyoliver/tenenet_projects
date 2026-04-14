@@ -266,8 +266,8 @@ class TenenetProjectAssignment(models.Model):
             avg_hm = sum(assignments.mapped("wage_hm")) / count
             avg_ccp = sum(assignments.mapped("wage_ccp")) / count
             return avg_hm, avg_ccp
-        hourly = employee.hourly_rate or 0.0
-        return hourly, hourly
+        hourly_ccp = employee.hourly_rate or 0.0
+        return hourly_ccp / self.CCP_MULTIPLIER, hourly_ccp
 
     @api.model
     def _get_or_create_internal_assignment(self, employee):

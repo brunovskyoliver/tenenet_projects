@@ -6,7 +6,9 @@ from . import res_partner
 from . import hr_employee
 from . import hr_employee_public
 from . import tenenet_employee_asset_type
+from . import tenenet_employee_asset_handover
 from . import tenenet_employee_asset
+from . import tenenet_employee_asset_handover_wizard
 from . import tenenet_employee_training
 from . import tenenet_employee_site_key
 from . import tenenet_service_catalog

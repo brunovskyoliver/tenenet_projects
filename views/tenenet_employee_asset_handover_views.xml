@@ -1,0 +1,220 @@
+<odoo>
+    <data>
+        <record id="view_tenenet_employee_asset_handover_list" model="ir.ui.view">
+            <field name="name">tenenet.employee.asset.handover.list</field>
+            <field name="model">tenenet.employee.asset.handover</field>
+            <field name="arch" type="xml">
+                <list string="Preberacie protokoly">
+                    <field name="name"/>
+                    <field name="employee_id"/>
+                    <field name="handover_date"/>
+                    <field name="asset_count"/>
+                    <field name="sign_state" widget="badge"/>
+                    <field name="sign_request_id"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_tenenet_employee_asset_handover_form" model="ir.ui.view">
+            <field name="name">tenenet.employee.asset.handover.form</field>
+            <field name="model">tenenet.employee.asset.handover</field>
+            <field name="arch" type="xml">
+                <form string="Preberací protokol">
+                    <header>
+                        <button name="action_print_protocol"
+                                type="object"
+                                string="Tlačiť preberací protokol"
+                                class="btn-primary"/>
+                        <button name="action_open_sign_request"
+                                type="object"
+                                string="Otvoriť podpis"
+                                invisible="not sign_request_id"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button name="action_open_sign_request"
+                                    type="object"
+                                    class="oe_stat_button"
+                                    icon="fa-pencil"
+                                    invisible="not sign_request_id">
+                                <div class="o_stat_info">
+                                    <span class="o_stat_text">Podpis</span>
+                                    <span class="o_stat_text"><field name="sign_state"/></span>
+                                </div>
+                            </button>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="name" readonly="1"/>
+                                <field name="employee_id"/>
+                                <field name="handover_date"/>
+                            </group>
+                            <group>
+                                <field name="sign_request_id" readonly="1"/>
+                                <field name="sign_template_id" readonly="1"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Majetok">
+                                <field name="asset_ids" readonly="1">
+                                    <list string="Majetok">
+                                        <field name="asset_type_id"/>
+                                        <field name="serial_number"/>
+                                        <field name="handover_date"/>
+                                        <field name="cost"/>
+                                        <field name="note"/>
+                                        <field name="active"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Poznámka">
+                                <field name="note" nolabel="1"/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_tenenet_employee_asset_handover_search" model="ir.ui.view">
+            <field name="name">tenenet.employee.asset.handover.search</field>
+            <field name="model">tenenet.employee.asset.handover</field>
+            <field name="arch" type="xml">
+                <search string="Preberacie protokoly">
+                    <field name="name"/>
+                    <field name="employee_id"/>
+                    <field name="sign_request_id"/>
+                    <filter string="Na podpis" name="to_sign" domain="[('sign_state', '=', 'sent')]"/>
+                    <filter string="Podpísané" name="signed" domain="[('sign_state', '=', 'signed')]"/>
+                    <group>
+                        <filter string="Zamestnanec" name="group_employee" context="{'group_by': 'employee_id'}"/>
+                        <filter string="Stav podpisu" name="group_sign_state" context="{'group_by': 'sign_state'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_tenenet_employee_asset_handover" model="ir.actions.act_window">
+            <field name="name">Preberacie protokoly</field>
+            <field name="res_model">tenenet.employee.asset.handover</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="view_tenenet_employee_asset_handover_search"/>
+        </record>
+
+        <record id="view_tenenet_employee_asset_handover_wizard_form" model="ir.ui.view">
+            <field name="name">tenenet.employee.asset.handover.wizard.form</field>
+            <field name="model">tenenet.employee.asset.handover.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Pridať firemný majetok">
+                    <group>
+                        <group>
+                            <field name="employee_id"/>
+                            <field name="handover_date"/>
+                            <field name="currency_id"/>
+                        </group>
+                    </group>
+                    <separator string="Majetok"/>
+                    <field name="line_ids" nolabel="1">
+                        <list editable="bottom" string="Majetok">
+                            <field name="asset_type_id"/>
+                            <field name="serial_number"/>
+                            <field name="currency_id" column_invisible="1"/>
+                            <field name="cost"/>
+                            <field name="note"/>
+                        </list>
+                    </field>
+                    <separator string="Správa k podpisu"/>
+                    <field name="message" nolabel="1" widget="html"/>
+                    <group>
+                        <field name="note"/>
+                    </group>
+                    <footer>
+                        <button name="action_confirm"
+                                type="object"
+                                string="Pridať a odoslať na podpis"
+                                class="btn-primary"/>
+                        <button string="Zrušiť"
+                                special="cancel"
+                                class="btn-secondary"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_tenenet_employee_asset_handover_wizard" model="ir.actions.act_window">
+            <field name="name">Pridať firemný majetok</field>
+            <field name="res_model">tenenet.employee.asset.handover.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+
+        <record id="action_report_employee_asset_handover" model="ir.actions.report">
+            <field name="name">Preberací protokol firemného majetku</field>
+            <field name="model">tenenet.employee.asset.handover</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">tenenet_projects.report_employee_asset_handover</field>
+            <field name="report_file">tenenet_projects.report_employee_asset_handover</field>
+            <field name="print_report_name">'Preberaci protokol - %s' % object.employee_id.name</field>
+            <field name="binding_model_id" ref="model_tenenet_employee_asset_handover"/>
+            <field name="binding_type">report</field>
+        </record>
+
+        <template id="report_employee_asset_handover">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="o">
+                    <t t-call="web.external_layout">
+                        <div class="page">
+                            <h2>Preberací protokol firemného majetku</h2>
+                            <p>
+                                <strong>Zamestnanec:</strong>
+                                <span t-field="o.employee_id"/>
+                            </p>
+                            <p>
+                                <strong>Termín odovzdania:</strong>
+                                <span t-field="o.handover_date"/>
+                            </p>
+                            <p>
+                                <strong>Spoločnosť:</strong>
+                                <span t-field="o.company_id"/>
+                            </p>
+                            <table class="table table-sm mt-4">
+                                <thead>
+                                    <tr>
+                                        <th>Typ</th>
+                                        <th>Výrobné číslo</th>
+                                        <th>Hodnota</th>
+                                        <th>Poznámka</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="o.asset_ids" t-as="asset">
+                                        <td><span t-field="asset.asset_type_id"/></td>
+                                        <td><span t-field="asset.serial_number"/></td>
+                                        <td><span t-field="asset.cost"/></td>
+                                        <td><span t-field="asset.note"/></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <p t-if="o.note" class="mt-4">
+                                <strong>Poznámka:</strong>
+                                <span t-field="o.note"/>
+                            </p>
+                        </div>
+                        <div class="page">
+                            <h2>Potvrdenie prevzatia</h2>
+                            <p>
+                                Zamestnanec potvrdzuje prevzatie firemného majetku uvedeného v tomto protokole.
+                            </p>
+                            <div style="margin-top: 160px; width: 40%; margin-left: 58%;">
+                                <p style="border-top: 1px solid #000; padding-top: 8px;">
+                                    Podpis zamestnanca
+                                </p>
+                            </div>
+                        </div>
+                    </t>
+                </t>
+            </t>
+        </template>
+    </data>
+</odoo>

@@ -146,11 +146,11 @@
                             <group string="Profil">
                                 <field name="work_ratio" string="Úväzok (%)" />
                                 <field name="experience_years_total" />
-                                <field name="is_mgmt" />
                             </group>
                             <group string="Mzdové nastavenie">
-                                <field name="hourly_rate" />
-                                <field name="monthly_gross_salary_target" />
+                                <field name="monthly_gross_salary_target" string="Mesačný cieľ CCP" />
+                                <field name="monthly_gross_salary_target_hm" readonly="1" string="Mesačný cieľ HM (brutto)" />
+                                <field name="hourly_rate" readonly="1" string="Reziduálna hodinová sadzba CCP" />
                             </group>
                         </group>
                         <group>
@@ -202,7 +202,11 @@
                                     />
                                     <field
                                         name="wage_hm"
-                                        string="HM / hod."
+                                        string="HM/brutto / hod."
+                                    />
+                                    <field
+                                        name="wage_ccp"
+                                        string="CCP / hod."
                                     />
                                     <button
                                         name="action_open_timesheet_matrix_current_year"
@@ -220,6 +224,13 @@
                                 <field name="asset_total_value" readonly="1"/>
                             </group>
                         </group>
+                        <button
+                            name="%(tenenet_projects.action_tenenet_employee_asset_handover_wizard)d"
+                            type="action"
+                            string="Pridať majetok"
+                            class="btn-primary"
+                            context="{'default_employee_id': id}"
+                        />
                         <separator string="Majetok"/>
                         <field
                             name="asset_ids"
@@ -227,10 +238,14 @@
                             context="{'default_employee_id': id}"
                             colspan="2"
                         >
-                            <list string="Firemný majetok" editable="bottom">
+                            <list string="Firemný majetok" create="0">
                                 <field name="asset_type_id"/>
+                                <field name="serial_number"/>
+                                <field name="handover_date"/>
                                 <field name="currency_id" column_invisible="1"/>
                                 <field name="cost" optional="show"/>
+                                <field name="sign_state" widget="badge" optional="show"/>
+                                <field name="sign_request_id" optional="hide"/>
                                 <field name="note" optional="show"/>
                                 <field name="active"/>
                             </list>
@@ -239,6 +254,11 @@
                                     <group>
                                         <field name="employee_id" invisible="1"/>
                                         <field name="asset_type_id"/>
+                                        <field name="serial_number"/>
+                                        <field name="handover_date"/>
+                                        <field name="handover_id" readonly="1"/>
+                                        <field name="sign_request_id" readonly="1"/>
+                                        <field name="sign_state" readonly="1" widget="badge"/>
                                         <field name="currency_id"/>
                                         <field name="cost"/>
                                         <field name="active"/>

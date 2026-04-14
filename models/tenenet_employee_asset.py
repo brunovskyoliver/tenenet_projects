@@ -19,6 +19,35 @@ class TenenetEmployeeAsset(models.Model):
         ondelete="restrict",
     )
     name = fields.Char(string="Majetok", related="asset_type_id.name", store=True, readonly=True)
+    serial_number = fields.Char(
+        string="Výrobné číslo",
+        required=True,
+    )
+    handover_date = fields.Date(
+        string="Termín odovzdania",
+        required=True,
+        default=fields.Date.context_today,
+    )
+    handover_id = fields.Many2one(
+        "tenenet.employee.asset.handover",
+        string="Preberací protokol",
+        ondelete="set null",
+        index=True,
+        copy=False,
+    )
+    sign_request_id = fields.Many2one(
+        "sign.request",
+        string="Podpisová žiadosť",
+        related="handover_id.sign_request_id",
+        readonly=True,
+        store=True,
+    )
+    sign_state = fields.Selection(
+        related="handover_id.sign_state",
+        string="Stav podpisu",
+        readonly=True,
+        store=True,
+    )
     currency_id = fields.Many2one(
         "res.currency",
         string="Mena",

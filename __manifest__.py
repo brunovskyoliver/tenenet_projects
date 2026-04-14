@@ -13,10 +13,10 @@ and P&L reporting by program.
     'website': "https://www.tenenet.sk",
 
     'category': 'Project',
-    'version': '19.0.5.14.0',
+    'version': '19.0.5.15.0',
     'license': 'LGPL-3',
 
-    'depends': ['base', 'hr', 'hr_holidays', 'hr_skills', 'hr_expense', 'account_reports', 'mail', 'web_enterprise', 'web_gantt', 'web_grid'],
+    'depends': ['base', 'hr', 'hr_holidays', 'hr_skills', 'hr_expense', 'account_reports', 'mail', 'sign', 'web_enterprise', 'web_gantt', 'web_grid'],
 
 
     'assets': {
@@ -139,6 +139,7 @@ and P&L reporting by program.
         'views/res_partner_views.xml',
         'views/tenenet_employee_training_views.xml',
         'views/res_users_views.xml',
+        'views/tenenet_employee_asset_handover_views.xml',
         'views/hr_employee_views.xml',
         'views/menu.xml',
         'views/tenenet_wage_views.xml',

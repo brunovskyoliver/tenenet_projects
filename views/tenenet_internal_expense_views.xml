@@ -15,10 +15,10 @@
                     <field name="expense_amount" optional="show"/>
                     <field name="hour_type" optional="show"/>
                     <field name="hours" optional="show"/>
-                    <field name="wage_hm" optional="hide"/>
-                    <field name="wage_ccp" optional="hide" readonly="1"/>
-                    <field name="cost_hm" sum="Spolu HM"/>
-                <field name="cost_ccp" sum="Spolu CCP"/>
+                    <field name="wage_hm" string="Hodinová HM/brutto" optional="hide"/>
+                    <field name="wage_ccp" string="Hodinová CCP" optional="show" readonly="1"/>
+                    <field name="cost_hm" string="Náklad HM/brutto" sum="Spolu HM"/>
+                <field name="cost_ccp" string="Náklad CCP" sum="Spolu CCP"/>
                 <field name="source_assignment_id" optional="show"/>
                 <field name="leave_id" optional="show"/>
                 <field name="currency_id" column_invisible="True"/>
@@ -48,10 +48,10 @@
                         <group string="Mzdové sadzby a náklady">
                             <field name="expense_amount" invisible="category != 'expense'"/>
                             <field name="hours" invisible="category != 'leave'"/>
-                            <field name="wage_hm"/>
-                            <field name="wage_ccp" readonly="1"/>
-                            <field name="cost_hm"/>
-                            <field name="cost_ccp"/>
+                            <field name="wage_hm" string="Hodinová HM/brutto"/>
+                            <field name="wage_ccp" string="Hodinová CCP" readonly="1"/>
+                            <field name="cost_hm" string="Náklad HM/brutto"/>
+                            <field name="cost_ccp" string="Náklad CCP"/>
                             <field name="currency_id" invisible="1"/>
                         </group>
                     </group>

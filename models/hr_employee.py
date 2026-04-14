@@ -7,6 +7,8 @@ from odoo.exceptions import ValidationError
 class HrEmployee(models.Model):
     _inherit = "hr.employee"
 
+    CCP_MULTIPLIER = 1.362
+
     _PAYROLL_CLEANUP_XMLID = "tenenet_projects.view_hr_employee_form_tenenet_payroll_cleanup_optional"
     _PAYROLL_CLEANUP_ARCH = """
         <data>
@@ -80,9 +82,15 @@ class HrEmployee(models.Model):
         readonly=True,
     )
     monthly_gross_salary_target = fields.Monetary(
-        string="Mesačná hrubá mzda",
+        string="Mesačný cieľ CCP",
         currency_field="salary_currency_id",
-        help="Cieľová mesačná hrubá mzda používaná pre informáciu a dorovnanie do Admin TENENET.",
+        help="Cieľová mesačná celková cena práce používaná pre informáciu a dorovnanie do Admin TENENET.",
+    )
+    monthly_gross_salary_target_hm = fields.Monetary(
+        string="Mesačný cieľ HM (brutto)",
+        currency_field="salary_currency_id",
+        compute="_compute_monthly_gross_salary_target_hm",
+        help="Informatívna hrubá mzda odvodená z mesačného cieľa CCP.",
     )
     profile_summary_html = fields.Html(
         string="Súhrn pracovísk a pozícií",
@@ -116,14 +124,14 @@ class HrEmployee(models.Model):
         default=100.0,
         help="Percento pracovnej kapacity zamestnanca. Pri 100 % je mesačný fond 160 hodín.",
     )
-    hourly_rate = fields.Float(string="Hodinová sadzba", digits=(10, 2))
-    is_mgmt = fields.Boolean(
-        string="Administratíva/manažment",
-        default=False,
+    hourly_rate = fields.Float(
+        string="Reziduálna hodinová sadzba CCP",
+        digits=(10, 2),
+        compute="_compute_hourly_rate",
+        inverse="_inverse_hourly_rate",
         help=(
-            "Zamestnanec patrí do administratívy. "
-            "Mzdové náklady sa v P&L Admin TENENET zobrazia v sekcii "
-            "Mzdové náklady administratívy."
+            "Dopočítaná hodinová sadzba CCP pre nepokrytú kapacitu: "
+            "(mesačný cieľ CCP - projektová CCP) / (mesačný fond - projektové hodiny)."
         ),
     )
     allocation_ids = fields.One2many(
@@ -268,6 +276,10 @@ class HrEmployee(models.Model):
             if job not in jobs:
                 jobs.append(job)
         return jobs
+
+    def _is_tenenet_admin_management(self):
+        self.ensure_one()
+        return any(job.is_tenenet_admin_management for job in self._get_job_sequence())
 
     @api.model
     def _prepare_identity_sync_vals(self, vals, record=None):
@@ -470,6 +482,47 @@ class HrEmployee(models.Model):
             hours_per_day = 8.0 * ratio / 100.0
             rec.work_hours = hours_per_day
             rec.monthly_capacity_hours = 160.0 * ratio / 100.0
+
+    @api.depends("monthly_gross_salary_target")
+    def _compute_monthly_gross_salary_target_hm(self):
+        for rec in self:
+            rec.monthly_gross_salary_target_hm = (rec.monthly_gross_salary_target or 0.0) / self.CCP_MULTIPLIER
+
+    @api.model
+    def _get_tenenet_hourly_rate_period(self):
+        period = self.env.context.get("tenenet_period") or fields.Date.context_today(self)
+        return fields.Date.to_date(period).replace(day=1)
+
+    @api.depends(
+        "monthly_gross_salary_target",
+        "monthly_capacity_hours",
+        "assignment_ids.timesheet_ids.period",
+        "assignment_ids.timesheet_ids.hours_total",
+        "assignment_ids.timesheet_ids.hours_project_total",
+        "assignment_ids.timesheet_ids.total_labor_cost",
+    )
+    @api.depends_context("tenenet_period")
+    def _compute_hourly_rate(self):
+        Timesheet = self.env["tenenet.project.timesheet"].sudo()
+        period = self._get_tenenet_hourly_rate_period()
+        for rec in self:
+            if not rec.id:
+                rec.hourly_rate = 0.0
+                continue
+            timesheets = Timesheet.search([
+                ("employee_id", "=", rec.id),
+                ("period", "=", period),
+                ("project_id.is_tenenet_internal", "=", False),
+            ])
+            project_hours = sum(timesheets.mapped("hours_total"))
+            project_ccp = sum(timesheets.mapped("total_labor_cost"))
+            remaining_ccp = max(0.0, (rec.monthly_gross_salary_target or 0.0) - project_ccp)
+            remaining_hours = max(0.0, (rec.monthly_capacity_hours or 0.0) - project_hours)
+            rec.hourly_rate = remaining_ccp / remaining_hours if remaining_hours else 0.0
+
+    def _inverse_hourly_rate(self):
+        # Kept for compatibility with legacy imports/tests that still write hourly_rate.
+        return
 
     @api.depends("parent_id", "parent_id.user_id", "parent_id.service_manager_user_ids")
     def _compute_service_manager_user_ids(self):

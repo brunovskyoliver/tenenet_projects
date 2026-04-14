@@ -107,6 +107,9 @@
                         <div class="text-muted mb-3">
                             Pre každú profesiu nastav mapovanie podľa zákonného režimu. Samotné sumy sa berú z mzdových tabuliek.
                         </div>
+                        <group string="TENENET reporting">
+                            <field name="is_tenenet_admin_management"/>
+                        </group>
                         <field name="legal_wage_mapping_ids" nolabel="1">
                             <list editable="bottom" string="Mapovania profesie">
                                 <field name="active"/>

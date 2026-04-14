@@ -100,6 +100,10 @@ class TenenetProgram(models.Model):
 class HrJob(models.Model):
     _inherit = "hr.job"
 
+    is_tenenet_admin_management = fields.Boolean(
+        string="Administratíva/manažment TENENET",
+        help="Zamestnanci s touto hlavnou alebo vedľajšou pozíciou patria v P&L do mzdových nákladov administratívy.",
+    )
     legal_wage_mapping_ids = fields.One2many(
         "tenenet.hr.job.legal.wage.map",
         "job_id",
@@ -753,6 +757,7 @@ class HrEmployee(models.Model):
         "additional_job_ids.name",
         "experience_years_total",
         "monthly_gross_salary_target",
+        "monthly_gross_salary_target_hm",
         "wage_program_override_id",
         "wage_program_override_id.name",
         "wage_program_override_id.wage_regime",
@@ -789,8 +794,10 @@ class HrEmployee(models.Model):
             cards = []
             if employee.monthly_gross_salary_target:
                 target_html = (
-                    "<div class='o_tenenet_salary_target'>Mesačná hrubá mzda: "
-                    f"<strong>{escape(f'{employee.monthly_gross_salary_target:,.2f}'.replace(',', ' '))} EUR</strong></div>"
+                    "<div class='o_tenenet_salary_target'>Mesačný cieľ CCP: "
+                    f"<strong>{escape(f'{employee.monthly_gross_salary_target:,.2f}'.replace(',', ' '))} EUR</strong>"
+                    " / odvodený HM (brutto): "
+                    f"<strong>{escape(f'{employee.monthly_gross_salary_target_hm:,.2f}'.replace(',', ' '))} EUR</strong></div>"
                 )
 
             resolutions = employee._get_legal_wage_resolutions()
@@ -845,16 +852,16 @@ class HrEmployee(models.Model):
 
                 delta_html = ""
                 if resolution.amount and employee.monthly_gross_salary_target:
-                    delta = employee.monthly_gross_salary_target - resolution.amount
+                    delta = employee.monthly_gross_salary_target_hm - resolution.amount
                     if abs(delta) < 0.005:
                         delta_class = "is-match"
-                        delta_text = "Cieľ je na úrovni odporúčania."
+                        delta_text = "Odvodený HM cieľ je na úrovni odporúčania."
                     elif delta < 0:
                         delta_class = "is-below"
-                        delta_text = f"Cieľ je nižší o {abs(delta):,.2f} EUR."
+                        delta_text = f"Odvodený HM cieľ je nižší o {abs(delta):,.2f} EUR."
                     else:
                         delta_class = "is-above"
-                        delta_text = f"Cieľ je vyšší o {abs(delta):,.2f} EUR."
+                        delta_text = f"Odvodený HM cieľ je vyšší o {abs(delta):,.2f} EUR."
                     delta_html = (
                         f"<div class='o_tenenet_salary_delta {delta_class}'>{escape(delta_text.replace(',', ' '))}</div>"
                     )
