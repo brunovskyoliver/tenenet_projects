@@ -20,6 +20,7 @@ from . import test_employee_list_report
 from . import test_home_menu_utilization_metric
 from . import test_employee_service
 from . import test_employee_profile_rework
+from . import test_employee_wage_guidance
 from . import test_project_milestone
 from . import test_project_sites
 from . import test_project_contacts

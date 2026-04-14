@@ -228,6 +228,33 @@
         gap: 12px;
     }
 
+    .o_tenenet_salary_context_grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+    }
+
+    .o_tenenet_salary_context_card {
+        border: 1px solid rgba(59, 130, 246, 0.25);
+        border-radius: 14px;
+        background: rgba(15, 23, 42, 0.5);
+        padding: 12px 14px;
+    }
+
+    .o_tenenet_salary_context_label {
+        color: #93c5fd;
+        font-size: 0.79rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+    }
+
+    .o_tenenet_salary_context_value {
+        color: #e2e8f0;
+        font-weight: 600;
+    }
+
     .o_tenenet_salary_guidance_field {
         width: 100%;
     }
@@ -271,6 +298,42 @@
     .o_tenenet_salary_range_note {
         color: #cbd5e1;
         font-size: 0.87rem;
+    }
+
+    .o_tenenet_salary_issue {
+        color: #fde68a;
+        font-weight: 700;
+    }
+
+    .o_tenenet_employee_chip_warning {
+        background: rgba(245, 158, 11, 0.22);
+        color: #fde68a;
+    }
+
+    .o_tenenet_salary_delta {
+        margin-top: 8px;
+        font-size: 0.87rem;
+        font-weight: 700;
+
+        &.is-below {
+            color: #fca5a5;
+        }
+
+        &.is-above {
+            color: #86efac;
+        }
+
+        &.is-match {
+            color: #bfdbfe;
+        }
+    }
+
+    .o_tenenet_salary_empty_state {
+        border: 1px dashed rgba(148, 163, 184, 0.45);
+        border-radius: 14px;
+        padding: 16px;
+        color: #cbd5e1;
+        background: rgba(15, 23, 42, 0.35);
     }
 
     .o_tenenet_eval_card {

@@ -1,0 +1,7 @@
+<odoo>
+    <data>
+        <function model="tenenet.wage.table" name="_cleanup_legacy_salary_guidance_artifacts"/>
+        <function model="tenenet.program" name="_sync_default_wage_regimes"/>
+        <function model="tenenet.wage.table" name="_load_default_wage_seed_data"/>
+    </data>
+</odoo>

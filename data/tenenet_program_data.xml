@@ -10,9 +10,19 @@
             <field name="code">SCPP</field>
         </record>
 
+        <record id="tenenet_program_scpap" model="tenenet.program">
+            <field name="name">Súkromné centrum poradenstva a prevencie</field>
+            <field name="code">SCPAP</field>
+        </record>
+
         <record id="tenenet_program_akp_deti" model="tenenet.program">
             <field name="name">AKP - deti a mládež</field>
             <field name="code">AKP_DETI</field>
+        </record>
+
+        <record id="tenenet_program_akp_shared" model="tenenet.program">
+            <field name="name">AKP - zdieľaná ambulancia</field>
+            <field name="code">AKP_SHARED</field>
         </record>
 
         <record id="tenenet_program_spodask" model="tenenet.program">
@@ -23,6 +33,21 @@
         <record id="tenenet_program_avl" model="tenenet.program">
             <field name="name">AVL</field>
             <field name="code">AVL</field>
+        </record>
+
+        <record id="tenenet_program_psc_sc" model="tenenet.program">
+            <field name="name">PSC Senec</field>
+            <field name="code">PSC_SC</field>
+        </record>
+
+        <record id="tenenet_program_psc_ke" model="tenenet.program">
+            <field name="name">PSC Košice</field>
+            <field name="code">PSC_KE</field>
+        </record>
+
+        <record id="tenenet_program_psc_bb" model="tenenet.program">
+            <field name="name">PSC Banská Bystrica</field>
+            <field name="code">PSC_BB</field>
         </record>
 
         <record id="tenenet_program_akp_dosp" model="tenenet.program">
@@ -48,6 +73,21 @@
         <record id="tenenet_program_ss_projekty" model="tenenet.program">
             <field name="name">SS projekty</field>
             <field name="code">SS_PROJEKTY</field>
+        </record>
+
+        <record id="tenenet_program_ssp" model="tenenet.program">
+            <field name="name">Špecializované sociálne poradenstvo</field>
+            <field name="code">SSP</field>
+        </record>
+
+        <record id="tenenet_program_eu_care" model="tenenet.program">
+            <field name="name">EU CARE</field>
+            <field name="code">EU_CARE</field>
+        </record>
+
+        <record id="tenenet_program_apz_eu_care" model="tenenet.program">
+            <field name="name">APZ, EU CARE</field>
+            <field name="code">APZ_EU_CARE</field>
         </record>
 
         <record id="tenenet_program_ostatne" model="tenenet.program">

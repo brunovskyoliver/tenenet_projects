@@ -80,8 +80,14 @@ access_tenenet_employee_service_hr_manager,tenenet.employee.service.hr.manager,m
 access_tenenet_employee_service_base_user,tenenet.employee.service.base.user,model_tenenet_employee_service,base.group_user,1,0,0,0
 access_tenenet_employee_evaluation_user,tenenet.employee.evaluation.user,model_tenenet_employee_evaluation,base.group_user,1,1,1,1
 access_tenenet_employee_evaluation_hr_manager,tenenet.employee.evaluation.hr.manager,model_tenenet_employee_evaluation,hr.group_hr_manager,1,1,1,1
-access_tenenet_hr_job_salary_range_hr_user,tenenet.hr.job.salary.range.hr.user,model_tenenet_hr_job_salary_range,hr.group_hr_user,1,1,1,1
-access_tenenet_hr_job_salary_range_hr_manager,tenenet.hr.job.salary.range.hr.manager,model_tenenet_hr_job_salary_range,hr.group_hr_manager,1,1,1,1
+access_tenenet_wage_table_hr_user,tenenet.wage.table.hr.user,model_tenenet_wage_table,hr.group_hr_user,1,1,1,1
+access_tenenet_wage_table_hr_manager,tenenet.wage.table.hr.manager,model_tenenet_wage_table,hr.group_hr_manager,1,1,1,1
+access_tenenet_wage_table_line_hr_user,tenenet.wage.table.line.hr.user,model_tenenet_wage_table_line,hr.group_hr_user,1,1,1,1
+access_tenenet_wage_table_line_hr_manager,tenenet.wage.table.line.hr.manager,model_tenenet_wage_table_line,hr.group_hr_manager,1,1,1,1
+access_tenenet_hr_job_legal_wage_map_hr_user,tenenet.hr.job.legal.wage.map.hr.user,model_tenenet_hr_job_legal_wage_map,hr.group_hr_user,1,1,1,1
+access_tenenet_hr_job_legal_wage_map_hr_manager,tenenet.hr.job.legal.wage.map.hr.manager,model_tenenet_hr_job_legal_wage_map,hr.group_hr_manager,1,1,1,1
+access_tenenet_employee_wage_override_hr_user,tenenet.employee.wage.override.hr.user,model_tenenet_employee_wage_override,hr.group_hr_user,1,1,1,1
+access_tenenet_employee_wage_override_hr_manager,tenenet.employee.wage.override.hr.manager,model_tenenet_employee_wage_override,hr.group_hr_manager,1,1,1,1
 access_tenenet_project_leave_rule_user,tenenet.project.leave.rule.user,model_tenenet_project_leave_rule,tenenet_projects.group_tenenet_user,1,0,0,0
 access_tenenet_project_leave_rule_manager,tenenet.project.leave.rule.manager,model_tenenet_project_leave_rule,tenenet_projects.group_tenenet_manager,1,1,1,1
 access_tenenet_project_timesheet_user,tenenet.project.timesheet.user,model_tenenet_project_timesheet,tenenet_projects.group_tenenet_user,1,1,1,0

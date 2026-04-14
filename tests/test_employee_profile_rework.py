@@ -73,43 +73,12 @@ class TestTenenetEmployeeProfileRework(TransactionCase):
         with self.assertRaises(ValidationError):
             self.employee.write({"secondary_site_ids": [Command.set(self.site_main.ids)]})
 
-    def test_salary_ranges_match_employee_experience_and_block_overlaps(self):
-        primary_band = self.env["tenenet.hr.job.salary.range"].create({
-            "job_id": self.job_primary.id,
-            "level_name": "Výkon",
-            "experience_years_from": 4.0,
-            "experience_years_to": 6.0,
-            "gross_min": 1300.0,
-            "gross_max": 1600.0,
-            "study_requirements": "Psychológia",
-        })
-        secondary_band = self.env["tenenet.hr.job.salary.range"].create({
-            "job_id": self.job_secondary.id,
-            "level_name": "Manažment",
-            "experience_years_from": 3.0,
-            "experience_years_to": 7.0,
-            "gross_min": 1500.0,
-            "gross_max": 1900.0,
-            "notes": "Koordinačná rola",
-        })
-
-        self.employee.invalidate_recordset(["matched_salary_range_ids", "salary_guidance_html"])
-        self.assertEqual(
-            self.employee.matched_salary_range_ids,
-            primary_band | secondary_band,
-        )
-        self.assertIn("Výkon", self.employee.salary_guidance_html)
-        self.assertIn("Manažment", self.employee.salary_guidance_html)
-
-        with self.assertRaises(ValidationError):
-            self.env["tenenet.hr.job.salary.range"].create({
-                "job_id": self.job_primary.id,
-                "level_name": "výkon",
-                "experience_years_from": 5.0,
-                "experience_years_to": 8.0,
-                "gross_min": 1600.0,
-                "gross_max": 1800.0,
-            })
+    def test_missing_legal_context_is_reported_and_legacy_model_is_removed(self):
+        self.assertNotIn("tenenet.hr.job.salary.range", self.env.registry.models)
+        self.employee.invalidate_recordset(["salary_guidance_context_html", "salary_guidance_html"])
+        self.assertIn("Aktívne priradenia", self.employee.salary_guidance_context_html)
+        self.assertIn("nie je dostupný právny mzdový kontext", self.employee.salary_guidance_html)
+        self.assertIn("Žiadny program", self.employee.salary_guidance_context_html)
 
     def test_employee_can_edit_own_bio_through_preferences(self):
         self.env["res.users"].with_user(self.employee_user).browse(self.employee_user.id).write({

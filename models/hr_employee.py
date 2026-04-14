@@ -89,11 +89,6 @@ class HrEmployee(models.Model):
         compute="_compute_profile_summary_html",
         sanitize=False,
     )
-    matched_salary_range_ids = fields.Many2many(
-        "tenenet.hr.job.salary.range",
-        compute="_compute_matched_salary_ranges",
-        string="Zodpovedajúce platové pásma",
-    )
     salary_guidance_html = fields.Html(
         string="Mzdové odporúčanie",
         compute="_compute_salary_guidance_html",
@@ -376,122 +371,6 @@ class HrEmployee(models.Model):
                 </div>
                 """
             ) % (Markup(job_items), Markup(site_items))
-
-    @api.depends(
-        "job_id",
-        "job_id.salary_range_ids",
-        "job_id.salary_range_ids.level_name",
-        "job_id.salary_range_ids.experience_years_from",
-        "job_id.salary_range_ids.experience_years_to",
-        "job_id.salary_range_ids.gross_min",
-        "job_id.salary_range_ids.gross_max",
-        "additional_job_ids",
-        "additional_job_ids.salary_range_ids",
-        "additional_job_ids.salary_range_ids.level_name",
-        "additional_job_ids.salary_range_ids.experience_years_from",
-        "additional_job_ids.salary_range_ids.experience_years_to",
-        "additional_job_ids.salary_range_ids.gross_min",
-        "additional_job_ids.salary_range_ids.gross_max",
-        "experience_years_total",
-    )
-    def _compute_matched_salary_ranges(self):
-        for employee in self:
-            experience = employee.experience_years_total or 0.0
-            matched_ranges = self.env["tenenet.hr.job.salary.range"]
-            for job in employee._get_job_sequence():
-                for salary_range in job.salary_range_ids.sorted(
-                    lambda rec: (rec.sequence, rec.experience_years_from, rec.id)
-                ):
-                    upper = salary_range.experience_years_to
-                    if experience < (salary_range.experience_years_from or 0.0):
-                        continue
-                    if upper not in (False, None) and experience > upper:
-                        continue
-                    matched_ranges |= salary_range
-            employee.matched_salary_range_ids = matched_ranges
-
-    @api.depends(
-        "job_id",
-        "job_id.salary_range_ids",
-        "job_id.salary_range_ids.sequence",
-        "job_id.salary_range_ids.level_name",
-        "job_id.salary_range_ids.experience_years_from",
-        "job_id.salary_range_ids.experience_years_to",
-        "job_id.salary_range_ids.gross_min",
-        "job_id.salary_range_ids.gross_max",
-        "job_id.salary_range_ids.study_requirements",
-        "job_id.salary_range_ids.notes",
-        "additional_job_ids",
-        "additional_job_ids.salary_range_ids",
-        "additional_job_ids.salary_range_ids.sequence",
-        "additional_job_ids.salary_range_ids.level_name",
-        "additional_job_ids.salary_range_ids.experience_years_from",
-        "additional_job_ids.salary_range_ids.experience_years_to",
-        "additional_job_ids.salary_range_ids.gross_min",
-        "additional_job_ids.salary_range_ids.gross_max",
-        "additional_job_ids.salary_range_ids.study_requirements",
-        "additional_job_ids.salary_range_ids.notes",
-        "experience_years_total",
-        "monthly_gross_salary_target",
-    )
-    def _compute_salary_guidance_html(self):
-        for employee in self:
-            cards = []
-            for salary_range in employee.matched_salary_range_ids.sorted(
-                lambda rec: (
-                    rec.job_id.display_name or "",
-                    rec.sequence,
-                    rec.experience_years_from,
-                    rec.id,
-                )
-            ):
-                years_label = (
-                    f"{salary_range.experience_years_from:g} - {salary_range.experience_years_to:g} rokov"
-                    if salary_range.experience_years_to not in (False, None)
-                    else f"od {salary_range.experience_years_from:g} rokov"
-                )
-                cards.append(
-                    """
-                    <div class="o_tenenet_salary_range_card">
-                        <div class="o_tenenet_salary_range_header">
-                            <span class="o_tenenet_salary_range_job">%s</span>
-                            <span class="o_tenenet_employee_chip">%s</span>
-                        </div>
-                        <div class="o_tenenet_salary_range_value">%s - %s EUR</div>
-                        <div class="o_tenenet_salary_range_meta">%s</div>
-                        %s
-                        %s
-                    </div>
-                    """
-                    % (
-                        escape(salary_range.job_id.display_name or "-"),
-                        escape(salary_range.level_name or "-"),
-                        escape(f"{salary_range.gross_min:,.2f}".replace(",", " ")),
-                        escape(f"{salary_range.gross_max:,.2f}".replace(",", " ")),
-                        escape(years_label),
-                        (
-                            f"<div class='o_tenenet_salary_range_note'><strong>Štúdium:</strong> {escape(salary_range.study_requirements)}</div>"
-                            if salary_range.study_requirements
-                            else ""
-                        ),
-                        (
-                            f"<div class='o_tenenet_salary_range_note'>{escape(salary_range.notes)}</div>"
-                            if salary_range.notes
-                            else ""
-                        ),
-                    )
-                )
-            if not cards:
-                cards.append("<div class='text-muted'>Pre zadané roky praxe zatiaľ nie je pripravené platové pásmo.</div>")
-            target_html = ""
-            if employee.monthly_gross_salary_target:
-                target_html = (
-                    "<div class='o_tenenet_salary_target'>Mesačná hrubá mzda: "
-                    f"<strong>{escape(f'{employee.monthly_gross_salary_target:,.2f}'.replace(',', ' '))} EUR</strong></div>"
-                )
-            employee.salary_guidance_html = Markup(
-                "<div class='o_tenenet_salary_guidance'>%s<div class='o_tenenet_salary_range_grid'>%s</div></div>"
-            ) % (Markup(target_html), Markup("".join(cards)))
 
     @api.depends("asset_ids", "asset_ids.cost", "asset_ids.active")
     def _compute_asset_total_value(self):

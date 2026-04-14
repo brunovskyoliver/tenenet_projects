@@ -1,0 +1,19 @@
+profession_code,profession_name,qualification_lane,base_amount,annual_increment,max_years
+physician,Lekár,professional,2286.00,22.86,30
+physician,Lekár,specialized,3810.00,45.72,30
+psychologist,Psychológ,professional,1813.56,15.24,30
+psychologist,Psychológ,certified,1874.52,15.24,30
+psychologist,Psychológ,specialized,2133.60,15.24,30
+logopedist,Logopéd,professional,1813.56,15.24,30
+logopedist,Logopéd,certified,1874.52,15.24,30
+logopedist,Logopéd,specialized,2133.60,15.24,30
+therapeutic_pedagogue,Liečebný pedagóg,professional,1813.56,15.24,30
+therapeutic_pedagogue,Liečebný pedagóg,certified,1874.52,15.24,30
+therapeutic_pedagogue,Liečebný pedagóg,specialized,2133.60,15.24,30
+nurse,Sestra,professional,1524.00,15.24,30
+nurse,Sestra,certified,1600.20,15.24,30
+nurse,Sestra,specialized,1676.40,15.24,30
+nurse,Sestra,advanced_practice,1752.60,15.24,30
+physiotherapist,Fyzioterapeut,professional,1386.84,15.24,30
+physiotherapist,Fyzioterapeut,certified,1463.04,15.24,30
+physiotherapist,Fyzioterapeut,specialized,1645.92,15.24,30

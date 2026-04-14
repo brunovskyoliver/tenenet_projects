@@ -3,7 +3,6 @@ from . import tenenet_donor
 from . import tenenet_project_site
 from . import tenenet_project_contact
 from . import res_partner
-from . import hr_job
 from . import hr_employee
 from . import hr_employee_public
 from . import tenenet_employee_asset_type
@@ -68,4 +67,5 @@ from . import tenenet_internal_expense_report
 from . import tenenet_cashflow_report
 from . import tenenet_sk_holidays
 from . import tenenet_employee_list_report
+from . import tenenet_wage_framework
 from . import res_users

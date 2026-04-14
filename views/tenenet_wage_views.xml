@@ -1,0 +1,529 @@
+<odoo>
+    <data>
+        <record id="view_tenenet_program_form_wage_regime" model="ir.ui.view">
+            <field name="name">tenenet.program.form.wage.regime</field>
+            <field name="model">tenenet.program</field>
+            <field name="inherit_id" ref="tenenet_projects.view_tenenet_program_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='program_kind']" position="after">
+                    <field name="wage_regime" placeholder="Bez zákonného mzdového režimu"/>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="view_tenenet_program_list_wage_regime" model="ir.ui.view">
+            <field name="name">tenenet.program.list.wage.regime</field>
+            <field name="model">tenenet.program</field>
+            <field name="inherit_id" ref="tenenet_projects.view_tenenet_program_list"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='program_kind']" position="after">
+                    <field name="wage_regime" optional="show"/>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="view_hr_employee_form_tenenet_wage_overrides" model="ir.ui.view">
+            <field name="name">hr.employee.form.tenenet.wage.overrides</field>
+            <field name="model">hr.employee</field>
+            <field name="inherit_id" ref="tenenet_projects.view_hr_employee_form_tenenet"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='monthly_gross_salary_target']" position="after">
+                    <field
+                        name="wage_program_override_id"
+                        placeholder="Inak sa použijú aktívne priradenia"
+                    />
+                </xpath>
+                <xpath expr="//field[@name='salary_guidance_html']" position="before">
+                    <field
+                        name="salary_guidance_context_html"
+                        nolabel="1"
+                        widget="html"
+                        class="o_tenenet_salary_guidance_field"
+                    />
+                </xpath>
+                <xpath expr="//group[.//field[@name='salary_guidance_html']]" position="after">
+                    <group string="Výnimky a manuálne prepisy">
+                        <div class="text-muted mb-2">
+                            Použi len pri atypických zmluvách alebo pri migrácii výnimiek zo spreadsheetu.
+                        </div>
+                        <field name="wage_override_ids" nolabel="1" colspan="2">
+                            <list editable="bottom" string="Výnimky a manuálne prepisy">
+                                <field name="active"/>
+                                <field name="scope_summary" string="Rozsah"/>
+                                <field name="effective_regime"/>
+                                <field name="classification_summary" string="Prepísané zaradenie"/>
+                                <field name="amount_override" optional="show"/>
+                                <field name="notes" optional="hide"/>
+                            </list>
+                            <form string="Výnimka právneho mzdového usmernenia">
+                                <sheet>
+                                    <group>
+                                        <group>
+                                            <field name="employee_id" invisible="1"/>
+                                            <field name="active"/>
+                                            <field name="job_id"/>
+                                            <field name="program_id"/>
+                                            <field name="override_program_id"/>
+                                        </group>
+                                        <group>
+                                            <field name="date_start"/>
+                                            <field name="date_end"/>
+                                            <field name="effective_regime" readonly="1"/>
+                                            <field name="amount_override"/>
+                                        </group>
+                                    </group>
+                                    <group>
+                                        <group>
+                                            <field name="pay_class"/>
+                                            <field name="work_class"/>
+                                        </group>
+                                        <group>
+                                            <field name="healthcare_profession_code"/>
+                                            <field name="qualification_lane"/>
+                                        </group>
+                                    </group>
+                                    <group>
+                                        <field name="scope_summary" readonly="1"/>
+                                        <field name="classification_summary" readonly="1"/>
+                                    </group>
+                                    <group col="1">
+                                        <field name="notes" nolabel="1" widget="text"/>
+                                    </group>
+                                </sheet>
+                            </form>
+                        </field>
+                    </group>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="view_hr_job_form_tenenet_legal_wage" model="ir.ui.view">
+            <field name="name">hr.job.form.tenenet.legal.wage</field>
+            <field name="model">hr.job</field>
+            <field name="inherit_id" ref="hr.view_hr_job_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//notebook" position="inside">
+                    <page string="Právne mzdy" groups="hr.group_hr_user">
+                        <div class="text-muted mb-3">
+                            Pre každú profesiu nastav mapovanie podľa zákonného režimu. Samotné sumy sa berú z mzdových tabuliek.
+                        </div>
+                        <field name="legal_wage_mapping_ids" nolabel="1">
+                            <list editable="bottom" string="Mapovania profesie">
+                                <field name="active"/>
+                                <field name="regime"/>
+                                <field name="classification_summary" string="Zaradenie"/>
+                                <field name="notes" optional="hide"/>
+                            </list>
+                            <form string="Mapovanie profesie">
+                                <sheet>
+                                    <group>
+                                        <group>
+                                            <field name="job_id" invisible="1"/>
+                                            <field name="active"/>
+                                            <field name="regime"/>
+                                            <field name="classification_summary" readonly="1"/>
+                                        </group>
+                                        <group>
+                                            <field name="pay_class"/>
+                                            <field name="work_class"/>
+                                            <field name="healthcare_profession_code"/>
+                                            <field name="qualification_lane"/>
+                                        </group>
+                                    </group>
+                                    <group col="1">
+                                        <field name="notes" nolabel="1" widget="text"/>
+                                    </group>
+                                </sheet>
+                            </form>
+                        </field>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="view_tenenet_wage_table_list" model="ir.ui.view">
+            <field name="name">tenenet.wage.table.list</field>
+            <field name="model">tenenet.wage.table</field>
+            <field name="arch" type="xml">
+                <list string="Právne mzdové tabuľky">
+                    <field name="name"/>
+                    <field name="year"/>
+                    <field name="regime"/>
+                    <field name="valid_from"/>
+                    <field name="valid_to"/>
+                    <field name="line_count"/>
+                    <field name="source_name"/>
+                    <field name="active"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_tenenet_wage_table_form" model="ir.ui.view">
+            <field name="name">tenenet.wage.table.form</field>
+            <field name="model">tenenet.wage.table</field>
+            <field name="arch" type="xml">
+                <form string="Právna mzdová tabuľka">
+                    <sheet>
+                        <div class="text-muted mb-3">
+                            Tu patria len oficiálne zákonné tabuľky. Nepoužívaj sem individuálne výnimky zamestnancov.
+                        </div>
+                        <group>
+                            <group>
+                                <field name="name"/>
+                                <field name="code"/>
+                                <field name="year"/>
+                                <field name="regime"/>
+                            </group>
+                            <group>
+                                <field name="valid_from"/>
+                                <field name="valid_to"/>
+                                <field name="line_count" readonly="1"/>
+                                <field name="active"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="source_name"/>
+                            <field name="source_url"/>
+                        </group>
+                        <field name="line_ids" nolabel="1" context="{'default_table_id': id}">
+                            <list editable="bottom" string="Riadky tabuľky">
+                                <field name="sequence" widget="handle"/>
+                                <field name="display_name" string="Riadok" readonly="1" optional="show"/>
+                                <field name="pay_class"/>
+                                <field name="work_class"/>
+                                <field name="healthcare_profession_code"/>
+                                <field name="qualification_lane"/>
+                                <field name="experience_years_from"/>
+                                <field name="experience_years_to"/>
+                                <field name="amount"/>
+                                <field name="evaluation_bonus" optional="hide"/>
+                            </list>
+                            <form string="Riadok tabuľky">
+                                <sheet>
+                                    <group>
+                                        <group>
+                                            <field name="table_id" invisible="1"/>
+                                            <field name="sequence"/>
+                                            <field name="pay_class"/>
+                                            <field name="work_class"/>
+                                        </group>
+                                        <group>
+                                            <field name="healthcare_profession_code"/>
+                                            <field name="qualification_lane"/>
+                                            <field name="experience_years_from"/>
+                                            <field name="experience_years_to"/>
+                                        </group>
+                                    </group>
+                                    <group>
+                                        <group>
+                                            <field name="amount"/>
+                                        </group>
+                                        <group>
+                                            <field name="evaluation_bonus"/>
+                                        </group>
+                                    </group>
+                                </sheet>
+                            </form>
+                        </field>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_tenenet_wage_table_search" model="ir.ui.view">
+            <field name="name">tenenet.wage.table.search</field>
+            <field name="model">tenenet.wage.table</field>
+            <field name="arch" type="xml">
+                <search string="Právne mzdové tabuľky">
+                    <field name="name"/>
+                    <field name="year"/>
+                    <field name="regime"/>
+                    <filter string="Aktívne" name="active" domain="[('active', '=', True)]"/>
+                    <filter string="553 verejný záujem" name="public_interest" domain="[('regime', '=', 'law_553_public_interest')]"/>
+                    <filter string="553 pedagogickí" name="pedagogical" domain="[('regime', '=', 'law_553_pedagogical')]"/>
+                    <filter string="Zdravotníci" name="healthcare" domain="[('regime', '=', 'healthcare')]"/>
+                </search>
+            </field>
+        </record>
+
+        <record id="view_tenenet_wage_table_line_list" model="ir.ui.view">
+            <field name="name">tenenet.wage.table.line.list</field>
+            <field name="model">tenenet.wage.table.line</field>
+            <field name="arch" type="xml">
+                <list string="Riadky zákonných tabuliek" editable="bottom" default_order="table_year desc, table_id, sequence, id">
+                    <field name="table_year"/>
+                    <field name="table_id"/>
+                    <field name="regime"/>
+                    <field name="sequence" widget="handle"/>
+                    <field name="pay_class"/>
+                    <field name="work_class"/>
+                    <field name="healthcare_profession_code"/>
+                    <field name="qualification_lane"/>
+                    <field name="experience_years_from"/>
+                    <field name="experience_years_to"/>
+                    <field name="amount"/>
+                    <field name="evaluation_bonus" optional="hide"/>
+                    <field name="table_active" optional="hide"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_tenenet_wage_table_line_form" model="ir.ui.view">
+            <field name="name">tenenet.wage.table.line.form</field>
+            <field name="model">tenenet.wage.table.line</field>
+            <field name="arch" type="xml">
+                <form string="Riadok zákonnej tabuľky">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="table_id"/>
+                                <field name="table_year" readonly="1"/>
+                                <field name="regime" readonly="1"/>
+                                <field name="sequence"/>
+                            </group>
+                            <group>
+                                <field name="pay_class"/>
+                                <field name="work_class"/>
+                                <field name="healthcare_profession_code"/>
+                                <field name="qualification_lane"/>
+                            </group>
+                        </group>
+                        <group>
+                            <group>
+                                <field name="experience_years_from"/>
+                                <field name="experience_years_to"/>
+                            </group>
+                            <group>
+                                <field name="amount"/>
+                                <field name="evaluation_bonus"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="display_name" readonly="1"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_tenenet_wage_table_line_search" model="ir.ui.view">
+            <field name="name">tenenet.wage.table.line.search</field>
+            <field name="model">tenenet.wage.table.line</field>
+            <field name="arch" type="xml">
+                <search string="Riadky zákonných tabuliek">
+                    <field name="table_id"/>
+                    <field name="table_year"/>
+                    <field name="regime"/>
+                    <field name="pay_class"/>
+                    <field name="healthcare_profession_code"/>
+                    <filter string="Aktívne tabuľky" name="active_tables" domain="[('table_active', '=', True)]"/>
+                    <filter string="553 verejný záujem" name="public_interest" domain="[('regime', '=', 'law_553_public_interest')]"/>
+                    <filter string="553 pedagogickí" name="pedagogical" domain="[('regime', '=', 'law_553_pedagogical')]"/>
+                    <filter string="Zdravotníci" name="healthcare" domain="[('regime', '=', 'healthcare')]"/>
+                    <group>
+                        <filter string="Rok" name="group_year" context="{'group_by': 'table_year'}"/>
+                        <filter string="Tabuľka" name="group_table" context="{'group_by': 'table_id'}"/>
+                        <filter string="Režim" name="group_regime" context="{'group_by': 'regime'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <record id="view_tenenet_legal_wage_map_list" model="ir.ui.view">
+            <field name="name">tenenet.hr.job.legal.wage.map.list</field>
+            <field name="model">tenenet.hr.job.legal.wage.map</field>
+            <field name="arch" type="xml">
+                <list string="Mapovania profesií" editable="bottom" default_order="regime, job_id, id">
+                    <field name="job_id"/>
+                    <field name="regime"/>
+                    <field name="classification_summary" string="Zaradenie"/>
+                    <field name="active"/>
+                    <field name="notes" optional="hide"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_tenenet_legal_wage_map_form" model="ir.ui.view">
+            <field name="name">tenenet.hr.job.legal.wage.map.form</field>
+            <field name="model">tenenet.hr.job.legal.wage.map</field>
+            <field name="arch" type="xml">
+                <form string="Mapovanie profesie">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="job_id"/>
+                                <field name="regime"/>
+                                <field name="active"/>
+                                <field name="classification_summary" readonly="1"/>
+                            </group>
+                            <group>
+                                <field name="pay_class"/>
+                                <field name="work_class"/>
+                                <field name="healthcare_profession_code"/>
+                                <field name="qualification_lane"/>
+                            </group>
+                        </group>
+                        <group col="1">
+                            <field name="notes" nolabel="1" widget="text"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_tenenet_legal_wage_map_search" model="ir.ui.view">
+            <field name="name">tenenet.hr.job.legal.wage.map.search</field>
+            <field name="model">tenenet.hr.job.legal.wage.map</field>
+            <field name="arch" type="xml">
+                <search string="Mapovania profesií">
+                    <field name="job_id"/>
+                    <field name="regime"/>
+                    <field name="classification_summary"/>
+                    <filter string="Aktívne" name="active" domain="[('active', '=', True)]"/>
+                    <filter string="553 verejný záujem" name="public_interest" domain="[('regime', '=', 'law_553_public_interest')]"/>
+                    <filter string="553 pedagogickí" name="pedagogical" domain="[('regime', '=', 'law_553_pedagogical')]"/>
+                    <filter string="Zdravotníci" name="healthcare" domain="[('regime', '=', 'healthcare')]"/>
+                </search>
+            </field>
+        </record>
+
+        <record id="view_tenenet_employee_wage_override_list" model="ir.ui.view">
+            <field name="name">tenenet.employee.wage.override.list</field>
+            <field name="model">tenenet.employee.wage.override</field>
+            <field name="arch" type="xml">
+                <list string="Výnimky zamestnancov">
+                    <field name="employee_id"/>
+                    <field name="scope_summary" string="Rozsah"/>
+                    <field name="effective_regime"/>
+                    <field name="classification_summary" string="Prepísané zaradenie"/>
+                    <field name="active"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_tenenet_employee_wage_override_form" model="ir.ui.view">
+            <field name="name">tenenet.employee.wage.override.form</field>
+            <field name="model">tenenet.employee.wage.override</field>
+            <field name="arch" type="xml">
+                <form string="Výnimka zamestnanca">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="employee_id"/>
+                                <field name="active"/>
+                                <field name="job_id"/>
+                                <field name="program_id"/>
+                                <field name="override_program_id"/>
+                            </group>
+                            <group>
+                                <field name="date_start"/>
+                                <field name="date_end"/>
+                                <field name="effective_regime" readonly="1"/>
+                                <field name="amount_override"/>
+                            </group>
+                        </group>
+                        <group>
+                            <group>
+                                <field name="pay_class"/>
+                                <field name="work_class"/>
+                            </group>
+                            <group>
+                                <field name="healthcare_profession_code"/>
+                                <field name="qualification_lane"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="scope_summary" readonly="1"/>
+                            <field name="classification_summary" readonly="1"/>
+                        </group>
+                        <group col="1">
+                            <field name="notes" nolabel="1" widget="text"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_tenenet_employee_wage_override_search" model="ir.ui.view">
+            <field name="name">tenenet.employee.wage.override.search</field>
+            <field name="model">tenenet.employee.wage.override</field>
+            <field name="arch" type="xml">
+                <search string="Výnimky zamestnancov">
+                    <field name="employee_id"/>
+                    <field name="program_id"/>
+                    <field name="effective_regime"/>
+                    <field name="scope_summary"/>
+                    <filter string="Aktívne" name="active" domain="[('active', '=', True)]"/>
+                    <filter string="553 verejný záujem" name="public_interest" domain="[('effective_regime', '=', 'law_553_public_interest')]"/>
+                    <filter string="553 pedagogickí" name="pedagogical" domain="[('effective_regime', '=', 'law_553_pedagogical')]"/>
+                    <filter string="Zdravotníci" name="healthcare" domain="[('effective_regime', '=', 'healthcare')]"/>
+                </search>
+            </field>
+        </record>
+
+        <record id="action_tenenet_wage_table" model="ir.actions.act_window">
+            <field name="name">Právne mzdové tabuľky</field>
+            <field name="res_model">tenenet.wage.table</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="tenenet_projects.view_tenenet_wage_table_search"/>
+            <field name="context">{'search_default_active': 1}</field>
+        </record>
+
+        <record id="action_tenenet_wage_table_line" model="ir.actions.act_window">
+            <field name="name">Riadky zákonných tabuliek</field>
+            <field name="res_model">tenenet.wage.table.line</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="tenenet_projects.view_tenenet_wage_table_line_search"/>
+            <field name="context">{'search_default_active_tables': 1, 'group_by': 'table_year'}</field>
+        </record>
+
+        <record id="action_tenenet_legal_wage_map" model="ir.actions.act_window">
+            <field name="name">Mapovania profesií</field>
+            <field name="res_model">tenenet.hr.job.legal.wage.map</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="tenenet_projects.view_tenenet_legal_wage_map_search"/>
+            <field name="context">{'search_default_active': 1, 'group_by': 'regime'}</field>
+        </record>
+
+        <record id="action_tenenet_employee_wage_override" model="ir.actions.act_window">
+            <field name="name">Výnimky zamestnancov</field>
+            <field name="res_model">tenenet.employee.wage.override</field>
+            <field name="view_mode">list,form</field>
+            <field name="search_view_id" ref="tenenet_projects.view_tenenet_employee_wage_override_search"/>
+        </record>
+
+        <menuitem id="menu_tenenet_legal_wage_root"
+                  name="Právne mzdy"
+                  parent="tenenet_projects.menu_tenenet_configuration"
+                  sequence="11"
+                  groups="hr.group_hr_user,hr.group_hr_manager"/>
+
+        <menuitem id="menu_tenenet_wage_table"
+                  name="Zákonné tabuľky"
+                  parent="tenenet_projects.menu_tenenet_legal_wage_root"
+                  action="action_tenenet_wage_table"
+                  sequence="11"
+                  groups="hr.group_hr_user,hr.group_hr_manager"/>
+
+        <menuitem id="menu_tenenet_wage_table_line"
+                  name="Riadky tabuliek"
+                  parent="tenenet_projects.menu_tenenet_legal_wage_root"
+                  action="action_tenenet_wage_table_line"
+                  sequence="12"
+                  groups="hr.group_hr_user,hr.group_hr_manager"/>
+
+        <menuitem id="menu_tenenet_legal_wage_map"
+                  name="Mapovania profesií"
+                  parent="tenenet_projects.menu_tenenet_legal_wage_root"
+                  action="action_tenenet_legal_wage_map"
+                  sequence="13"
+                  groups="hr.group_hr_user,hr.group_hr_manager"/>
+
+        <menuitem id="menu_tenenet_employee_wage_override"
+                  name="Výnimky zamestnancov"
+                  parent="tenenet_projects.menu_tenenet_legal_wage_root"
+                  action="action_tenenet_employee_wage_override"
+                  sequence="14"
+                  groups="hr.group_hr_user,hr.group_hr_manager"/>
+    </data>
+</odoo>

@@ -13,7 +13,7 @@ and P&L reporting by program.
     'website': "https://www.tenenet.sk",
 
     'category': 'Project',
-    'version': '19.0.5.12.0',
+    'version': '19.0.5.14.0',
     'license': 'LGPL-3',
 
     'depends': ['base', 'hr', 'hr_holidays', 'hr_skills', 'hr_expense', 'account_reports', 'mail', 'web_enterprise', 'web_gantt', 'web_grid'],
@@ -85,6 +85,7 @@ and P&L reporting by program.
         'security/ir.model.access.csv',
         'data/tenenet_program_data.xml',
         'data/tenenet_donor_data.xml',
+        'data/tenenet_wage_seed_data.xml',
         'data/hr_leave_type_data.xml',
         'data/tenenet_project_terrain_data.xml',
         'data/tenenet_alert_mail_template.xml',
@@ -97,7 +98,6 @@ and P&L reporting by program.
         'views/tenenet_project_site_views.xml',
         'views/tenenet_project_contact_views.xml',
         'views/tenenet_donor_views.xml',
-        'views/hr_job_views.xml',
         'views/tenenet_project_views.xml',
         'views/tenenet_project_finance_monthly_line_views.xml',
         'views/tenenet_project_budget_line_views.xml',
@@ -141,6 +141,7 @@ and P&L reporting by program.
         'views/res_users_views.xml',
         'views/hr_employee_views.xml',
         'views/menu.xml',
+        'views/tenenet_wage_views.xml',
         'views/hr_holidays_overrides.xml',
         'views/hr_expense_views.xml',
         'data/tenenet_sk_holidays_cron.xml',

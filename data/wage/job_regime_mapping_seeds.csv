@@ -1,0 +1,9 @@
+seed_key,job_name,regime,pay_class,work_class,healthcare_profession_code,qualification_lane,notes
+healthcare_psycholog,psychológ,healthcare,,,psychologist,professional,Základné zdravotnícke mapovanie; prípadnú špecializáciu nastavte overrideom.
+healthcare_logoped,logopéd,healthcare,,,logopedist,professional,Základné zdravotnícke mapovanie; prípadnú CPČ/ŠČ nastavte overrideom.
+healthcare_liecebny_pedagog,liečebný pedagóg,healthcare,,,therapeutic_pedagogue,professional,Základné zdravotnícke mapovanie; prípadnú CPČ/ŠČ nastavte overrideom.
+healthcare_fyzioterapeut,fyzioterapeut,healthcare,,,physiotherapist,professional,Základné zdravotnícke mapovanie; prípadnú CPČ/ŠČ nastavte overrideom.
+healthcare_lekar,lekár,healthcare,,,physician,professional,Základné zdravotnícke mapovanie lekára.
+healthcare_psychiater,psychiater,healthcare,,,physician,specialized,Psychiater je predvolene mapovaný na lekára so špecializovanými činnosťami.
+healthcare_zdravotna_sestra,zdravotná sestra,healthcare,,,nurse,professional,Základné zdravotnícke mapovanie sestry.
+healthcare_zdravotna_sestra_psychiatria,zdravotná sestra v psychiatrii,healthcare,,,nurse,specialized,Sestra v psychiatrii je predvolene mapovaná na špecializované činnosti.
