@@ -69,16 +69,17 @@ class TestTenenetPlan02Project(TransactionCase):
         project = self.env["tenenet.project"].create(
             {
                 "name": "Projekt Programy",
-                "program_ids": [(6, 0, [self.program.id, second_program.id])],
+                "program_ids": [(4, self.program.id)],
             }
         )
 
         self.assertEqual(project.reporting_program_id, self.program)
 
-        project.write({"ui_program_ids": [(6, 0, [second_program.id])]})
+        project.write({"primary_program_id": second_program.id})
 
-        self.assertEqual(project.ui_program_ids, second_program)
+        self.assertEqual(project.primary_program_id, second_program)
         self.assertEqual(project.reporting_program_id, second_program)
+        self.assertEqual(project.ui_program_ids, second_program)
 
     def test_project_budget_total_compute(self):
         project = self.env["tenenet.project"].create(
@@ -183,31 +184,32 @@ class TestTenenetPlan02Project(TransactionCase):
             [("id", "in", project.ui_program_ids.ids)],
         )
 
-    def test_project_international_classification_comes_from_donor_type(self):
-        eu_donor = self.env["tenenet.donor"].create(
+    def test_project_type_controls_international_and_admin_routing(self):
+        project = self.env["tenenet.project"].create(
             {
-                "name": "EU Donor",
-                "donor_type": "eu",
-            }
-        )
-        local_project = self.env["tenenet.project"].create(
-            {
-                "name": "Lokálny bez donora",
+                "name": "Medzinárodný projekt",
+                "project_type": "medzinarodny",
                 "program_ids": [(4, self.program.id)],
-                "international": True,
-            }
-        )
-        eu_project = self.env["tenenet.project"].create(
-            {
-                "name": "EU projekt",
-                "program_ids": [(4, self.program.id)],
-                "donor_id": eu_donor.id,
-                "international": False,
             }
         )
 
-        self.assertFalse(local_project._is_international_by_donor())
-        self.assertTrue(eu_project._is_international_by_donor())
+        admin_program = self.env["tenenet.program"].search([("code", "=", "ADMIN_TENENET")], limit=1)
+
+        self.assertTrue(project._is_international_by_donor())
+        self.assertFalse(project.primary_program_id)
+        self.assertEqual(project.reporting_program_id, admin_program)
+        self.assertEqual(project.ui_program_ids.ids, [])
+
+    def test_project_type_requires_single_visible_program_for_narodny(self):
+        project = self.env["tenenet.project"].create(
+            {
+                "name": "Národný projekt",
+                "program_ids": [(4, self.program.id)],
+            }
+        )
+
+        self.assertEqual(project.project_type, "narodny")
+        self.assertEqual(project.primary_program_id, self.program)
 
     def test_project_budget_lines_validate_program_membership(self):
         other_program = self.env["tenenet.program"].create({"name": "Iný program", "code": "PG_OTHER"})
@@ -328,12 +330,11 @@ class TestTenenetPlan02Project(TransactionCase):
         wizard._onchange_amount()
         self.assertAlmostEqual(wizard.allocation_percentage, 25.0, places=2)
 
-    def test_project_allocation_summary_uses_assignment_programs(self):
-        second_program = self.env["tenenet.program"].create({"name": "Program 2", "code": "PG_TWO"})
+    def test_project_allocation_summary_respects_single_visible_program_rules(self):
         project = self.env["tenenet.project"].create(
             {
                 "name": "Projekt Alokácia",
-                "program_ids": [(6, 0, [self.program.id, second_program.id])],
+                "program_ids": [(6, 0, [self.program.id])],
                 "reporting_program_id": self.program.id,
                 "donor_id": self.donor.id,
             }
@@ -348,14 +349,14 @@ class TestTenenetPlan02Project(TransactionCase):
         self.env["tenenet.project.assignment"].create({
             "employee_id": employee_b.id,
             "project_id": project.id,
-            "program_id": second_program.id,
+            "program_id": self.program.id,
             "allocation_ratio": 40.0,
         })
 
         rows = project._get_current_program_allocation_rows()
-        self.assertEqual(len(rows), 2)
-        self.assertAlmostEqual(rows[0]["allocation_pct"], 60.0, places=2)
-        self.assertAlmostEqual(rows[1]["allocation_pct"], 40.0, places=2)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["program"], self.program)
+        self.assertAlmostEqual(rows[0]["allocation_pct"], 100.0, places=2)
 
     def test_admin_program_has_no_allocation_percentage(self):
         admin_program = self.env["tenenet.program"].search([("code", "=", "ADMIN_TENENET")], limit=1)

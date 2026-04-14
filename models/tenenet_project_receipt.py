@@ -234,6 +234,15 @@ class TenenetProjectReceipt(models.Model):
 
         return self._replace_cashflow_month_amounts(normalized_amounts)
 
+    def planner_set_cashflow_month_amounts(self, year, month_amounts):
+        self.ensure_one()
+        result = self.set_cashflow_month_amounts(year, month_amounts)
+        currency = self.currency_id or self.env.company.currency_id
+        total_amount = sum((self.cashflow_ids or self.env["tenenet.project.cashflow"]).mapped("amount"))
+        if float_compare(total_amount, self.amount, precision_rounding=currency.rounding) != 0:
+            raise ValidationError("Pri uložení planneru musí byť rozdelená celá suma príjmu.")
+        return result
+
     def unlink(self):
         affected_pairs = {
             (record.project_id.id, record.year)

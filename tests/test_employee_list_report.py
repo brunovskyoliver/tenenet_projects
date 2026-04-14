@@ -22,7 +22,15 @@ class TestTenenetEmployeeListReport(TransactionCase):
             self.german = (self.language_skill_type.skill_ids - self.english)[:1]
         self.job_psychologist = self.env["hr.job"].create({"name": "Psychológ"})
         self.job_coordinator = self.env["hr.job"].create({"name": "Koordinátor"})
-        self.project = self.env["tenenet.project"].create({"name": "Report Project"})
+        self.program = self.env["tenenet.program"].create({"name": "Report Program", "code": "RPT"})
+        self.international_project = self.env["tenenet.project"].create({
+            "name": "Medzinárodný projekt",
+            "project_type": "medzinarodny",
+        })
+        self.project = self.env["tenenet.project"].create({
+            "name": "Report Project",
+            "program_ids": [(4, self.program.id)],
+        })
         self.manager = self.env["hr.employee"].create({
             "name": "Mgr. Jana Vedúca",
             "work_phone": "+421901000100",
@@ -82,13 +90,21 @@ class TestTenenetEmployeeListReport(TransactionCase):
         self.env["tenenet.project.assignment"].create({
             "employee_id": self.employee_partial.id,
             "project_id": self.project.id,
+            "program_id": self.program.id,
             "allocation_ratio": 40.0,
             "wage_hm": 10.0,
         })
         self.env["tenenet.project.assignment"].create({
             "employee_id": self.employee_full.id,
             "project_id": self.project.id,
+            "program_id": self.program.id,
             "allocation_ratio": 100.0,
+            "wage_hm": 10.0,
+        })
+        self.env["tenenet.project.assignment"].create({
+            "employee_id": self.employee_partial.id,
+            "project_id": self.international_project.id,
+            "allocation_ratio": 10.0,
             "wage_hm": 10.0,
         })
         (self.employee_partial | self.employee_full | self.employee_free | self.employee_without_job).invalidate_recordset()
@@ -146,6 +162,8 @@ class TestTenenetEmployeeListReport(TransactionCase):
         self.assertEqual(columns["work_phone"], "+421901111222")
         self.assertEqual(columns["study_field"], "Psychológia")
         self.assertEqual(columns["manager_name"], "Mgr. Jana Vedúca")
+        self.assertEqual(columns["project_names"], "Medzinárodný projekt, Report Project")
+        self.assertEqual(columns["program_names"], "Report Program")
         self.assertAlmostEqual(columns["utilization_percentage"], 0.0, places=2)
         self.assertAlmostEqual(columns["work_hours"], 8.0, places=2)
 
@@ -251,6 +269,19 @@ class TestTenenetEmployeeListReport(TransactionCase):
         ]
 
         self.assertEqual(line_names, [self.employee_full.name])
+
+    def test_project_and_program_filters_limit_employee_rows(self):
+        line_names = [
+            self._column_map(line)["employee_name"]
+            for line in self._employee_lines(
+                project_ids=[self.project.id],
+                program_ids=[self.program.id],
+            )
+        ]
+
+        self.assertIn(self.employee_partial.name, line_names)
+        self.assertIn(self.employee_full.name, line_names)
+        self.assertNotIn(self.employee_free.name, line_names)
 
     def test_grouping_by_profession_creates_sections(self):
         lines = self._get_lines(grouping_mode="profession")

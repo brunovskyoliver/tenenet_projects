@@ -28,6 +28,14 @@ export class TenenetEmployeeListReportFilters extends AccountReportFilters {
         return this.controller.cachedFilterOptions.job_ids || [];
     }
 
+    get selectedProjectIds() {
+        return this.controller.cachedFilterOptions.project_ids || [];
+    }
+
+    get selectedProgramIds() {
+        return this.controller.cachedFilterOptions.program_ids || [];
+    }
+
     get selectedLanguageSkillIds() {
         return this.controller.cachedFilterOptions.language_skill_ids || [];
     }
@@ -43,6 +51,20 @@ export class TenenetEmployeeListReportFilters extends AccountReportFilters {
         return this._formatSelectionLabel(
             this.controller.cachedFilterOptions.selected_language_names || [],
             "Jazyky",
+        );
+    }
+
+    get selectedProjectLabel() {
+        return this._formatSelectionLabel(
+            this.controller.cachedFilterOptions.selected_project_names || [],
+            "Projekty",
+        );
+    }
+
+    get selectedProgramLabel() {
+        return this._formatSelectionLabel(
+            this.controller.cachedFilterOptions.selected_program_names || [],
+            "Programy",
         );
     }
 
@@ -82,6 +104,26 @@ export class TenenetEmployeeListReportFilters extends AccountReportFilters {
             domain: this.controller.cachedFilterOptions.language_skill_domain || [["id", "=", 0]],
             update: (resIds) => this.updateRecordFilter("language_skill_ids", resIds),
             placeholder: "Vyber jazyky...",
+        };
+    }
+
+    get projectSelectorProps() {
+        return {
+            resModel: "tenenet.project",
+            resIds: this.selectedProjectIds,
+            update: (resIds) => this.updateRecordFilter("project_ids", resIds),
+            context: { active_test: false },
+            placeholder: "Vyber projekty...",
+        };
+    }
+
+    get programSelectorProps() {
+        return {
+            resModel: "tenenet.program",
+            resIds: this.selectedProgramIds,
+            update: (resIds) => this.updateRecordFilter("program_ids", resIds),
+            context: { active_test: false },
+            placeholder: "Vyber programy...",
         };
     }
 

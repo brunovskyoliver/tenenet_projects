@@ -16,6 +16,11 @@ class TenenetProject(models.Model):
     _inherit = ["mail.thread", "mail.activity.mixin"]
     ADMIN_TENENET_PROGRAM_CODE = "ADMIN_TENENET"
     ADMIN_TENENET_NAME = "Admin TENENET"
+    PROJECT_TYPE_SELECTION = [
+        ("narodny", "Národný"),
+        ("medzinarodny", "Medzinárodný"),
+        ("sluzby", "Služby"),
+    ]
 
     name = fields.Char(string="Názov projektu", required=True)
     description = fields.Text(string="Popis")
@@ -99,6 +104,20 @@ class TenenetProject(models.Model):
         "project_id",
         "program_id",
         string="Programy",
+    )
+    project_type = fields.Selection(
+        PROJECT_TYPE_SELECTION,
+        string="Typ",
+        required=True,
+        default="narodny",
+        tracking=True,
+    )
+    primary_program_id = fields.Many2one(
+        "tenenet.program",
+        string="Hlavný program",
+        compute="_compute_primary_program_id",
+        inverse="_inverse_primary_program_id",
+        ondelete="restrict",
     )
     ui_program_ids = fields.Many2many(
         "tenenet.program",
@@ -378,20 +397,22 @@ class TenenetProject(models.Model):
     def _get_primary_visible_program(self):
         self.ensure_one()
         visible_programs = self._get_visible_programs()
+        if self.primary_program_id and self.primary_program_id in visible_programs:
+            return self.primary_program_id
         if self.reporting_program_id and self.reporting_program_id in visible_programs:
             return self.reporting_program_id
         return visible_programs[:1]
 
     def _get_effective_reporting_program(self):
         self.ensure_one()
-        if self.is_tenenet_internal:
+        if self.is_tenenet_internal or self.project_type == "medzinarodny":
             return self.env["tenenet.program"].with_context(active_test=False).search(
                 [("code", "=", self.ADMIN_TENENET_PROGRAM_CODE)],
                 limit=1,
             )
         return self._get_primary_visible_program()
 
-    @api.depends("program_ids", "program_ids.is_tenenet_internal")
+    @api.depends("program_ids", "program_ids.is_tenenet_internal", "project_type")
     def _compute_ui_program_ids(self):
         for rec in self:
             rec.ui_program_ids = rec._get_visible_programs()
@@ -403,13 +424,98 @@ class TenenetProject(models.Model):
         )
         for rec in self:
             visible_programs = rec.ui_program_ids
-            target_programs = visible_programs | admin_program
-            rec.program_ids = [Command.set(target_programs.ids)]
+            if rec.project_type == "medzinarodny":
+                target_programs = admin_program
+            else:
+                target_programs = visible_programs[:1] | admin_program
+            rec.with_context(skip_program_type_normalization=True).write({
+                "program_ids": [Command.set(target_programs.ids)],
+            })
 
-    @api.depends("program_ids", "program_ids.is_tenenet_internal")
+    @api.depends("program_ids", "program_ids.is_tenenet_internal", "project_type")
     def _compute_reporting_program_id(self):
         for rec in self:
             rec.reporting_program_id = rec._get_effective_reporting_program()
+
+    @api.depends("program_ids", "program_ids.is_tenenet_internal", "project_type")
+    def _compute_primary_program_id(self):
+        for rec in self:
+            rec.primary_program_id = False if rec.project_type == "medzinarodny" else rec._get_primary_visible_program()
+
+    def _inverse_primary_program_id(self):
+        admin_program = self.env["tenenet.program"].with_context(active_test=False).search(
+            [("code", "=", self.ADMIN_TENENET_PROGRAM_CODE)],
+            limit=1,
+        )
+        for rec in self:
+            if rec.project_type == "medzinarodny":
+                rec.with_context(skip_program_type_normalization=True).write({
+                    "program_ids": [Command.set(admin_program.ids)],
+                })
+            else:
+                target_programs = (rec.primary_program_id | admin_program) if rec.primary_program_id else admin_program
+                rec.with_context(skip_program_type_normalization=True).write({
+                    "program_ids": [Command.set(target_programs.ids)],
+                })
+
+    def _normalize_program_ids_for_type(self, values, project_type=None):
+        admin_program = self.env["tenenet.program"].with_context(active_test=False).search(
+            [("code", "=", self.ADMIN_TENENET_PROGRAM_CODE)],
+            limit=1,
+        )
+        current_project_type = self[:1].project_type if self else "narodny"
+        project_type = project_type or values.get("project_type") or current_project_type or "narodny"
+        primary_program = (
+            values.get("primary_program_id")
+            and self.env["tenenet.program"].browse(values["primary_program_id"]).exists()
+        ) or False
+        visible_program_ids = set()
+        program_commands = list(values.get("program_ids") or [])
+        for command in program_commands:
+            if not isinstance(command, (list, tuple)) or not command:
+                continue
+            if command[0] == 6:
+                visible_program_ids.update(command[2] or [])
+            elif command[0] == 4:
+                visible_program_ids.add(command[1])
+        if not visible_program_ids and self.ids:
+            visible_program_ids.update(self.program_ids.ids)
+        visible_programs = self.env["tenenet.program"].browse(list(visible_program_ids)).exists().filtered(
+            lambda program: not self._is_hidden_internal_program(program)
+        )
+        if primary_program:
+            visible_programs = primary_program
+        if project_type == "medzinarodny":
+            target_programs = admin_program
+        else:
+            target_programs = visible_programs[:1] | admin_program
+        values["program_ids"] = [Command.set(target_programs.ids)]
+        if project_type == "medzinarodny":
+            values["primary_program_id"] = False
+        elif target_programs.filtered(lambda program: not self._is_hidden_internal_program(program)):
+            values["primary_program_id"] = target_programs.filtered(
+                lambda program: not self._is_hidden_internal_program(program)
+            )[:1].id
+        return values
+
+    @api.constrains("project_type", "program_ids", "is_tenenet_internal")
+    def _check_project_type_program_rules(self):
+        admin_program = self.env["tenenet.program"].with_context(active_test=False).search(
+            [("code", "=", self.ADMIN_TENENET_PROGRAM_CODE)],
+            limit=1,
+        )
+        for rec in self:
+            if rec.is_tenenet_internal:
+                continue
+            visible_programs = rec._get_visible_programs()
+            if admin_program not in rec.program_ids:
+                raise ValidationError("Projekt musí mať vždy priradený skrytý program Admin TENENET.")
+            if rec.project_type == "medzinarodny":
+                if visible_programs:
+                    raise ValidationError("Medzinárodný projekt nesmie mať zobrazený vlastný program.")
+                continue
+            if len(visible_programs) != 1:
+                raise ValidationError("Projekt typu národný alebo služby musí mať presne jeden hlavný program.")
 
     def _get_receipts_for_cashflow_year(self, year):
         self.ensure_one()
@@ -518,7 +624,11 @@ class TenenetProject(models.Model):
 
     def _is_international_by_donor(self):
         self.ensure_one()
-        return bool(self.donor_id and self.donor_id.donor_type in {"international", "eu"})
+        return self.project_type == "medzinarodny"
+
+    def _is_service_project(self):
+        self.ensure_one()
+        return self.project_type == "sluzby"
 
     @api.depends("receipt_line_ids", "receipt_line_ids.amount")
     def _compute_budget_total(self):
@@ -830,6 +940,7 @@ class TenenetProject(models.Model):
             "partner_id": source_project.partner_id.id or False,
             "portal": source_project.portal,
             "semaphore": source_project.semaphore,
+            "project_type": source_project.project_type,
             "program_ids": [Command.set(source_project.program_ids.ids)],
             "reporting_program_id": source_project.reporting_program_id.id or False,
             "site_ids": [Command.set(source_project.site_ids.ids)],
@@ -1187,6 +1298,13 @@ class TenenetProject(models.Model):
     def write(self, vals):
         old_graph_pairs = set()
         vals = dict(vals)
+        if (
+            not self.env.context.get("skip_program_type_normalization")
+            and {"project_type", "program_ids", "primary_program_id"} & set(vals)
+        ):
+            vals = self._normalize_program_ids_for_type(vals)
+        if "project_type" in vals:
+            vals["international"] = vals["project_type"] == "medzinarodny"
         if vals.get("is_recurring_license_project") and not vals.get("recurring_clone_anchor_date"):
             vals["recurring_clone_anchor_date"] = self._default_recurring_anchor_from_vals({
                 "date_start": vals.get("date_start", self[:1].date_start),
@@ -1374,12 +1492,15 @@ class TenenetProject(models.Model):
     def get_budget_add_action_data(self):
         self.ensure_one()
         year = fields.Date.context_today(self).year
+        budget_line_model = self.env["tenenet.project.budget.line"]
         received = sum(self.receipt_line_ids.filtered(lambda line: line.year == year).mapped("amount"))
         budgeted = sum(self.budget_line_ids.filtered(lambda line: line.year == year).mapped("amount"))
         available = received - budgeted
         return {
             "project_id": self.id,
             "project_name": self.display_name,
+            "project_type": self.project_type,
+            "project_type_label": dict(self._fields["project_type"].selection).get(self.project_type, ""),
             "year": year,
             "currency_symbol": self.currency_id.symbol or "",
             "currency_position": self.currency_id.position or "after",
@@ -1389,11 +1510,28 @@ class TenenetProject(models.Model):
             "default_budget_type": "labor",
             "budget_type_options": [
                 {"value": value, "label": label}
-                for value, label in self.env["tenenet.project.budget.line"]._fields["budget_type"].selection
+                for value, label in budget_line_model._fields["budget_type"].selection
+            ],
+            "expense_type_options": [
+                {"id": record.id, "label": record.display_name}
+                for record in self.env["tenenet.expense.type.config"].search([("active", "=", True)], order="sequence, name")
+            ],
+            "service_income_type_options": [
+                {"value": value, "label": label}
+                for value, label in budget_line_model._fields["service_income_type"].selection
             ],
         }
 
-    def action_create_budget_line_from_quick_add(self, budget_type, amount, allocation_percentage=0.0, note=None):
+    def action_create_budget_line_from_quick_add(
+        self,
+        budget_type,
+        amount,
+        allocation_percentage=0.0,
+        note=None,
+        expense_type_config_id=False,
+        service_income_type=False,
+        can_cover_payroll=False,
+    ):
         self.ensure_one()
         year = fields.Date.context_today(self).year
         received = sum(self.receipt_line_ids.filtered(lambda line: line.year == year).mapped("amount"))
@@ -1416,15 +1554,30 @@ class TenenetProject(models.Model):
         if not program:
             raise ValidationError(_("Pre tento projekt nie je dostupný vhodný program rozpočtu."))
 
-        type_label = dict(self.env["tenenet.project.budget.line"]._fields["budget_type"].selection).get(budget_type, "Rozpočet")
+        budget_line_model = self.env["tenenet.project.budget.line"]
+        type_label = dict(budget_line_model._fields["budget_type"].selection).get(budget_type, "Rozpočet")
+        if service_income_type and not self._is_service_project():
+            raise ValidationError(_("Servisné príjmy možno plánovať iba na projekte typu Služby."))
+        if budget_type == "other" and not service_income_type and not expense_type_config_id:
+            raise ValidationError(_("Pri položke Iné treba vybrať kategóriu výdavku."))
+        if can_cover_payroll and not service_income_type:
+            raise ValidationError(_("Prepínač mzdového krytia je dostupný iba pre servisné príjmy."))
+        detail_name = type_label
+        if expense_type_config_id:
+            detail_name = self.env["tenenet.expense.type.config"].browse(expense_type_config_id).display_name or detail_name
+        elif service_income_type:
+            detail_name = dict(budget_line_model._fields["service_income_type"].selection).get(service_income_type, detail_name)
         budget_line = self.env["tenenet.project.budget.line"].create({
             "project_id": self.id,
             "year": year,
             "budget_type": budget_type,
             "program_id": program.id,
-            "name": _("%s %s") % (type_label, year),
+            "name": _("%s %s") % (detail_name, year),
             "amount": amount,
             "note": note or False,
+            "expense_type_config_id": expense_type_config_id or False,
+            "service_income_type": service_income_type or False,
+            "can_cover_payroll": bool(can_cover_payroll),
         })
         return budget_line.action_open_planner()
 
@@ -1516,6 +1669,7 @@ class TenenetProject(models.Model):
             "name": self.ADMIN_TENENET_NAME,
             "active": True,
             "is_tenenet_internal": True,
+            "project_type": "medzinarodny",
             "reporting_program_id": program.id,
             "program_ids": [(6, 0, [program.id])],
         }
@@ -1536,19 +1690,13 @@ class TenenetProject(models.Model):
             admin_program = self._ensure_admin_tenenet_entities().reporting_program_id
         for vals in vals_list:
             if vals.get("is_tenenet_internal"):
+                vals.setdefault("project_type", "medzinarodny")
+                vals["international"] = True
+                vals["program_ids"] = [Command.set(admin_program.ids)]
                 continue
-            commands = list(vals.get("program_ids") or [])
-            existing_ids = set()
-            for command in commands:
-                if not isinstance(command, (list, tuple)) or not command:
-                    continue
-                if command[0] == 6:
-                    existing_ids.update(command[2] or [])
-                elif command[0] == 4:
-                    existing_ids.add(command[1])
-            if admin_program.id not in existing_ids:
-                commands.append((4, admin_program.id))
-            vals["program_ids"] = commands
+            vals.setdefault("project_type", "narodny")
+            vals["international"] = vals["project_type"] == "medzinarodny"
+            self._normalize_program_ids_for_type(vals, project_type=vals.get("project_type"))
         records = super().create(vals_list)
         records._ensure_recurring_metadata()
         records._sync_garant_pm_group()

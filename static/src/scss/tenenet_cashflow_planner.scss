@@ -220,9 +220,7 @@
 
 .o_form_sheet_bg:has(.o_field_tenenet_cashflow_planner) + .o-mail-ChatterContainer.o-aside,
 .o_form_sheet_bg:has(.o_field_tenenet_cashflow_planner) + .o-mail-Form-chatter.o-aside {
-    flex: 0 0 360px !important;
     width: 360px !important;
-    max-width: 360px !important;
     min-width: 360px !important;
 }
 
@@ -797,18 +795,29 @@
     }
 }
 
+.modal.show .modal-dialog.modal-lg:has(.o_tenenet_budget_line_planner_form),
+.modal.show .modal-dialog.modal-xl:has(.o_tenenet_budget_line_planner_form),
 .modal.show .modal-dialog:has(.o_tenenet_budget_line_planner_form) {
-    --bs-modal-width: max-content;
-    width: auto !important;
-    max-width: calc(100vw - 2rem) !important;
+    --bs-modal-width: calc(100vw - 1rem) !important;
+    --modal-width: calc(100vw - 1rem) !important;
+    width: calc(100vw - 1rem) !important;
+    max-width: calc(100vw - 1rem) !important;
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 0.5rem 0 !important;
+    margin: 0.5rem auto !important;
 
     .modal-content {
-        width: max-content;
-        max-width: calc(100vw - 2rem);
+        width: 100%;
+        max-width: 100%;
+        max-height: calc(100vh - 1rem);
+        display: flex;
+        flex-direction: column;
     }
 
     .modal-body {
-        overflow-x: auto;
+        overflow: auto;
+        min-height: 0;
     }
 
     .o_form_view,
@@ -816,15 +825,50 @@
     .o_content,
     .o_form_renderer,
     .o_form_sheet_bg {
-        width: max-content;
+        width: 100%;
         min-width: 100%;
     }
 
     .o_tenenet_budget_line_planner_form_sheet,
     .o_form_sheet {
-        width: max-content;
-        min-width: 1120px;
+        width: 100%;
+        min-width: 0;
         max-width: none;
+    }
+}
+
+.o_tenenet_budget_line_planner_form {
+    width: 100%;
+
+    .o_tenenet_budget_line_planner {
+        width: max-content;
+        min-width: 1320px;
+        max-width: none;
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+        overflow-y: visible;
+        padding-bottom: 6px;
+    }
+
+    .o_tenenet_budget_line_planner_table {
+        thead th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+    }
+
+    .o_tenenet_budget_line_planner_label_head,
+    .o_tenenet_budget_line_planner_label_cell {
+        position: sticky;
+        left: 0;
+        z-index: 3;
+    }
+
+    .o_tenenet_budget_line_planner_label_head {
+        z-index: 4;
     }
 }
 
@@ -866,6 +910,8 @@
         }
     }
 
+    .modal.show .modal-dialog.modal-lg:has(.o_tenenet_budget_line_planner_form),
+    .modal.show .modal-dialog.modal-xl:has(.o_tenenet_budget_line_planner_form),
     .modal.show .modal-dialog:has(.o_tenenet_budget_line_planner_form) {
         width: calc(100vw - 1rem);
         max-width: calc(100vw - 1rem);
@@ -878,6 +924,10 @@
             min-width: 0;
             width: 100%;
             max-width: 100%;
+        }
+
+        .modal-content {
+            max-height: calc(100vh - 1rem);
         }
     }
 

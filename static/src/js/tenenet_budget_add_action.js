@@ -23,6 +23,9 @@ export class TenenetBudgetAddAction extends Component {
             saving: false,
             data: null,
             budgetType: "labor",
+            expenseTypeConfigId: null,
+            serviceIncomeType: null,
+            canCoverPayroll: false,
             amount: 0,
             allocationPercentage: 0,
             amountInput: "0.00",
@@ -44,6 +47,39 @@ export class TenenetBudgetAddAction extends Component {
 
     get budgetTypeOptions() {
         return this.data?.budget_type_options || [];
+    }
+
+    get expenseTypeOptions() {
+        return this.data?.expense_type_options || [];
+    }
+
+    get serviceIncomeTypeOptions() {
+        return this.data?.service_income_type_options || [];
+    }
+
+    get isServiceProject() {
+        return this.data?.project_type === "sluzby";
+    }
+
+    get needsExpenseCategory() {
+        return this.state.budgetType === "other" && !this.state.serviceIncomeType;
+    }
+
+    get needsServiceSubtype() {
+        return this.state.budgetType === "other" && this.isServiceProject;
+    }
+
+    get isFormValid() {
+        if (this.state.amount <= 0) {
+            return false;
+        }
+        if (this.state.budgetType !== "other") {
+            return true;
+        }
+        if (this.state.serviceIncomeType) {
+            return true;
+        }
+        return Boolean(this.state.expenseTypeConfigId);
     }
 
     formatAmount(value) {
@@ -77,6 +113,9 @@ export class TenenetBudgetAddAction extends Component {
             const data = await this.orm.call("tenenet.project", "get_budget_add_action_data", [[this.projectId]]);
             this.state.data = data;
             this.state.budgetType = data.default_budget_type || "labor";
+            this.state.expenseTypeConfigId = null;
+            this.state.serviceIncomeType = null;
+            this.state.canCoverPayroll = false;
             this.state.amount = 0;
             this.state.allocationPercentage = 0;
             this.state.amountInput = this.formatAmountInput(0);
@@ -116,10 +155,42 @@ export class TenenetBudgetAddAction extends Component {
 
     selectBudgetType(value) {
         this.state.budgetType = value;
+        if (value !== "other") {
+            this.state.expenseTypeConfigId = null;
+            this.state.serviceIncomeType = null;
+            this.state.canCoverPayroll = false;
+        } else if (!this.isServiceProject) {
+            this.state.serviceIncomeType = null;
+        }
     }
 
     onBudgetTypeBadgeClick(ev) {
         this.selectBudgetType(ev.currentTarget.dataset.value);
+    }
+
+    onExpenseTypeChange(ev) {
+        const nextValue = parseInt(ev.target.value, 10);
+        this.state.expenseTypeConfigId = Number.isFinite(nextValue) ? nextValue : null;
+        if (this.state.expenseTypeConfigId) {
+            this.state.serviceIncomeType = null;
+            this.state.canCoverPayroll = false;
+        }
+    }
+
+    onServiceIncomeTypeBadgeClick(ev) {
+        this.state.serviceIncomeType = ev.currentTarget.dataset.value || null;
+        if (this.state.serviceIncomeType) {
+            this.state.expenseTypeConfigId = null;
+        }
+    }
+
+    onGenericOtherClick() {
+        this.state.serviceIncomeType = null;
+        this.state.canCoverPayroll = false;
+    }
+
+    onPayrollToggle(ev) {
+        this.state.canCoverPayroll = Boolean(ev.target.checked);
     }
 
     onAmountChange(ev) {
@@ -161,6 +232,9 @@ export class TenenetBudgetAddAction extends Component {
                 this.state.amount,
                 this.state.allocationPercentage,
                 this.state.note,
+                this.state.expenseTypeConfigId || false,
+                this.state.serviceIncomeType || false,
+                this.state.canCoverPayroll,
             ]);
             await this.actionService.doAction(action);
         } catch (error) {

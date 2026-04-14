@@ -274,6 +274,7 @@ class TenenetPLReportHandler(models.AbstractModel):
         report = self.env["account.report"].browse(options["report_id"])
         values = self._get_selected_program_report_values(options)
         lines = []
+        lines.extend(self._build_value_lines(report, options, "Tržby individuálne", values["sales_individual"], "tenenet_pl_sales_individual", level=3, parent_line_id=line_dict_id))
         lines.extend(self._build_value_lines(report, options, "Tržby z registračky", values["sales_cash_register"], "tenenet_pl_sales_cash_register", level=3, parent_line_id=line_dict_id))
         lines.extend(self._build_value_lines(report, options, "Tržby z faktúr", values["sales_invoice"], "tenenet_pl_sales_invoice", level=3, parent_line_id=line_dict_id))
         lines.extend(self._build_value_lines(report, options, "Tržby - neklasifikované", values["sales_legacy_unclassified"], "tenenet_pl_sales_legacy_unclassified", level=3, parent_line_id=line_dict_id))
@@ -285,6 +286,8 @@ class TenenetPLReportHandler(models.AbstractModel):
         report = self.env["account.report"].browse(options["report_id"])
         values = self._get_selected_program_report_values(options)
         lines = []
+        lines.extend(self._build_value_lines(report, options, "Zbierky individuálne", values["fundraising_individual"], "tenenet_pl_fundraising_individual", level=3, parent_line_id=line_dict_id))
+        lines.extend(self._build_value_lines(report, options, "Zbierky korporátne", values["fundraising_corporate"], "tenenet_pl_fundraising_corporate", level=3, parent_line_id=line_dict_id))
         for row in values["fundraising_rows"]:
             lines.extend(self._build_value_lines(
                 report,

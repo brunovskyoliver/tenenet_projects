@@ -12,7 +12,8 @@
                            decoration-danger="semaphore == 'red'"
                            class="o_tenenet_project_semaphore_dot"/>
                     <field name="name"/>
-                    <field name="ui_program_ids" widget="many2many_tags"/>
+                    <field name="project_type"/>
+                    <field name="primary_program_id"/>
                     <field name="donor_id"/>
                     <field name="budget_total"/>
                     <field name="date_start"/>
@@ -32,6 +33,7 @@
                             <group>
                                 <field name="name"/>
                                 <field name="description"/>
+                                <field name="project_type"/>
                                 <field name="active"/>
                                 <field name="is_recurring_license_project"/>
                                 <field name="recurring_clone_anchor_date"
@@ -49,7 +51,10 @@
                                 <field name="semaphore"/>
                             </group>
                             <group>
-                                <field name="ui_program_ids" widget="many2many_tags"/>
+                                <field name="primary_program_id" invisible="project_type == 'medzinarodny'" required="project_type != 'medzinarodny'"/>
+                                <div class="text-muted" invisible="project_type != 'medzinarodny'">
+                                    Program sa pri medzinárodnom projekte vedie iba pod Admin TENENET.
+                                </div>
                                 <field name="donor_id"/>
                                 <field name="recipient_partner_id"/>
                                 <field name="partner_id"/>
@@ -211,11 +216,13 @@
                                             invisible="not id"/>
                                 </div>
                                 <separator string="Paušálne"/>
-                                <field name="budget_pausal_line_ids">
+                                <field name="budget_pausal_line_ids"
+                                       context="{'form_view_ref': 'tenenet_projects.view_tenenet_project_budget_line_planner_form', 'dialog_size': 'extra-large'}">
                                     <list string="Paušálne položky" create="0" edit="0">
                                         <field name="year" options="{'enable_formatting': False}"/>
                                         <field name="program_id"/>
                                         <field name="name"/>
+                                        <field name="detail_label" optional="show"/>
                                         <field name="amount"/>
                                         <field name="note" optional="show"/>
                                         <button name="action_open_planner"
@@ -225,11 +232,13 @@
                                     </list>
                                 </field>
                                 <separator string="Mzdové"/>
-                                <field name="budget_labor_line_ids">
+                                <field name="budget_labor_line_ids"
+                                       context="{'form_view_ref': 'tenenet_projects.view_tenenet_project_budget_line_planner_form', 'dialog_size': 'extra-large'}">
                                     <list string="Mzdové položky" create="0" edit="0">
                                         <field name="year" options="{'enable_formatting': False}"/>
                                         <field name="program_id"/>
                                         <field name="name"/>
+                                        <field name="detail_label" optional="show"/>
                                         <field name="amount"/>
                                         <field name="note" optional="show"/>
                                         <button name="action_open_planner"
@@ -239,11 +248,15 @@
                                     </list>
                                 </field>
                                 <separator string="Iné"/>
-                                <field name="budget_other_line_ids">
+                                <field name="budget_other_line_ids"
+                                       context="{'form_view_ref': 'tenenet_projects.view_tenenet_project_budget_line_planner_form', 'dialog_size': 'extra-large'}">
                                     <list string="Iné položky" create="0" edit="0">
                                         <field name="year" options="{'enable_formatting': False}"/>
                                         <field name="program_id"/>
                                         <field name="name"/>
+                                        <field name="expense_type_config_id" optional="show"/>
+                                        <field name="service_income_type" optional="show"/>
+                                        <field name="can_cover_payroll" optional="show"/>
                                         <field name="amount"/>
                                         <field name="note" optional="show"/>
                                         <button name="action_open_planner"
@@ -447,7 +460,7 @@
                         <field name="donor_id"/>
                     <filter string="Aktívne" name="active" domain="[('active', '=', True)]"/>
                     <filter string="Bez virtuálneho admin projektu" name="hide_internal" domain="[('is_tenenet_internal', '=', False)]"/>
-                    <filter string="Medzinárodné" name="international" domain="[('donor_id.donor_type', 'in', ['international', 'eu'])]"/>
+                    <filter string="Medzinárodné" name="international" domain="[('project_type', '=', 'medzinarodny')]"/>
                     <filter string="Donor" name="group_donor" context="{'group_by': 'donor_id'}"/>
                 </search>
             </field>

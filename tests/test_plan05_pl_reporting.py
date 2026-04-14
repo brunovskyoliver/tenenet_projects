@@ -177,3 +177,38 @@ class TestTenenetPlan05PLReporting(TransactionCase):
         })
 
         self.assertTrue(line.exists())
+
+    def test_service_budget_rows_flow_into_non_admin_pl_sections(self):
+        service_project = self.env["tenenet.project"].create({
+            "name": "Projekt Služby",
+            "project_type": "sluzby",
+            "program_ids": [(4, self.program_a.id)],
+        })
+        lines = self.env["tenenet.project.budget.line"].create([
+            {
+                "project_id": service_project.id,
+                "year": 2025,
+                "budget_type": "labor",
+                "program_id": self.program_a.id,
+                "name": "Mzdy služby",
+                "amount": 300.0,
+            },
+            {
+                "project_id": service_project.id,
+                "year": 2025,
+                "budget_type": "other",
+                "program_id": self.program_a.id,
+                "name": "Tržby služby",
+                "amount": 200.0,
+                "service_income_type": "sales_individual",
+                "can_cover_payroll": True,
+            },
+        ])
+        lines[0].set_month_amounts({"1": 300.0})
+        lines[1].set_month_amounts({"1": 200.0})
+
+        values = self.env["tenenet.pl.report.handler"]._get_program_report_values(self.program_a, 2025)
+
+        self.assertAlmostEqual(values["sales_individual"]["values"][1], 200.0, places=2)
+        self.assertAlmostEqual(values["budget_labor_income_total"]["values"][1], 300.0, places=2)
+        self.assertAlmostEqual(values["labor_coverage"]["values"][1], 500.0, places=2)

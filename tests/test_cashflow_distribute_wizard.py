@@ -38,7 +38,7 @@ class TestTenenetCashflowDistributeWizard(TransactionCase):
 
     def test_distribution_wizard_replaces_cashflow_with_selected_month_span(self):
         receipt = self._create_receipt(amount=1200.0)
-        self.assertEqual(sorted(receipt.cashflow_ids.mapped("month")), list(range(3, 13)))
+        self.assertEqual(sorted(receipt.cashflow_ids.mapped("month")), [])
 
         wizard = self.env["tenenet.project.cashflow.distribute.wizard"].create({
             "receipt_id": receipt.id,
@@ -153,32 +153,32 @@ class TestTenenetCashflowDistributeWizard(TransactionCase):
         receipt = self._create_receipt(amount=1000.0)
 
         receipt.set_cashflow_month_amounts(2027, {
-            "1": 400.0,
-            "2": 300.0,
-            "3": 300.0,
+            "3": 400.0,
+            "4": 300.0,
+            "5": 300.0,
         })
         receipt.invalidate_recordset(["cashflow_ids"])
 
-        self.assertEqual(sorted(receipt.cashflow_ids.mapped("month")), [1, 2, 3])
+        self.assertEqual(sorted(receipt.cashflow_ids.mapped("month")), [3, 4, 5])
         self.assertEqual(self._amounts_by_month(receipt), {
-            1: 400.0,
-            2: 300.0,
-            3: 300.0,
+            3: 400.0,
+            4: 300.0,
+            5: 300.0,
         })
 
     def test_receipt_can_store_partial_explicit_month_amounts(self):
         receipt = self._create_receipt(amount=1000.0)
 
         receipt.set_cashflow_month_amounts(2027, {
-            "1": 400.0,
-            "2": 300.0,
+            "3": 400.0,
+            "4": 300.0,
         })
         receipt.invalidate_recordset(["cashflow_ids"])
 
-        self.assertEqual(sorted(receipt.cashflow_ids.mapped("month")), [1, 2])
+        self.assertEqual(sorted(receipt.cashflow_ids.mapped("month")), [3, 4])
         self.assertEqual(self._amounts_by_month(receipt), {
-            1: 400.0,
-            2: 300.0,
+            3: 400.0,
+            4: 300.0,
         })
 
     def test_receipt_rejects_explicit_month_amounts_above_total(self):
@@ -189,3 +189,25 @@ class TestTenenetCashflowDistributeWizard(TransactionCase):
                 "1": 400.0,
                 "2": 700.0,
             })
+
+    def test_planner_set_cashflow_month_amounts_requires_full_allocation(self):
+        receipt = self._create_receipt(amount=1000.0)
+
+        with self.assertRaises(ValidationError):
+            receipt.planner_set_cashflow_month_amounts(2027, {
+                "3": 400.0,
+                "4": 300.0,
+            })
+
+        receipt.planner_set_cashflow_month_amounts(2027, {
+            "3": 400.0,
+            "4": 300.0,
+            "5": 300.0,
+        })
+        receipt.invalidate_recordset(["cashflow_ids"])
+
+        self.assertEqual(self._amounts_by_month(receipt), {
+            3: 400.0,
+            4: 300.0,
+            5: 300.0,
+        })

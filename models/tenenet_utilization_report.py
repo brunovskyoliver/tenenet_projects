@@ -564,7 +564,7 @@ class TenenetUtilizationReportBaseMixin:
         return ""
 
     def _get_project_type_key(self, project):
-        if project and project._is_international_by_donor():
+        if project and project.project_type == "medzinarodny":
             return "international"
         return "national"
 

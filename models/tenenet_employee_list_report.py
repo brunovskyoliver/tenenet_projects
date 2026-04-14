@@ -1,3 +1,5 @@
+from datetime import date
+
 from odoo import fields, models
 from odoo.tools import format_date
 
@@ -29,13 +31,15 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
         "study_field",
         "work_phone",
         "manager_name",
+        "project_names",
+        "program_names",
     }
 
     def _custom_options_initializer(self, report, options, previous_options=None):
         super()._custom_options_initializer(report, options, previous_options=previous_options)
         custom_display_config = options["custom_display_config"]
         custom_display_config["css_custom_class"] = (
-            custom_display_config.get("css_custom_class", "") + " tenenet_pl_report tenenet_utilization_report"
+            custom_display_config.get("css_custom_class", "") + " tenenet_employee_list_report tenenet_utilization_report"
         ).strip()
         custom_display_config.setdefault("components", {})["AccountReportFilters"] = (
             "TenenetEmployeeListReportFilters"
@@ -56,12 +60,18 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
 
         language_skill_type = self._get_language_skill_type()
         selected_jobs = self._get_selected_jobs(previous_options)
+        selected_projects = self._get_selected_projects(previous_options)
+        selected_programs = self._get_selected_programs(previous_options)
         selected_language_skills = self._get_selected_language_skills(previous_options, language_skill_type)
         selected_availability_states = self._get_selected_availability_states(previous_options)
         grouping_mode = self._get_grouping_mode(previous_options)
 
         options["job_ids"] = selected_jobs.ids
         options["selected_job_names"] = selected_jobs.mapped("display_name")
+        options["project_ids"] = selected_projects.ids
+        options["selected_project_names"] = selected_projects.mapped("display_name")
+        options["program_ids"] = selected_programs.ids
+        options["selected_program_names"] = selected_programs.mapped("display_name")
         options["language_skill_ids"] = selected_language_skills.ids
         options["selected_language_names"] = selected_language_skills.mapped("name")
         options["language_skill_domain"] = (
@@ -98,8 +108,11 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
 
     def _get_employee_records(self, options, search_term=None):
         employees = self.env["hr.employee"].search([], order="tenenet_number, last_name, first_name, name")
+        selected_period = self._get_selected_month_start(options)
         language_skill_type = self._get_language_skill_type()
         selected_job_ids = set(options.get("job_ids") or [])
+        selected_project_ids = set(options.get("project_ids") or [])
+        selected_program_ids = set(options.get("program_ids") or [])
         selected_language_skill_ids = set(options.get("language_skill_ids") or [])
         selected_availability_states = {
             item["id"]
@@ -109,6 +122,25 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
 
         if selected_job_ids:
             employees = employees.filtered(lambda rec: rec.job_id.id in selected_job_ids)
+        if selected_project_ids:
+            employees = employees.filtered(
+                lambda rec: bool(
+                    self._get_assignments_for_employee_month(rec, selected_period).filtered(
+                        lambda assignment: assignment.project_id.id in selected_project_ids
+                    )
+                )
+            )
+        if selected_program_ids:
+            employees = employees.filtered(
+                lambda rec: bool(
+                    self._get_assignments_for_employee_month(rec, selected_period).filtered(
+                        lambda assignment: (
+                            (assignment.program_id or assignment.project_id._get_effective_reporting_program()).id
+                            in selected_program_ids
+                        )
+                    )
+                )
+            )
         if selected_availability_states:
             employees = employees.filtered(
                 lambda rec: rec.tenenet_availability_state in selected_availability_states
@@ -213,7 +245,7 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
             label = column["expression_label"]
             columns.append(
                 report._build_column_dict(
-                    self._get_column_value(employee, label, utilization_by_employee),
+                    self._get_column_value(employee, label, utilization_by_employee, options),
                     column,
                     options=options,
                     digits=2,
@@ -227,7 +259,13 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
             "level": level,
         }
 
-    def _get_column_value(self, employee, label, utilization_by_employee):
+    def _get_column_value(self, employee, label, utilization_by_employee, options):
+        if label in {"project_names", "program_names"}:
+            assignment_context = self._get_employee_assignment_context(
+                employee,
+                self._get_selected_month_start(options),
+            )
+            return assignment_context[label]
         if label == "employee_name":
             return employee.name or ""
         if label == "manager_name":
@@ -242,6 +280,48 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
         if label in self._FLOAT_COLUMNS:
             return employee[label] or 0.0
         return ""
+
+    def _get_employee_assignment_context(self, employee, period):
+        employee.ensure_one()
+        assignments = self._get_assignments_for_employee_month(employee, period)
+        project_names = []
+        program_names = []
+        for assignment in assignments.sorted(
+            key=lambda rec: (
+                rec.project_id.display_name or "",
+                rec.program_id.display_name or rec.project_id.display_name or "",
+                rec.id,
+            )
+        ):
+            project = assignment.project_id
+            if project.display_name and project.display_name not in project_names:
+                project_names.append(project.display_name)
+            program = assignment.program_id or project._get_effective_reporting_program()
+            if not program:
+                continue
+            if program.code == "ADMIN_TENENET" and project.project_type == "medzinarodny":
+                continue
+            if program.display_name and program.display_name not in program_names:
+                program_names.append(program.display_name)
+        return {
+            "project_names": ", ".join(project_names),
+            "program_names": ", ".join(program_names),
+        }
+
+    def _get_assignments_for_employee_month(self, employee, period):
+        employee.ensure_one()
+        period_start = fields.Date.to_date(period) if period else fields.Date.context_today(self)
+        period_start = date(period_start.year, period_start.month, 1)
+        period_end = fields.Date.end_of(period_start, "month")
+        return employee.assignment_ids.filtered(
+            lambda assignment: assignment.active
+            and not assignment.project_id.is_tenenet_internal
+            and assignment.project_id.active
+            and (
+                (not assignment._get_effective_date_range()[0] or assignment._get_effective_date_range()[0] <= period_end)
+                and (not assignment._get_effective_date_range()[1] or assignment._get_effective_date_range()[1] >= period_start)
+            )
+        )
 
     def _build_empty_columns(self, report, options):
         columns = []
@@ -258,6 +338,14 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
     def _get_selected_jobs(self, previous_options):
         job_ids = self._sanitize_ids(previous_options and previous_options.get("job_ids"))
         return self.env["hr.job"].browse(job_ids).exists()
+
+    def _get_selected_projects(self, previous_options):
+        project_ids = self._sanitize_ids(previous_options and previous_options.get("project_ids"))
+        return self.env["tenenet.project"].with_context(active_test=False).browse(project_ids).exists()
+
+    def _get_selected_programs(self, previous_options):
+        program_ids = self._sanitize_ids(previous_options and previous_options.get("program_ids"))
+        return self.env["tenenet.program"].with_context(active_test=False).browse(program_ids).exists()
 
     def _get_selected_month_start(self, options):
         date_to = options.get("date", {}).get("date_to") or fields.Date.context_today(self)

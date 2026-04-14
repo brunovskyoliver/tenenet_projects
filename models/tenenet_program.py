@@ -1,3 +1,8 @@
+from datetime import date
+
+from dateutil.relativedelta import relativedelta
+from markupsafe import escape
+
 from odoo import api, fields, models
 
 
@@ -62,6 +67,35 @@ class TenenetProgram(models.Model):
         string="Projekty",
     )
     pl_line_ids = fields.One2many("tenenet.pl.line", "program_id", string="P&L riadky")
+    dashboard_active_project_count = fields.Integer(
+        string="Aktívne projekty",
+        compute="_compute_dashboard_metrics",
+    )
+    dashboard_current_year_budget_total = fields.Monetary(
+        string="Plán rozpočtu za rok",
+        currency_field="dashboard_currency_id",
+        compute="_compute_dashboard_metrics",
+    )
+    dashboard_previous_month_wage_total = fields.Monetary(
+        string="Mzdy za minulý mesiac",
+        currency_field="dashboard_currency_id",
+        compute="_compute_dashboard_metrics",
+    )
+    dashboard_active_fte = fields.Float(
+        string="Aktívne FTE",
+        digits=(10, 2),
+        compute="_compute_dashboard_metrics",
+    )
+    dashboard_currency_id = fields.Many2one(
+        "res.currency",
+        string="Mena dashboardu",
+        compute="_compute_dashboard_metrics",
+    )
+    dashboard_html = fields.Html(
+        string="Program dashboard",
+        compute="_compute_dashboard_metrics",
+        sanitize=False,
+    )
 
     _unique_code = models.Constraint("UNIQUE(code)", "Kód programu musí byť jedinečný.")
 
@@ -157,3 +191,114 @@ class TenenetProgram(models.Model):
             program.operating_allocation_pct = (
                 (program.reporting_fte / total_fte) if total_fte else 0.0
             )
+
+    @api.depends(
+        "project_ids.active",
+        "project_ids.project_type",
+        "project_ids.budget_line_ids.amount",
+        "project_ids.budget_line_ids.year",
+        "project_ids.assignment_ids.state",
+        "project_ids.assignment_ids.program_id",
+        "project_ids.assignment_ids.allocation_ratio",
+        "project_ids.assignment_ids.effective_work_ratio",
+        "project_ids.assignment_ids.employee_id",
+        "project_ids.assignment_ids.timesheet_ids.period",
+        "project_ids.assignment_ids.timesheet_ids.total_labor_cost",
+    )
+    def _compute_dashboard_metrics(self):
+        today = fields.Date.context_today(self)
+        prev_month = fields.Date.to_date(today).replace(day=1) - relativedelta(months=1)
+        current_year = fields.Date.to_date(today).year
+        company_currency = self.env.company.currency_id
+        project_model = self.env["tenenet.project"].with_context(active_test=False)
+        assignment_model = self.env["tenenet.project.assignment"].with_context(active_test=False)
+        timesheet_model = self.env["tenenet.project.timesheet"].with_context(active_test=False)
+
+        for program in self:
+            program.dashboard_currency_id = company_currency
+            projects = project_model.search([
+                ("program_ids", "in", program.ids),
+                ("is_tenenet_internal", "=", False),
+            ])
+            active_projects = projects.filtered("active")
+            assignments = assignment_model.search([
+                ("project_id", "in", projects.ids),
+                ("program_id", "=", program.id),
+                ("state", "=", "active"),
+            ])
+            previous_month_timesheets = timesheet_model.search([
+                ("assignment_id", "in", assignments.ids),
+                ("period", "=", prev_month),
+            ])
+            program.dashboard_active_project_count = len(active_projects)
+            program.dashboard_current_year_budget_total = sum(
+                projects.mapped("budget_line_ids").filtered(
+                    lambda line: line.program_id == program and line.year == current_year
+                ).mapped("amount")
+            )
+            program.dashboard_previous_month_wage_total = sum(previous_month_timesheets.mapped("total_labor_cost"))
+            program.dashboard_active_fte = sum(
+                (assignment.effective_work_ratio or assignment.allocation_ratio or 0.0) / 100.0
+                for assignment in assignments
+            )
+            program.dashboard_html = program._build_dashboard_html(projects, assignments, previous_month_timesheets, prev_month)
+
+    def _build_dashboard_html(self, projects, assignments, previous_month_timesheets, prev_month):
+        self.ensure_one()
+        currency = self.env.company.currency_id
+        current_year = fields.Date.context_today(self).year
+        project_rows = []
+        timesheet_amounts = {}
+        for timesheet in previous_month_timesheets:
+            key = (timesheet.assignment_id.project_id.id, timesheet.assignment_id.employee_id.id)
+            timesheet_amounts[key] = timesheet_amounts.get(key, 0.0) + (timesheet.total_labor_cost or 0.0)
+
+        for project in projects.sorted(key=lambda project: (not project.active, project.display_name or "")):
+            project_assignments = assignments.filtered(lambda assignment: assignment.project_id == project)
+            budget_lines = project.budget_line_ids.filtered(lambda line: line.program_id == self and line.year == current_year)
+            budget_summary = ", ".join(
+                f"{escape(line.name or line._get_detail_label() or '-')}: "
+                f"{currency.symbol or ''} {(line.amount or 0.0):,.2f}".replace(",", " ")
+                for line in budget_lines[:4]
+            ) or "Bez rozpočtu"
+            worker_bits = []
+            for assignment in project_assignments.sorted(key=lambda item: item.employee_id.name or ""):
+                amount = timesheet_amounts.get((project.id, assignment.employee_id.id), 0.0)
+                worker_bits.append(
+                    f"<li><strong>{escape(assignment.employee_id.display_name or '-')}</strong>"
+                    f"<span>{amount:,.2f} {currency.symbol or ''}</span></li>".replace(",", " ")
+                )
+            active_fte = sum(
+                (assignment.effective_work_ratio or assignment.allocation_ratio or 0.0) / 100.0
+                for assignment in project_assignments
+            )
+            previous_month_wage_total = sum(
+                timesheet_amounts.get((project.id, assignment.employee_id.id), 0.0)
+                for assignment in project_assignments
+            )
+            project_type_label = dict(project._fields["project_type"].selection).get(project.project_type, "")
+            project_rows.append(
+                f"""
+                <article class="o_tenenet_program_dashboard_project">
+                    <header>
+                        <div>
+                            <h3><a class="o_tenenet_program_dashboard_project_link" href="/odoo/tenenet.project/{project.id}">{escape(project.display_name or "")}</a></h3>
+                            <p>{escape(project_type_label)}</p>
+                        </div>
+                        <span class="o_tenenet_program_dashboard_badge {'is-active' if project.active else 'is-muted'}">{'Aktívny' if project.active else 'Neaktívny'}</span>
+                    </header>
+                    <div class="o_tenenet_program_dashboard_project_meta">
+                        <div><span>Rozpočet</span><strong>{budget_summary}</strong></div>
+                        <div><span>Minulý mesiac</span><strong>{previous_month_wage_total:,.2f} {currency.symbol or ''}</strong></div>
+                        <div><span>Aktívni ľudia</span><strong>{len(project_assignments)}</strong></div>
+                        <div><span>Aktívne FTE</span><strong>{active_fte:,.2f}</strong></div>
+                    </div>
+                    <ul class="o_tenenet_program_dashboard_workers">{''.join(worker_bits) or '<li><span>Bez aktívnych pracovníkov</span></li>'}</ul>
+                </article>
+                """.replace(",", " ")
+            )
+        return (
+            f"<section class='o_tenenet_program_dashboard_list' data-month='{prev_month:%m/%Y}'>"
+            f"{''.join(project_rows) or '<div class=\"o_tenenet_program_dashboard_empty\">Program zatiaľ nemá priradené projekty.</div>'}"
+            "</section>"
+        )

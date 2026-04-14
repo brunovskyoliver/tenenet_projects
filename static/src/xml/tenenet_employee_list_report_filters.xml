@@ -8,6 +8,12 @@
             <div id="filter_employee_jobs" class="filter_employee_jobs">
                 <t t-call="tenenet_projects.TenenetEmployeeListReportFilterJobs"/>
             </div>
+            <div id="filter_employee_projects" class="filter_employee_projects">
+                <t t-call="tenenet_projects.TenenetEmployeeListReportFilterProjects"/>
+            </div>
+            <div id="filter_employee_programs" class="filter_employee_programs">
+                <t t-call="tenenet_projects.TenenetEmployeeListReportFilterPrograms"/>
+            </div>
             <div id="filter_employee_languages" class="filter_employee_languages">
                 <t t-call="tenenet_projects.TenenetEmployeeListReportFilterLanguages"/>
             </div>
@@ -90,6 +96,38 @@
                 <div class="dropdown-item gap-2 align-items-center">
                     <label>Jazyky</label>
                     <MultiRecordSelector t-props="languageSelectorProps"/>
+                </div>
+            </t>
+        </Dropdown>
+    </t>
+
+    <t t-name="tenenet_projects.TenenetEmployeeListReportFilterProjects" owl="1">
+        <Dropdown menuClass="'account_report_filter employee_projects'">
+            <button class="btn btn-secondary">
+                <i class="fa fa-folder-open me-1"/>
+                <t t-out="selectedProjectLabel"/>
+            </button>
+
+            <t t-set-slot="content">
+                <div class="dropdown-item gap-2 align-items-center">
+                    <label>Projekty</label>
+                    <MultiRecordSelector t-props="projectSelectorProps"/>
+                </div>
+            </t>
+        </Dropdown>
+    </t>
+
+    <t t-name="tenenet_projects.TenenetEmployeeListReportFilterPrograms" owl="1">
+        <Dropdown menuClass="'account_report_filter employee_programs'">
+            <button class="btn btn-secondary">
+                <i class="fa fa-sitemap me-1"/>
+                <t t-out="selectedProgramLabel"/>
+            </button>
+
+            <t t-set-slot="content">
+                <div class="dropdown-item gap-2 align-items-center">
+                    <label>Programy</label>
+                    <MultiRecordSelector t-props="programSelectorProps"/>
                 </div>
             </t>
         </Dropdown>

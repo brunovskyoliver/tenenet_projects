@@ -9,6 +9,7 @@ class TestTenenetBudgetLinePlanner(TransactionCase):
         super().setUp()
         self.admin_program = self.env["tenenet.program"].search([("code", "=", "ADMIN_TENENET")], limit=1)
         self.program = self.env["tenenet.program"].create({"name": "Budget Program", "code": "BDG"})
+        self.expense_type = self.env["tenenet.expense.type.config"].create({"name": "Cestovné"})
         self.project = self.env["tenenet.project"].create({
             "name": "Budget Planner Project",
             "program_ids": [(6, 0, self.program.ids)],
@@ -73,6 +74,57 @@ class TestTenenetBudgetLinePlanner(TransactionCase):
         self.assertEqual(action["tag"], "tenenet_budget_line_planner_action")
         self.assertEqual(action["params"]["budget_line_id"], budget_line.id)
 
+    def test_quick_add_other_requires_expense_category(self):
+        year = fields.Date.context_today(self).year
+        self.env["tenenet.project.receipt"].create({
+            "project_id": self.project.id,
+            "date_received": f"{year}-03-01",
+            "amount": 1000.0,
+        })
+
+        with self.assertRaises(ValidationError):
+            self.project.action_create_budget_line_from_quick_add("other", 200.0, 20.0)
+
+    def test_service_project_budget_line_accepts_service_income_and_payroll_flag(self):
+        year = fields.Date.context_today(self).year
+        service_project = self.env["tenenet.project"].create({
+            "name": "Service Project",
+            "project_type": "sluzby",
+            "program_ids": [(4, self.program.id)],
+        })
+        self.env["tenenet.project.receipt"].create({
+            "project_id": service_project.id,
+            "date_received": f"{year}-03-01",
+            "amount": 1000.0,
+        })
+
+        service_project.action_create_budget_line_from_quick_add(
+            "other",
+            250.0,
+            25.0,
+            "Servis",
+            False,
+            "sales_individual",
+            True,
+        )
+        budget_line = service_project.budget_line_ids.filtered(lambda line: line.service_income_type == "sales_individual")
+
+        self.assertEqual(len(budget_line), 1)
+        self.assertTrue(budget_line.can_cover_payroll)
+
+    def test_generic_other_budget_line_uses_expense_category_label(self):
+        budget_line = self.env["tenenet.project.budget.line"].create({
+            "project_id": self.project.id,
+            "year": 2027,
+            "budget_type": "other",
+            "program_id": self.program.id,
+            "name": "Iné",
+            "amount": 300.0,
+            "expense_type_config_id": self.expense_type.id,
+        })
+
+        self.assertEqual(budget_line.detail_label, "Cestovné")
+
     def test_budget_line_delete_action_removes_record(self):
         budget_line = self.env["tenenet.project.budget.line"].create({
             "project_id": self.project.id,
@@ -120,6 +172,7 @@ class TestTenenetBudgetLinePlanner(TransactionCase):
             "program_id": self.program.id,
             "name": "Iný príjem",
             "amount": 1000.0,
+            "expense_type_config_id": self.expense_type.id,
         })
 
         with self.assertRaises(ValidationError):

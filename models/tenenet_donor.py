@@ -5,6 +5,7 @@ class TenenetDonor(models.Model):
     _name = "tenenet.donor"
     _description = "Donor TENENET"
     _order = "name"
+    _inherit = ["image.mixin"]
 
     name = fields.Char(string="Názov donora", required=True)
     donor_type = fields.Selection(

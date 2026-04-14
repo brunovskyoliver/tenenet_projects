@@ -22,6 +22,22 @@
                                    t-on-change="onToggleZeroMode"/>
                             <span>Nulovať výber</span>
                         </label>
+                        <div class="o_tenenet_budget_add_type_badges">
+                            <button type="button"
+                                    class="o_selection_badge btn mb-1"
+                                    t-att-class="state.allocationMode === 'auto' ? 'btn-primary' : 'btn-secondary'"
+                                    data-value="auto"
+                                    t-on-click="onAllocationModeBadgeClick">
+                                Automaticky
+                            </button>
+                            <button type="button"
+                                    class="o_selection_badge btn mb-1"
+                                    t-att-class="state.allocationMode === 'manual' ? 'btn-primary' : 'btn-secondary'"
+                                    data-value="manual"
+                                    t-on-click="onAllocationModeBadgeClick">
+                                Manuálne
+                            </button>
+                        </div>
                         <div class="o_tenenet_cashflow_planner_year">
                             <button class="btn btn-secondary btn-sm"
                                     t-on-click="() => this.changeYear(-1)">
@@ -105,8 +121,16 @@
                 </div>
                 <div class="o_tenenet_cashflow_dialog_total">
                     <span>Zostáva</span>
-                    <strong t-out="formatAmountWithCurrency(props.remainingAmount)"/>
+                    <strong t-out="formatAmountWithCurrency(remainingToAssign)"/>
                 </div>
+            </div>
+            <div class="o_tenenet_cashflow_dialog_meta" t-if="props.editMode">
+                <label class="o_tenenet_cashflow_planner_toggle">
+                    <input type="checkbox"
+                           t-att-checked="state.freeze"
+                           t-on-change="onFreezeToggle"/>
+                    <span>Zamraziť</span>
+                </label>
             </div>
             <div class="table-responsive">
                 <table class="table table-sm o_tenenet_cashflow_dialog_table">
@@ -170,7 +194,7 @@
                 </button>
                 <button class="btn btn-primary"
                         t-on-click="() => this.onSave()"
-                        t-att-disabled="state.saving">
+                        t-att-disabled="state.saving or !canSave">
                     Uložiť
                 </button>
                 <button class="btn btn-secondary"

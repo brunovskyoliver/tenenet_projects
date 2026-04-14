@@ -105,6 +105,24 @@
                     <field name="figure_type">string</field>
                 </record>
                 <record
+                    id="tenenet_employee_list_report_column_projects"
+                    model="account.report.column"
+                >
+                    <field name="sequence">72</field>
+                    <field name="name">Projekty</field>
+                    <field name="expression_label">project_names</field>
+                    <field name="figure_type">string</field>
+                </record>
+                <record
+                    id="tenenet_employee_list_report_column_programs"
+                    model="account.report.column"
+                >
+                    <field name="sequence">73</field>
+                    <field name="name">Programy</field>
+                    <field name="expression_label">program_names</field>
+                    <field name="figure_type">string</field>
+                </record>
+                <record
                     id="tenenet_employee_list_report_column_utilization_percentage"
                     model="account.report.column"
                 >

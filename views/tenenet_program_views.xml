@@ -9,6 +9,8 @@
                     <field name="code"/>
                     <field name="program_kind"/>
                     <field name="headcount"/>
+                    <field name="dashboard_active_project_count"/>
+                    <field name="dashboard_previous_month_wage_total"/>
                     <field name="reporting_fte"/>
                     <field name="operating_allocation_pct"/>
                     <field name="allocation_pct_percentage"/>
@@ -21,7 +23,7 @@
             <field name="name">tenenet.program.form</field>
             <field name="model">tenenet.program</field>
             <field name="arch" type="xml">
-                <form string="Program">
+                <form string="Program" class="o_tenenet_program_form">
                     <sheet>
                         <group>
                             <group>
@@ -37,9 +39,29 @@
                                 <field name="allocation_pct_percentage" readonly="1"/>
                             </group>
                         </group>
+                        <div class="o_tenenet_program_dashboard_cards">
+                            <div class="o_tenenet_program_dashboard_card">
+                                <span>Aktívne projekty</span>
+                                <field name="dashboard_active_project_count" readonly="1" nolabel="1"/>
+                            </div>
+                            <div class="o_tenenet_program_dashboard_card">
+                                <span>Plán rozpočtu za rok</span>
+                                <field name="dashboard_current_year_budget_total" readonly="1" nolabel="1"/>
+                            </div>
+                            <div class="o_tenenet_program_dashboard_card">
+                                <span>Mzdy za minulý mesiac</span>
+                                <field name="dashboard_previous_month_wage_total" readonly="1" nolabel="1"/>
+                            </div>
+                            <div class="o_tenenet_program_dashboard_card">
+                                <span>Aktívne FTE</span>
+                                <field name="dashboard_active_fte" readonly="1" nolabel="1"/>
+                            </div>
+                        </div>
                         <group>
                             <field name="description"/>
                         </group>
+                        <separator string="Projekty a tím"/>
+                        <field name="dashboard_html" widget="html" readonly="1" nolabel="1"/>
                     </sheet>
                 </form>
             </field>

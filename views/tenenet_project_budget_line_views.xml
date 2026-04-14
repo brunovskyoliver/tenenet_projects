@@ -19,6 +19,10 @@
                             </group>
                             <group>
                                 <field name="name" readonly="1"/>
+                                <field name="detail_label" readonly="1"/>
+                                <field name="expense_type_config_id" readonly="1" invisible="not expense_type_config_id"/>
+                                <field name="service_income_type" readonly="1" invisible="not service_income_type"/>
+                                <field name="can_cover_payroll" readonly="1" invisible="not service_income_type"/>
                                 <field name="amount" readonly="1"/>
                                 <field name="has_explicit_month_plan" readonly="1"/>
                             </group>

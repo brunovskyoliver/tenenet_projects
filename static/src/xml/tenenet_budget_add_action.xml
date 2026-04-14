@@ -50,6 +50,51 @@
                 </div>
                 <div class="o_tenenet_budget_add_form">
                     <div class="row g-3">
+                        <t t-if="state.budgetType === 'other' and isServiceProject">
+                            <div class="col-12">
+                                <label class="form-label">Servisný príjem</label>
+                                <div class="o_tenenet_budget_add_type_badges">
+                                    <button type="button"
+                                            class="o_selection_badge btn mb-1"
+                                            t-att-class="!state.serviceIncomeType ? 'btn-primary' : 'btn-secondary'"
+                                            t-on-click="onGenericOtherClick">
+                                        Bežné iné
+                                    </button>
+                                    <t t-foreach="serviceIncomeTypeOptions" t-as="option" t-key="option.value">
+                                        <button type="button"
+                                                class="o_selection_badge btn mb-1"
+                                                t-att-class="state.serviceIncomeType === option.value ? 'btn-primary' : 'btn-secondary'"
+                                                t-att-data-value="option.value"
+                                                t-on-click="onServiceIncomeTypeBadgeClick">
+                                            <t t-out="option.label"/>
+                                        </button>
+                                    </t>
+                                </div>
+                            </div>
+                        </t>
+                        <t t-if="needsExpenseCategory">
+                            <div class="col-12">
+                                <label class="form-label">Kategória výdavku</label>
+                                <select class="form-select" t-on-change="onExpenseTypeChange">
+                                    <option value="">Vyber kategóriu</option>
+                                    <t t-foreach="expenseTypeOptions" t-as="option" t-key="option.id">
+                                        <option t-att-value="option.id" t-att-selected="state.expenseTypeConfigId === option.id">
+                                            <t t-out="option.label"/>
+                                        </option>
+                                    </t>
+                                </select>
+                            </div>
+                        </t>
+                        <t t-if="state.serviceIncomeType">
+                            <div class="col-12">
+                                <label class="o_tenenet_cashflow_planner_toggle">
+                                    <input type="checkbox"
+                                           t-att-checked="state.canCoverPayroll"
+                                           t-on-change="onPayrollToggle"/>
+                                    <span>Môže kryť mzdy zamestnancov</span>
+                                </label>
+                            </div>
+                        </t>
                         <div class="col-md-6">
                             <label class="form-label">Suma</label>
                             <input class="form-control"
@@ -77,7 +122,7 @@
                 </div>
                 <div class="o_tenenet_budget_line_planner_action_footer">
                     <button class="btn btn-secondary" t-on-click="close">Zrušiť</button>
-                    <button class="btn btn-primary" t-on-click="onSubmit" t-att-disabled="state.saving">
+                    <button class="btn btn-primary" t-on-click="onSubmit" t-att-disabled="state.saving or !isFormValid">
                         <t t-if="state.saving">
                             <i class="fa fa-spinner fa-spin me-1"/>
                         </t>

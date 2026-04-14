@@ -1,6 +1,54 @@
 .account_report.tenenet_pl_report {
+    --planner-surface: #3c3e4b;
+    --planner-surface-soft: #444756;
+    --planner-surface-strong: #4d5163;
+    --planner-border: #5f6377;
+    --planner-text: #f3f5fb;
+    --planner-text-muted: #c0c6d8;
+    --planner-accent: #d89b2b;
+    --planner-accent-soft: rgba(216, 155, 43, 0.18);
+
+    background: var(--planner-surface);
+    border-radius: 18px;
+    color: var(--planner-text);
+    padding: 10px;
+
     tr[data-id="column_headers_row"] {
         display: none;
+    }
+
+    table,
+    .o_account_report_table {
+        background: transparent;
+        color: inherit;
+    }
+
+    thead th,
+    tbody tr,
+    tbody td,
+    tbody th {
+        background: transparent !important;
+        color: inherit;
+        border-color: var(--planner-border) !important;
+    }
+
+    tbody tr:hover td,
+    tbody tr:hover th {
+        background: var(--planner-surface-soft) !important;
+    }
+
+    .line_name .name,
+    .line_name a,
+    .line_cell .name,
+    .line_cell a,
+    .line_cell .content {
+        color: var(--planner-text) !important;
+    }
+
+    .caret,
+    .o_account_report_line_footnote,
+    .text-muted {
+        color: var(--planner-text-muted) !important;
     }
 
     td.line_cell,

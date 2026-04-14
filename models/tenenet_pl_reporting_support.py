@@ -19,6 +19,12 @@ class TenenetPLReportingSupport(models.AbstractModel):
     }
 
     _ROW_SPEC_METADATA = {
+        "sales_individual": {
+            "row_label": "Tržby individuálne",
+            "sequence": 305,
+            "section_label": "Príjmy",
+            "is_editable": False,
+        },
         "sales_cash_register": {
             "row_label": "Tržby z registračky",
             "sequence": 300,
@@ -70,6 +76,18 @@ class TenenetPLReportingSupport(models.AbstractModel):
         "fundraising_total": {
             "row_label": "Zbierky",
             "sequence": 340,
+            "section_label": "Príjmy",
+            "is_editable": False,
+        },
+        "fundraising_individual": {
+            "row_label": "Zbierky individuálne",
+            "sequence": 341,
+            "section_label": "Príjmy",
+            "is_editable": False,
+        },
+        "fundraising_corporate": {
+            "row_label": "Zbierky korporátne",
+            "sequence": 342,
             "section_label": "Príjmy",
             "is_editable": False,
         },
@@ -352,27 +370,26 @@ class TenenetPLReportingSupport(models.AbstractModel):
         budget_rows = []
         for budget_type in self._BUDGET_INCOME_SECTION_METADATA:
             budget_rows.extend(self._get_budget_income_rows(program, selected_year, budget_type))
+        budget_rows = [row for row in budget_rows if not row["budget_line"].service_income_type]
 
-        detail_rows_by_project = defaultdict(dict)
+        detail_rows_by_project = defaultdict(list)
         for row in budget_rows:
             project = row["project"]
-            section_metadata = self._BUDGET_INCOME_SECTION_METADATA.get(row["budget_line"].budget_type, {})
-            category_label = section_metadata.get("label") or row["name"]
-            project_bucket = detail_rows_by_project[project.id]
-            category_row = project_bucket.setdefault(
-                category_label,
-                {
-                    "name": category_label,
-                    "values": self._zero_by_month(),
-                    "value_bundle": self._value_bundle(),
-                },
-            )
-            category_bundle = self._sum_month_value_bundles(
-                category_row["value_bundle"],
-                row.get("value_bundle") or self._value_bundle(row["values"]),
-            )
-            category_row["value_bundle"] = category_bundle
-            category_row["values"] = category_bundle["values"]
+            line = row["budget_line"]
+            if line.name:
+                row_name = line.name
+            elif line.budget_type == "other" and line.expense_type_config_id:
+                row_name = line.expense_type_config_id.display_name
+            else:
+                section_metadata = self._BUDGET_INCOME_SECTION_METADATA.get(row["budget_line"].budget_type, {})
+                row_name = section_metadata.get("label") or row["name"]
+            row_bundle = row.get("value_bundle") or self._value_bundle(row["values"])
+            detail_rows_by_project[project.id].append({
+                "name": row_name,
+                "budget_line": line,
+                "values": self._copy_month_values(row_bundle["values"]),
+                "value_bundle": self._value_bundle(row_bundle),
+            })
 
         project_ids = set(detail_rows_by_project)
         for row_key in (override_rows or {}):
@@ -393,7 +410,7 @@ class TenenetPLReportingSupport(models.AbstractModel):
                     "values": self._copy_month_values(detail_row["values"]),
                     "value_bundle": self._value_bundle(detail_row["value_bundle"]),
                 }
-                for detail_row in detail_rows_by_project.get(project.id, {}).values()
+                for detail_row in detail_rows_by_project.get(project.id, [])
                 if self._has_nonzero_month_values(detail_row["values"])
             ]
             detail_rows.sort(key=lambda row: (row["name"] or "").lower())
@@ -559,7 +576,32 @@ class TenenetPLReportingSupport(models.AbstractModel):
         return result
 
     def _get_budget_income_detail_label(self, line):
-        return f"{self._get_project_line_name(line.project_id)} / {line.name}".strip(" /")
+        return f"{self._get_project_line_name(line.project_id)} / {line._get_detail_label()}".strip(" /")
+
+    def _get_service_income_budget_rows(self, program, selected_year):
+        budget_lines = self.env["tenenet.project.budget.line"].search(
+            [
+                ("year", "=", selected_year),
+                ("budget_type", "=", "other"),
+                ("program_id", "=", program.id),
+                ("service_income_type", "!=", False),
+                ("amount", "!=", 0.0),
+            ],
+            order="project_id, sequence, id",
+        )
+        rows = []
+        for line in budget_lines:
+            values = defaultdict(float, line._get_effective_month_amounts())
+            rows.append({
+                "budget_line": line,
+                "project": line.project_id,
+                "row_key": line.service_income_type,
+                "name": line._get_detail_label(),
+                "values": values,
+                "value_bundle": self._value_bundle(values),
+                "can_cover_payroll": bool(line.can_cover_payroll),
+            })
+        return rows
 
     def _get_budget_income_rows(self, program, selected_year, budget_type):
         if budget_type not in self._BUDGET_INCOME_SECTION_METADATA:
@@ -1088,9 +1130,12 @@ class TenenetPLReportingSupport(models.AbstractModel):
             "budget_labor_income_total": self._value_bundle(),
             "budget_other_income_total": self._value_bundle(),
             "sales_cash_register": self._value_bundle(),
+            "sales_individual": self._value_bundle(),
             "sales_invoice": self._value_bundle(),
             "sales_legacy_unclassified": self._value_bundle(),
             "sales_total": self._value_bundle(),
+            "fundraising_individual": self._value_bundle(),
+            "fundraising_corporate": self._value_bundle(),
             "fundraising_total": self._value_bundle(),
             "operating_income": operating_income,
             "income_total": income_total,
@@ -1110,6 +1155,8 @@ class TenenetPLReportingSupport(models.AbstractModel):
             return self._get_admin_tenenet_report_values(program, selected_year)
 
         override_rows = self._program_override_rows(selected_year, program)
+        budget_labor_income_rows = self._get_budget_income_rows(program, selected_year, "labor")
+        service_income_rows = self._get_service_income_budget_rows(program, selected_year)
         project_rows = self._predict_report_rows(
             self._get_project_income_rows(program, selected_year, override_rows=override_rows),
             selected_year,
@@ -1133,11 +1180,19 @@ class TenenetPLReportingSupport(models.AbstractModel):
 
         sales_values = {
             "sales_cash_register": self._value_bundle(),
+            "sales_individual": self._value_bundle(),
             "sales_invoice": self._value_bundle(),
             "sales_legacy_unclassified": self._value_bundle(),
         }
         for row in sales_rows:
             sales_values[row["row_key"]] = self._value_bundle(row["values"])
+        for row in service_income_rows:
+            if row["row_key"] not in {"sales_individual", "sales_invoice"}:
+                continue
+            sales_values[row["row_key"]] = self._sum_month_value_bundles(
+                sales_values.get(row["row_key"], self._value_bundle()),
+                row["value_bundle"],
+            )
         sales_values["sales_cash_register"] = self._predict_row_bundle(
             sales_values["sales_cash_register"],
             selected_year,
@@ -1156,10 +1211,21 @@ class TenenetPLReportingSupport(models.AbstractModel):
 
         sales_total = self._sum_month_value_bundles(
             sales_values["sales_cash_register"],
+            sales_values["sales_individual"],
             sales_values["sales_invoice"],
             sales_values["sales_legacy_unclassified"],
         )
-        fundraising_total = self._sum_month_value_bundles(*(row["value_bundle"] for row in fundraising_rows))
+        fundraising_individual = self._sum_month_value_bundles(*(
+            row["value_bundle"] for row in service_income_rows if row["row_key"] == "fundraising_individual"
+        ))
+        fundraising_corporate = self._sum_month_value_bundles(*(
+            row["value_bundle"] for row in service_income_rows if row["row_key"] == "fundraising_corporate"
+        ))
+        fundraising_total = self._sum_month_value_bundles(
+            fundraising_individual,
+            fundraising_corporate,
+            *(row["value_bundle"] for row in fundraising_rows),
+        )
         income_total = self._sum_month_value_bundles(
             project_income,
             sales_total,
@@ -1171,8 +1237,12 @@ class TenenetPLReportingSupport(models.AbstractModel):
             selected_year,
             override_row=override_rows.get("stravne"),
         )
-        labor_coverage = self._sum_month_value_bundles(income_total, labor_cost)
-        pre_admin_result = self._sum_month_value_bundles(labor_coverage, stravne)
+        payroll_cover_total = self._sum_month_value_bundles(
+            *(row["value_bundle"] for row in budget_labor_income_rows),
+            *(row["value_bundle"] for row in service_income_rows if row["can_cover_payroll"]),
+        )
+        labor_coverage = self._sum_month_value_bundles(payroll_cover_total, labor_cost)
+        pre_admin_result = self._sum_month_value_bundles(income_total, labor_cost, stravne)
         admin_tenenet_cost = self._sum_month_value_bundles(*(row["value_bundle"] for row in admin_cost_detail_rows))
         operating = self._predict_row_bundle(
             self._get_operating_cost_by_month(program, selected_year),
@@ -1182,7 +1252,7 @@ class TenenetPLReportingSupport(models.AbstractModel):
 
         return {
             "project_rows": project_rows,
-            "budget_labor_income_rows": [],
+            "budget_labor_income_rows": budget_labor_income_rows,
             "budget_other_income_rows": [],
             "sales_rows": sales_rows,
             "fundraising_rows": fundraising_rows,
@@ -1190,12 +1260,15 @@ class TenenetPLReportingSupport(models.AbstractModel):
             "labor_non_project_rows": [],
             "admin_cost_detail_rows": admin_cost_detail_rows,
             "projects_total": project_income,
-            "budget_labor_income_total": self._value_bundle(),
+            "budget_labor_income_total": self._sum_month_value_bundles(*(row["value_bundle"] for row in budget_labor_income_rows)),
             "budget_other_income_total": self._value_bundle(),
             "sales_cash_register": sales_values["sales_cash_register"],
+            "sales_individual": sales_values["sales_individual"],
             "sales_invoice": sales_values["sales_invoice"],
             "sales_legacy_unclassified": sales_values["sales_legacy_unclassified"],
             "sales_total": sales_total,
+            "fundraising_individual": fundraising_individual,
+            "fundraising_corporate": fundraising_corporate,
             "fundraising_total": fundraising_total,
             "operating_income": self._zero_by_month(),
             "income_total": income_total,
