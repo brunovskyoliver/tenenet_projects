@@ -6,6 +6,7 @@
             <field name="arch" type="xml">
                 <list string="Zamestnanci" default_order="main_site_id,tenenet_number,last_name,first_name,name">
                     <field name="name" />
+                    <field name="organizational_unit_id" optional="show" />
                     <field name="main_site_id" optional="show" />
                     <field name="all_job_names" string="Pozície" optional="show" />
                     <field name="all_site_names" string="Miesta práce" optional="hide" />
@@ -29,6 +30,7 @@
             <field name="arch" type="xml">
                 <search string="Zamestnanci">
                     <field name="name" />
+                    <field name="organizational_unit_id" />
                     <field name="job_id" />
                     <field name="main_site_id" />
                     <field name="all_job_names" />
@@ -126,6 +128,7 @@
                 </xpath>
 
                 <xpath expr="//page[@name='work_information']//field[@name='job_id']" position="after">
+                    <field name="organizational_unit_id" />
                     <field name="additional_job_ids" widget="many2many_tags" string="Ďalšie pozície" />
                 </xpath>
 

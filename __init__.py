@@ -6,6 +6,8 @@ def post_init_hook(env):
     env["resource.calendar.leaves"]._import_sk_public_holidays()
     env["tenenet.project.site"]._sync_slovak_regions()
     _ensure_admin_tenenet_entities(env)
+    env["tenenet.program"]._sync_organizational_units(force=True)
+    env["hr.employee"]._backfill_organizational_units(force=True)
 
 
 def pre_init_hook(env):

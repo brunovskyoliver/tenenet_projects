@@ -1,0 +1,33 @@
+<odoo>
+    <data noupdate="1">
+        <record id="tenenet_organizational_unit_tenenet_oz" model="tenenet.organizational.unit">
+            <field name="name">TENENET o.z.</field>
+            <field name="code">TENENET_OZ</field>
+        </record>
+
+        <record id="tenenet_organizational_unit_scpp" model="tenenet.organizational.unit">
+            <field name="name">SCPP</field>
+            <field name="code">SCPP</field>
+        </record>
+
+        <record id="tenenet_organizational_unit_kalia" model="tenenet.organizational.unit">
+            <field name="name">KALIA</field>
+            <field name="code">KALIA</field>
+        </record>
+
+        <record id="tenenet_organizational_unit_wellnea" model="tenenet.organizational.unit">
+            <field name="name">WELLNEA</field>
+            <field name="code">WELLNEA</field>
+        </record>
+
+        <record id="tenenet_organizational_unit_assp" model="tenenet.organizational.unit">
+            <field name="name">ASSP</field>
+            <field name="code">ASSP</field>
+        </record>
+
+        <record id="tenenet_organizational_unit_nadacia_tenenet" model="tenenet.organizational.unit">
+            <field name="name">nadacia TENENET</field>
+            <field name="code">NADACIA_TENENET</field>
+        </record>
+    </data>
+</odoo>

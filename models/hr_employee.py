@@ -22,6 +22,16 @@ class HrEmployee(models.Model):
     first_name = fields.Char(string="Krstné meno", translate=False)
     last_name = fields.Char(string="Priezvisko", translate=False)
     position = fields.Char(string="Pozícia", translate=False)
+    contract_position = fields.Char(string="Pozícia podľa pracovnej zmluvy", translate=False)
+    organizational_unit_id = fields.Many2one(
+        "tenenet.organizational.unit",
+        string="Organizačná zložka",
+        ondelete="restrict",
+        default=lambda self: self.env.ref(
+            "tenenet_projects.tenenet_organizational_unit_tenenet_oz",
+            raise_if_not_found=False,
+        ),
+    )
     position_catalog_id = fields.Many2one(
         "hr.job",
         string="Katalóg pozície",
@@ -306,6 +316,32 @@ class HrEmployee(models.Model):
     def _is_tenenet_admin_management(self):
         self.ensure_one()
         return any(job.is_tenenet_admin_management for job in self._get_job_sequence())
+
+    @api.model
+    def _default_organizational_unit(self):
+        return self.env.ref("tenenet_projects.tenenet_organizational_unit_tenenet_oz", raise_if_not_found=False)
+
+    def _guess_organizational_unit(self):
+        self.ensure_one()
+        units = self.env["tenenet.organizational.unit"]
+        if self.wage_program_override_id.organizational_unit_id:
+            units |= self.wage_program_override_id.organizational_unit_id
+        for assignment in self.assignment_ids.filtered(lambda rec: rec.active and rec.state == "active"):
+            unit = assignment.program_id.organizational_unit_id or assignment.project_id.reporting_program_id.organizational_unit_id
+            if unit:
+                units |= unit
+        if len(units) == 1:
+            return units
+        return self._default_organizational_unit()
+
+    @api.model
+    def _backfill_organizational_units(self, force=False):
+        for employee in self.with_context(active_test=False).search([]):
+            if not force and employee.organizational_unit_id:
+                continue
+            target_unit = employee._guess_organizational_unit()
+            if target_unit and employee.organizational_unit_id != target_unit:
+                employee.organizational_unit_id = target_unit
 
     @api.model
     def _prepare_identity_sync_vals(self, vals, record=None):
@@ -631,3 +667,9 @@ class HrEmployee(models.Model):
                 raise ValidationError("Vedľajšie miesta práce môžu byť len prevádzky alebo centrá.")
             if rec.main_site_id and rec.main_site_id in rec.secondary_site_ids:
                 raise ValidationError("Hlavné miesto práce nesmie byť zároveň medzi vedľajšími miestami.")
+
+    @api.constrains("active", "organizational_unit_id")
+    def _check_organizational_unit(self):
+        for rec in self:
+            if rec.active and not rec.organizational_unit_id:
+                raise ValidationError("Aktívny zamestnanec musí mať nastavenú organizačnú zložku.")

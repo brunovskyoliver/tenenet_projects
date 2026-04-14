@@ -160,6 +160,12 @@
                   action="action_tenenet_program"
                   sequence="10"/>
 
+        <menuitem id="menu_tenenet_organizational_units"
+                  name="Organizačné zložky"
+                  parent="menu_tenenet_configuration"
+                  action="action_tenenet_organizational_unit"
+                  sequence="11"/>
+
         <menuitem id="menu_tenenet_project_sites_prevadzka"
                   name="Prevádzky"
                   parent="menu_tenenet_configuration"

@@ -14,6 +14,7 @@
                     <field name="name"/>
                     <field name="project_type"/>
                     <field name="primary_program_id"/>
+                    <field name="organizational_unit_id" optional="show"/>
                     <field name="donor_id"/>
                     <field name="budget_total"/>
                     <field name="date_start"/>
@@ -52,6 +53,7 @@
                             </group>
                             <group>
                                 <field name="primary_program_id" invisible="project_type == 'medzinarodny'" required="project_type != 'medzinarodny'"/>
+                                <field name="organizational_unit_id" readonly="1"/>
                                 <div class="text-muted" invisible="project_type != 'medzinarodny'">
                                     Program sa pri medzinárodnom projekte vedie iba pod Admin TENENET.
                                 </div>
@@ -457,6 +459,7 @@
                     <search string="Projekty">
                         <field name="name"/>
                         <field name="ui_program_ids"/>
+                        <field name="organizational_unit_id"/>
                         <field name="donor_id"/>
                     <filter string="Aktívne" name="active" domain="[('active', '=', True)]"/>
                     <filter string="Bez virtuálneho admin projektu" name="hide_internal" domain="[('is_tenenet_internal', '=', False)]"/>

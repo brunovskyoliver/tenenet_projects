@@ -6,6 +6,8 @@ import csv
 import unicodedata
 from pathlib import Path
 
+from odoo import Command
+
 
 EXTERNAL_ID_MODULE = "tenenet_projects_import"
 
@@ -118,59 +120,54 @@ def get_or_create_job(env, row: dict[str, str]):
     return job
 
 
-def get_or_create_work_location(env, xml_name: str, city: str):
-    if not xml_name or not city:
-        return env["hr.work.location"]
+def get_organizational_unit(env, row: dict[str, str]):
+    code = row.get("x_org_unit_code") or ""
+    if not code:
+        return env["tenenet.organizational.unit"]
+    return env["tenenet.organizational.unit"].search([("code", "=", code)], limit=1)
+
+
+def get_program(env, program_code: str):
+    if not program_code:
+        return env["tenenet.program"]
+    return env["tenenet.program"].with_context(active_test=False).search([("code", "=", program_code)], limit=1)
+
+
+def get_or_create_site(env, site_name: str):
+    site_name = normalize_text(site_name)
+    if not site_name:
+        return env["tenenet.project.site"]
+
+    Site = env["tenenet.project.site"].with_context(active_test=False)
+    site = Site.search([
+        ("site_type", "in", ["prevadzka", "centrum"]),
+        "|",
+        ("name", "=", site_name),
+        ("city", "=", site_name),
+    ], limit=1)
+    if site:
+        return site
 
     country = env.ref("base.sk", raise_if_not_found=False)
-    partner_xml_name = f"{xml_name}_addr"
-    address = get_external_record(env, "res.partner", partner_xml_name)
-    address_vals = {
-        "name": f"Work address - {city}",
-        "type": "other",
-        "city": city,
+    return Site.create({
+        "name": site_name,
+        "site_type": "prevadzka",
+        "city": site_name,
         "country_id": country.id if country else False,
-        "company_type": "company",
-    }
-    if address:
-        address.write(address_vals)
-    else:
-        address = env["res.partner"].search([
-            ("name", "=", address_vals["name"]),
-            ("city", "=", city),
-        ], limit=1)
-        if address:
-            address.write(address_vals)
-        else:
-            address = env["res.partner"].create(address_vals)
-    ensure_external_id(env, address, partner_xml_name)
-
-    location = get_external_record(env, "hr.work.location", xml_name)
-    location_vals = {
-        "name": city,
-        "company_id": env.company.id,
-        "location_type": "other",
-        "address_id": address.id,
-    }
-    if location:
-        location.write(location_vals)
-    else:
-        location = env["hr.work.location"].search([
-            ("name", "=", city),
-            ("company_id", "=", env.company.id),
-        ], limit=1)
-        if location:
-            location.write(location_vals)
-        else:
-            location = env["hr.work.location"].create(location_vals)
-    ensure_external_id(env, location, xml_name)
-    return location
+    })
 
 
 def get_or_create_employee(env, row: dict[str, str], department_map: dict[str, int], job_map: dict[str, int]):
     employee = get_external_record(env, "hr.employee", row["id"])
     first_name, last_name = split_employee_name(row["name"])
-    work_location = get_or_create_work_location(env, row.get("address_id/id", ""), row.get("work_location", ""))
+    main_site = get_or_create_site(env, row.get("main_site_name", ""))
+    secondary_sites = [
+        get_or_create_site(env, site_name)
+        for site_name in (row.get("secondary_site_names") or "").split("|")
+        if normalize_text(site_name)
+    ]
+    organizational_unit = get_organizational_unit(env, row)
+    wage_program = get_program(env, row.get("x_wage_program_code") or "")
     vals = {
         "title_academic": row.get("title_academic") or False,
         "first_name": first_name or False,
@@ -178,11 +175,16 @@ def get_or_create_employee(env, row: dict[str, str], department_map: dict[str, i
         "job_id": job_map.get(row["job_id/id"]) or False,
         "department_id": department_map.get(row["department_id/id"]) or False,
         "position_catalog_id": job_map.get(row["job_id/id"]) or False,
+        "contract_position": row.get("contract_position") or False,
+        "organizational_unit_id": organizational_unit.id or False,
         "work_email": row.get("work_email") or False,
-        "private_phone": row.get("private_phone") or row.get("mobile_phone") or False,
-        "work_phone": row.get("work_phone") or False,
-        "work_location_id": work_location.id if work_location else False,
-        "address_id": work_location.address_id.id if work_location else False,
+        "private_phone": False,
+        "work_phone": row.get("work_phone") or row.get("private_phone") or False,
+        "main_site_id": main_site.id if main_site else False,
+        "secondary_site_ids": [Command.set([site.id for site in secondary_sites if site])],
+        "wage_program_override_id": wage_program.id or False,
+        "work_location_id": False,
+        "address_id": False,
     }
     vals["name"] = row["name"]
 
@@ -191,10 +193,7 @@ def get_or_create_employee(env, row: dict[str, str], department_map: dict[str, i
     else:
         employee = env["hr.employee"]
         if row.get("work_email"):
-            employee = env["hr.employee"].search(
-                [("work_email", "=", row.get("work_email"))],
-                limit=1,
-            )
+            employee = env["hr.employee"].search([("work_email", "=", row.get("work_email"))], limit=1)
         if not employee:
             employee = env["hr.employee"].search([("name", "=", row["name"])], limit=1)
         if employee:
@@ -238,6 +237,8 @@ def import_ready_directory(env, csv_dir: Path) -> dict[str, int]:
     for row in jobs:
         job = get_or_create_job(env, row)
         job_map[row["id"]] = job.id
+
+    env["tenenet.hr.job.legal.wage.map"]._load_default_seed_data()
 
     employee_map: dict[str, int] = {}
     for row in employees:
@@ -287,4 +288,5 @@ def main() -> None:
     print(f"PARENT_UPDATES={result['parent_updates']}")
 
 
-main()
+if __name__ == "__main__":
+    main()

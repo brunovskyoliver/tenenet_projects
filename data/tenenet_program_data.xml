@@ -3,102 +3,122 @@
         <record id="tenenet_program_vci" model="tenenet.program">
             <field name="name">Včasná intervencia</field>
             <field name="code">VCI</field>
+            <field name="organizational_unit_id" ref="tenenet_organizational_unit_tenenet_oz"/>
         </record>
 
         <record id="tenenet_program_scpp" model="tenenet.program">
             <field name="name">ŠCPP</field>
             <field name="code">SCPP</field>
+            <field name="organizational_unit_id" ref="tenenet_organizational_unit_scpp"/>
         </record>
 
         <record id="tenenet_program_scpap" model="tenenet.program">
             <field name="name">Súkromné centrum poradenstva a prevencie</field>
             <field name="code">SCPAP</field>
+            <field name="organizational_unit_id" ref="tenenet_organizational_unit_scpp"/>
         </record>
 
         <record id="tenenet_program_akp_deti" model="tenenet.program">
             <field name="name">AKP - deti a mládež</field>
             <field name="code">AKP_DETI</field>
+            <field name="organizational_unit_id" ref="tenenet_organizational_unit_tenenet_oz"/>
         </record>
 
         <record id="tenenet_program_akp_shared" model="tenenet.program">
             <field name="name">AKP - zdieľaná ambulancia</field>
             <field name="code">AKP_SHARED</field>
+            <field name="organizational_unit_id" ref="tenenet_organizational_unit_tenenet_oz"/>
         </record>
 
         <record id="tenenet_program_spodask" model="tenenet.program">
             <field name="name">SPODaSK</field>
             <field name="code">SPODASK</field>
+            <field name="organizational_unit_id" ref="tenenet_organizational_unit_tenenet_oz"/>
         </record>
 
         <record id="tenenet_program_avl" model="tenenet.program">
             <field name="name">AVL</field>
             <field name="code">AVL</field>
+            <field name="organizational_unit_id" ref="tenenet_organizational_unit_tenenet_oz"/>
         </record>
 
         <record id="tenenet_program_psc_sc" model="tenenet.program">
             <field name="name">PSC Senec</field>
             <field name="code">PSC_SC</field>
+            <field name="organizational_unit_id" ref="tenenet_organizational_unit_tenenet_oz"/>
         </record>
 
         <record id="tenenet_program_psc_ke" model="tenenet.program">
             <field name="name">PSC Košice</field>
             <field name="code">PSC_KE</field>
+            <field name="organizational_unit_id" ref="tenenet_organizational_unit_tenenet_oz"/>
         </record>
 
         <record id="tenenet_program_psc_bb" model="tenenet.program">
             <field name="name">PSC Banská Bystrica</field>
             <field name="code">PSC_BB</field>
+            <field name="organizational_unit_id" ref="tenenet_organizational_unit_tenenet_oz"/>
         </record>
 
         <record id="tenenet_program_akp_dosp" model="tenenet.program">
             <field name="name">AKP - dospelí a seniori</field>
             <field name="code">AKP_DOSP</field>
+            <field name="organizational_unit_id" ref="tenenet_organizational_unit_tenenet_oz"/>
         </record>
 
         <record id="tenenet_program_nas_a_vaz" model="tenenet.program">
             <field name="name">Násilie a väzenstvo</field>
             <field name="code">NAS_A_VAZ</field>
+            <field name="organizational_unit_id" ref="tenenet_organizational_unit_kalia"/>
         </record>
 
         <record id="tenenet_program_kc" model="tenenet.program">
             <field name="name">Komunitné centrum</field>
             <field name="code">KC</field>
+            <field name="organizational_unit_id" ref="tenenet_organizational_unit_tenenet_oz"/>
         </record>
 
         <record id="tenenet_program_zdrav_znev" model="tenenet.program">
             <field name="name">Zdravotne znevýhodnení</field>
             <field name="code">ZDRAV_ZNEV</field>
+            <field name="organizational_unit_id" ref="tenenet_organizational_unit_tenenet_oz"/>
         </record>
 
         <record id="tenenet_program_ss_projekty" model="tenenet.program">
             <field name="name">SS projekty</field>
             <field name="code">SS_PROJEKTY</field>
+            <field name="organizational_unit_id" ref="tenenet_organizational_unit_tenenet_oz"/>
         </record>
 
         <record id="tenenet_program_ssp" model="tenenet.program">
             <field name="name">Špecializované sociálne poradenstvo</field>
             <field name="code">SSP</field>
+            <field name="organizational_unit_id" ref="tenenet_organizational_unit_tenenet_oz"/>
         </record>
 
         <record id="tenenet_program_eu_care" model="tenenet.program">
             <field name="name">EU CARE</field>
             <field name="code">EU_CARE</field>
+            <field name="organizational_unit_id" ref="tenenet_organizational_unit_tenenet_oz"/>
         </record>
 
         <record id="tenenet_program_apz_eu_care" model="tenenet.program">
             <field name="name">APZ, EU CARE</field>
             <field name="code">APZ_EU_CARE</field>
+            <field name="organizational_unit_id" ref="tenenet_organizational_unit_tenenet_oz"/>
         </record>
 
         <record id="tenenet_program_ostatne" model="tenenet.program">
             <field name="name">Ostatné (medzinárodné projekty)</field>
             <field name="code">OSTATNE</field>
+            <field name="organizational_unit_id" ref="tenenet_organizational_unit_tenenet_oz"/>
         </record>
 
         <record id="tenenet_program_admin_tenenet" model="tenenet.program">
             <field name="name">Admin TENENET</field>
             <field name="code">ADMIN_TENENET</field>
             <field name="program_kind">support</field>
+            <field name="organizational_unit_id" ref="tenenet_organizational_unit_tenenet_oz"/>
         </record>
     </data>
 </odoo>

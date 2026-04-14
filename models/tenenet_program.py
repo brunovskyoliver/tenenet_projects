@@ -4,6 +4,14 @@ from dateutil.relativedelta import relativedelta
 from markupsafe import escape
 
 from odoo import api, fields, models
+from odoo.exceptions import ValidationError
+
+
+PROGRAM_ORG_UNIT_CODE_MAP = {
+    "SCPP": "SCPP",
+    "SCPAP": "SCPP",
+    "NAS_A_VAZ": "KALIA",
+}
 
 
 class TenenetProgram(models.Model):
@@ -13,6 +21,15 @@ class TenenetProgram(models.Model):
 
     name = fields.Char(string="Názov programu", required=True)
     code = fields.Char(string="Kód programu", required=True)
+    organizational_unit_id = fields.Many2one(
+        "tenenet.organizational.unit",
+        string="Organizačná zložka",
+        ondelete="restrict",
+        default=lambda self: self.env.ref(
+            "tenenet_projects.tenenet_organizational_unit_tenenet_oz",
+            raise_if_not_found=False,
+        ),
+    )
     description = fields.Text(string="Popis")
     active = fields.Boolean(string="Aktívny", default=True)
     is_tenenet_internal = fields.Boolean(
@@ -98,6 +115,26 @@ class TenenetProgram(models.Model):
     )
 
     _unique_code = models.Constraint("UNIQUE(code)", "Kód programu musí byť jedinečný.")
+
+    @api.model
+    def _get_target_organizational_unit(self, program_code):
+        unit_code = PROGRAM_ORG_UNIT_CODE_MAP.get(program_code, "TENENET_OZ")
+        return self.env["tenenet.organizational.unit"].search([("code", "=", unit_code)], limit=1)
+
+    @api.model
+    def _sync_organizational_units(self, force=False):
+        for program in self.with_context(active_test=False).search([]):
+            if not force and program.organizational_unit_id:
+                continue
+            target_unit = self._get_target_organizational_unit(program.code)
+            if target_unit and program.organizational_unit_id != target_unit:
+                program.organizational_unit_id = target_unit
+
+    @api.constrains("active", "is_tenenet_internal", "organizational_unit_id")
+    def _check_organizational_unit(self):
+        for program in self:
+            if program.active and not program.is_tenenet_internal and not program.organizational_unit_id:
+                raise ValidationError("Aktívny program musí mať nastavenú organizačnú zložku.")
 
     def _get_program_assignment_totals(self):
         assignments = self.env["tenenet.project.assignment"].with_context(active_test=False).search([

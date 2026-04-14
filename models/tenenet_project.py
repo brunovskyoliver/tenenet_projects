@@ -134,6 +134,13 @@ class TenenetProject(models.Model):
         readonly=True,
         help="Kanónický program používaný pre P&L reporting, cashflow a alokácie prevádzkových nákladov.",
     )
+    organizational_unit_id = fields.Many2one(
+        "tenenet.organizational.unit",
+        string="Organizačná zložka",
+        related="reporting_program_id.organizational_unit_id",
+        readonly=True,
+        store=True,
+    )
     site_ids = fields.Many2many(
         "tenenet.project.site",
         "tenenet_project_site_rel",
