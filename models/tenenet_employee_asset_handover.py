@@ -178,10 +178,10 @@ class TenenetEmployeeAssetHandover(models.Model):
             "responsible_id": self.env.ref("sign.sign_item_role_default").id,
             "name": _("Podpis zamestnanca"),
             "page": max(document.num_pages, 1),
-            "posX": 0.620,
-            "posY": 0.565,
-            "width": 0.260,
-            "height": 0.070,
+            "posX": 0.645,
+            "posY": 0.475,
+            "width": 0.255,
+            "height": 0.060,
         })
         return template
 

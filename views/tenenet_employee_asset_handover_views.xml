@@ -159,7 +159,43 @@
             <t t-call="web.html_container">
                 <t t-foreach="docs" t-as="o">
                     <t t-call="web.external_layout">
-                        <div class="page">
+                        <style>
+                            .o_tenenet_asset_handover_report .o_tenenet_signature_page {
+                                min-height: 980px;
+                            }
+                            .o_tenenet_asset_handover_report .o_tenenet_signature_block {
+                                margin-top: 150px;
+                                width: 40%;
+                                margin-left: auto;
+                                text-align: center;
+                            }
+                            .o_tenenet_asset_handover_report .o_tenenet_signature_rule {
+                                border-top: 1px solid #000;
+                                margin: 0 0 10px 0;
+                                width: 100%;
+                            }
+                            .o_tenenet_asset_handover_report .o_tenenet_signature_label {
+                                margin: 0;
+                                font-size: 15px;
+                            }
+                            .o_tenenet_asset_handover_report ~ .footer .o_footer_content > div:last-child {
+                                text-align: center !important;
+                            }
+                            .o_tenenet_asset_handover_report ~ .footer .o_footer_content > div:last-child .text-muted {
+                                width: 100%;
+                                display: inline-flex;
+                                justify-content: center;
+                                align-items: center;
+                                gap: 0.30rem;
+                            }
+                            .o_tenenet_asset_handover_report ~ .footer .o_footer_content > div:last-child .page,
+                            .o_tenenet_asset_handover_report ~ .footer .o_footer_content > div:last-child .topage {
+                                display: inline-block;
+                                min-width: 0.75rem;
+                                text-align: center;
+                            }
+                        </style>
+                        <div class="o_tenenet_asset_handover_report page">
                             <h2>Preberací protokol firemného majetku</h2>
                             <p>
                                 <strong>Zamestnanec:</strong>
@@ -198,15 +234,14 @@
                                 <span t-field="o.note"/>
                             </p>
                         </div>
-                        <div class="page">
+                        <div class="o_tenenet_asset_handover_report o_tenenet_signature_page page">
                             <h2>Potvrdenie prevzatia</h2>
                             <p>
                                 Zamestnanec potvrdzuje prevzatie firemného majetku uvedeného v tomto protokole.
                             </p>
-                            <div style="margin-top: 160px; width: 40%; margin-left: 58%;">
-                                <p style="border-top: 1px solid #000; padding-top: 8px;">
-                                    Podpis zamestnanca
-                                </p>
+                            <div class="o_tenenet_signature_block">
+                                <div class="o_tenenet_signature_rule"/>
+                                <p class="o_tenenet_signature_label">Podpis zamestnanca</p>
                             </div>
                         </div>
                     </t>

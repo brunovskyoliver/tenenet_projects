@@ -380,6 +380,10 @@ class TestTenenetEmployeeAssets(TransactionCase):
         )
         self.assertEqual(len(signature_items), 1)
         self.assertEqual(signature_items.page, handover.sign_template_id.document_ids[:1].num_pages)
+        self.assertEqual(signature_items.posX, 0.645)
+        self.assertEqual(signature_items.posY, 0.475)
+        self.assertEqual(signature_items.width, 0.255)
+        self.assertEqual(signature_items.height, 0.060)
 
     def test_employee_action_requires_work_email(self):
         self.employee.work_email = False
@@ -414,6 +418,8 @@ class TestTenenetEmployeeAssets(TransactionCase):
         self.assertIn("Laptop", html)
         self.assertIn("SN-REPORT-001", html)
         self.assertIn("2026", html)
+        self.assertIn("o_tenenet_signature_block", html)
+        self.assertIn("justify-content: center", html)
 
     def test_asset_handover_acl_user_read_only_manager_full(self):
         handover_model_user = self.env["tenenet.employee.asset.handover"].with_user(self.user_user)
