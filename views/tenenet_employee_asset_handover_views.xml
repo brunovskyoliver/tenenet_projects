@@ -268,5 +268,27 @@
                 </div>
             </xpath>
         </template>
+
+        <template id="mail_notification_layout_remove_odoo_branding_tenenet" inherit_id="mail.mail_notification_layout">
+            <xpath expr="//div[@t-if='show_footer' and contains(@style, 'color: #555555; font-size:11px;')]" position="replace">
+                <div t-if="show_unfollow" style="color: #555555; font-size:11px;">
+                    <span id="mail_unfollow">
+                        <a href="/mail/unfollow" style="text-decoration:none; color:#555555;">Unfollow</a>
+                    </span>
+                </div>
+            </xpath>
+        </template>
+
+        <template id="mail_notification_light_remove_odoo_branding_tenenet" inherit_id="mail.mail_notification_light">
+            <xpath expr="//tr[td/a[contains(@href, 'utm_medium=email')]]" position="replace">
+                <tr t-if="show_unfollow">
+                    <td align="center" style="min-width: 590px;">
+                        <span id="mail_unfollow">
+                            <a href="/mail/unfollow" style="text-decoration:none; color:#555555;">Unfollow</a>
+                        </span>
+                    </td>
+                </tr>
+            </xpath>
+        </template>
     </data>
 </odoo>
