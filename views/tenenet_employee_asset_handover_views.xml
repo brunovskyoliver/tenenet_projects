@@ -280,6 +280,9 @@
         </template>
 
         <template id="mail_notification_light_remove_odoo_branding_tenenet" inherit_id="mail.mail_notification_light">
+            <xpath expr="//span[t[contains(@t-out, 'model_description')]]" position="replace">
+                <span style="font-size: 10px;">Dokument: <t t-out="model_description or 'dokument'"/></span>
+            </xpath>
             <xpath expr="//tr[td/a[contains(@href, 'utm_medium=email')]]" position="replace">
                 <tr t-if="show_unfollow">
                     <td align="center" style="min-width: 590px;">
