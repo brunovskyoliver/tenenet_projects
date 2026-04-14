@@ -124,11 +124,6 @@
                             <field name="note"/>
                         </list>
                     </field>
-                    <separator string="Správa k podpisu"/>
-                    <field name="message" nolabel="1" widget="html"/>
-                    <group>
-                        <field name="note"/>
-                    </group>
                     <footer>
                         <button name="action_confirm"
                                 type="object"
@@ -183,6 +178,7 @@
                                     <tr>
                                         <th>Typ</th>
                                         <th>Výrobné číslo</th>
+                                        <th>Termín odovzdania</th>
                                         <th>Hodnota</th>
                                         <th>Poznámka</th>
                                     </tr>
@@ -191,6 +187,7 @@
                                     <tr t-foreach="o.asset_ids" t-as="asset">
                                         <td><span t-field="asset.asset_type_id"/></td>
                                         <td><span t-field="asset.serial_number"/></td>
+                                        <td><span t-field="asset.handover_date"/></td>
                                         <td><span t-field="asset.cost"/></td>
                                         <td><span t-field="asset.note"/></td>
                                     </tr>

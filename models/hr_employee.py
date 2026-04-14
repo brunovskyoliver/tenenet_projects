@@ -1,7 +1,7 @@
 from markupsafe import Markup, escape
 
-from odoo import api, fields, models
-from odoo.exceptions import ValidationError
+from odoo import api, fields, models, _
+from odoo.exceptions import UserError, ValidationError
 
 
 class HrEmployee(models.Model):
@@ -276,6 +276,32 @@ class HrEmployee(models.Model):
             if job not in jobs:
                 jobs.append(job)
         return jobs
+
+    def action_send_unsigned_assets_for_signature(self):
+        self.ensure_one()
+        if not self.work_email:
+            raise UserError(_("Zamestnanec %s nemá vyplnený pracovný email.", self.name))
+
+        assets = self.asset_ids.filtered(lambda asset: asset.active and not asset.handover_id)
+        if not assets:
+            raise UserError(_("Zamestnanec nemá žiadny aktívny majetok bez preberacieho protokolu."))
+
+        handover = self.env["tenenet.employee.asset.handover"].create({
+            "employee_id": self.id,
+            "handover_date": fields.Date.context_today(self),
+        })
+        assets.write({
+            "handover_id": handover.id,
+        })
+        handover.action_send_for_signature()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Preberací protokol"),
+            "res_model": "tenenet.employee.asset.handover",
+            "res_id": handover.id,
+            "view_mode": "form",
+            "target": "current",
+        }
 
     def _is_tenenet_admin_management(self):
         self.ensure_one()

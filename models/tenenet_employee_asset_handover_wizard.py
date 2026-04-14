@@ -23,11 +23,6 @@ class TenenetEmployeeAssetHandoverWizard(models.TransientModel):
         default=lambda self: self.env.ref("base.EUR"),
         required=True,
     )
-    message = fields.Html(
-        string="Správa k podpisu",
-        default=lambda self: _("<p>Dobrý deň,</p><p>prosíme o podpis preberacieho protokolu k odovzdanému firemnému majetku.</p>"),
-    )
-    note = fields.Text(string="Poznámka")
     line_ids = fields.One2many(
         "tenenet.employee.asset.handover.wizard.line",
         "wizard_id",
@@ -38,34 +33,24 @@ class TenenetEmployeeAssetHandoverWizard(models.TransientModel):
         self.ensure_one()
         if not self.line_ids:
             raise UserError(_("Pridajte aspoň jednu položku majetku."))
-        if not self.employee_id.work_email:
-            raise UserError(_("Zamestnanec %s nemá vyplnený pracovný email.", self.employee_id.name))
-
-        handover = self.env["tenenet.employee.asset.handover"].create({
-            "employee_id": self.employee_id.id,
-            "handover_date": self.handover_date,
-            "note": self.note,
-        })
         self.env["tenenet.employee.asset"].create([
             {
                 "employee_id": self.employee_id.id,
                 "asset_type_id": line.asset_type_id.id,
                 "serial_number": line.serial_number,
                 "handover_date": self.handover_date,
-                "handover_id": handover.id,
                 "currency_id": self.currency_id.id,
                 "cost": line.cost,
                 "note": line.note,
             }
             for line in self.line_ids
         ])
-        handover.action_send_for_signature(message=self.message)
 
         return {
             "type": "ir.actions.act_window",
-            "name": _("Preberací protokol"),
-            "res_model": "tenenet.employee.asset.handover",
-            "res_id": handover.id,
+            "name": _("Zamestnanec"),
+            "res_model": "hr.employee",
+            "res_id": self.employee_id.id,
             "view_mode": "form",
             "target": "current",
         }

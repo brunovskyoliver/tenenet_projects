@@ -231,6 +231,12 @@
                             class="btn-primary"
                             context="{'default_employee_id': id}"
                         />
+                        <button
+                            name="action_send_unsigned_assets_for_signature"
+                            type="object"
+                            string="Odoslať majetok na podpis"
+                            class="btn-secondary"
+                        />
                         <separator string="Majetok"/>
                         <field
                             name="asset_ids"
@@ -238,7 +244,7 @@
                             context="{'default_employee_id': id}"
                             colspan="2"
                         >
-                            <list string="Firemný majetok" create="0">
+                            <list string="Firemný majetok" editable="bottom">
                                 <field name="asset_type_id"/>
                                 <field name="serial_number"/>
                                 <field name="handover_date"/>

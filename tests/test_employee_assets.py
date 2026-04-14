@@ -295,7 +295,7 @@ class TestTenenetEmployeeAssets(TransactionCase):
                 "serial_number": "SN-ACL-002",
             })
 
-    def test_asset_handover_wizard_creates_batch_and_sign_request(self):
+    def test_asset_handover_wizard_creates_batch_without_sign_request(self):
         wizard = self.env["tenenet.employee.asset.handover.wizard"].create({
             "employee_id": self.employee.id,
             "handover_date": "2026-04-14",
@@ -315,15 +315,57 @@ class TestTenenetEmployeeAssets(TransactionCase):
             ],
         })
 
+        action = wizard.action_confirm()
+
+        self.assertEqual(action["res_model"], "hr.employee")
+        self.assertEqual(action["res_id"], self.employee.id)
+        assets = self.env["tenenet.employee.asset"].search([("serial_number", "in", ["SN-WIZ-001", "SN-WIZ-002"])])
+        self.assertEqual(len(assets), 2)
+        self.assertEqual(set(assets.mapped("employee_id").ids), {self.employee.id})
+        self.assertEqual(set(str(date) for date in assets.mapped("handover_date")), {"2026-04-14"})
+        self.assertFalse(assets.mapped("handover_id"))
+
+    def test_employee_action_creates_handover_and_sign_request_for_unsigned_assets(self):
+        signed_handover = self.env["tenenet.employee.asset.handover"].create({
+            "employee_id": self.employee.id,
+            "handover_date": "2026-04-01",
+        })
+        already_signed_asset = self.env["tenenet.employee.asset"].create({
+            "employee_id": self.employee.id,
+            "asset_type_id": self.asset_type_laptop.id,
+            "serial_number": "SN-OLD-SIGNED",
+            "handover_date": "2026-04-01",
+            "handover_id": signed_handover.id,
+        })
+        unsigned_assets = self.env["tenenet.employee.asset"].create([
+            {
+                "employee_id": self.employee.id,
+                "asset_type_id": self.asset_type_laptop.id,
+                "serial_number": "SN-WIZ-001",
+                "handover_date": "2026-04-14",
+                "cost": 1200.0,
+                "note": "Notebook",
+            },
+            {
+                "employee_id": self.employee.id,
+                "asset_type_id": self.asset_type_phone.id,
+                "serial_number": "SN-WIZ-002",
+                "handover_date": "2026-04-15",
+                "cost": 300.0,
+                "note": "Mobil",
+            },
+        ])
+
         with self._patch_handover_pdf():
-            action = wizard.action_confirm()
+            action = self.employee.action_send_unsigned_assets_for_signature()
 
         handover = self.env["tenenet.employee.asset.handover"].browse(action["res_id"])
         self.assertEqual(handover.employee_id, self.employee)
-        self.assertEqual(str(handover.handover_date), "2026-04-14")
         self.assertEqual(len(handover.asset_ids), 2)
         self.assertEqual(set(handover.asset_ids.mapped("serial_number")), {"SN-WIZ-001", "SN-WIZ-002"})
         self.assertEqual(set(handover.asset_ids.mapped("handover_id").ids), {handover.id})
+        self.assertEqual(already_signed_asset.handover_id, signed_handover)
+        self.assertEqual(unsigned_assets.handover_id, handover)
 
         self.assertTrue(handover.sign_template_id)
         self.assertTrue(handover.sign_request_id)
@@ -339,19 +381,16 @@ class TestTenenetEmployeeAssets(TransactionCase):
         self.assertEqual(len(signature_items), 1)
         self.assertEqual(signature_items.page, handover.sign_template_id.document_ids[:1].num_pages)
 
-    def test_asset_handover_wizard_requires_work_email(self):
+    def test_employee_action_requires_work_email(self):
         self.employee.work_email = False
-        wizard = self.env["tenenet.employee.asset.handover.wizard"].create({
+        self.env["tenenet.employee.asset"].create({
             "employee_id": self.employee.id,
-            "handover_date": "2026-04-14",
-            "line_ids": [Command.create({
-                "asset_type_id": self.asset_type_laptop.id,
-                "serial_number": "SN-NO-MAIL",
-            })],
+            "asset_type_id": self.asset_type_laptop.id,
+            "serial_number": "SN-NO-MAIL",
         })
 
         with self.assertRaises(UserError):
-            wizard.action_confirm()
+            self.employee.action_send_unsigned_assets_for_signature()
 
     def test_asset_handover_report_contains_asset_details(self):
         handover = self.env["tenenet.employee.asset.handover"].create({
@@ -443,6 +482,14 @@ class TestTenenetEmployeeAssets(TransactionCase):
         self.assertTrue(
             root.xpath("//button[@string='Pridať majetok']"),
             "Expected a button opening the asset handover wizard.",
+        )
+        self.assertTrue(
+            root.xpath("//button[@string='Odoslať majetok na podpis']"),
+            "Expected a button creating the handover sign request.",
+        )
+        self.assertTrue(
+            root.xpath("//field[@name='asset_ids']//list[@editable='bottom']"),
+            "Expected editable asset subview for incremental asset entry.",
         )
         self.assertTrue(
             root.xpath("//field[@name='asset_ids']//field[@name='serial_number']"),
