@@ -1,4 +1,7 @@
+from markupsafe import Markup, escape
+
 from odoo import api, fields, models
+from odoo.exceptions import ValidationError
 
 
 class HrEmployee(models.Model):
@@ -21,6 +24,80 @@ class HrEmployee(models.Model):
         "hr.job",
         string="Katalóg pozície",
         ondelete="set null",
+    )
+    additional_job_ids = fields.Many2many(
+        "hr.job",
+        "hr_employee_additional_job_rel",
+        "employee_id",
+        "job_id",
+        string="Vedľajšie pozície",
+    )
+    main_site_id = fields.Many2one(
+        "tenenet.project.site",
+        string="Hlavné miesto práce",
+        ondelete="set null",
+        domain=[("site_type", "in", ["prevadzka", "centrum"])],
+    )
+    secondary_site_ids = fields.Many2many(
+        "tenenet.project.site",
+        "hr_employee_secondary_site_rel",
+        "employee_id",
+        "site_id",
+        string="Vedľajšie miesta práce",
+        domain=[("site_type", "in", ["prevadzka", "centrum"])],
+    )
+    main_site_address_display = fields.Char(
+        string="Adresa pracoviska",
+        related="main_site_id.address_display",
+        readonly=True,
+        store=True,
+    )
+    all_site_names = fields.Char(
+        string="Všetky miesta práce",
+        compute="_compute_all_site_names",
+        store=True,
+    )
+    all_job_names = fields.Char(
+        string="Všetky pozície",
+        compute="_compute_all_job_names",
+        store=True,
+    )
+    bio = fields.Text(string="Bio")
+    evaluation_ids = fields.One2many(
+        "tenenet.employee.evaluation",
+        "employee_id",
+        string="Ročné hodnotenia",
+    )
+    experience_years_total = fields.Float(
+        string="Počet rokov praxe",
+        digits=(10, 2),
+        default=0.0,
+    )
+    salary_currency_id = fields.Many2one(
+        "res.currency",
+        string="Mena mzdy",
+        related="company_id.currency_id",
+        readonly=True,
+    )
+    monthly_gross_salary_target = fields.Monetary(
+        string="Mesačná hrubá mzda",
+        currency_field="salary_currency_id",
+        help="Cieľová mesačná hrubá mzda používaná pre informáciu a dorovnanie do Admin TENENET.",
+    )
+    profile_summary_html = fields.Html(
+        string="Súhrn pracovísk a pozícií",
+        compute="_compute_profile_summary_html",
+        sanitize=False,
+    )
+    matched_salary_range_ids = fields.Many2many(
+        "tenenet.hr.job.salary.range",
+        compute="_compute_matched_salary_ranges",
+        string="Zodpovedajúce platové pásma",
+    )
+    salary_guidance_html = fields.Html(
+        string="Mzdové odporúčanie",
+        compute="_compute_salary_guidance_html",
+        sanitize=False,
     )
     education_info = fields.Text(string="Vzdelanie")
     work_hours = fields.Float(
@@ -177,6 +254,26 @@ class HrEmployee(models.Model):
         parts = [part.strip() for part in [first_name, last_name] if part and part.strip()]
         return " ".join(parts)
 
+    def _get_site_sequence(self):
+        self.ensure_one()
+        sites = []
+        if self.main_site_id:
+            sites.append(self.main_site_id)
+        for site in self.secondary_site_ids.sorted(lambda rec: ((rec.name or "").lower(), rec.id)):
+            if site not in sites:
+                sites.append(site)
+        return sites
+
+    def _get_job_sequence(self):
+        self.ensure_one()
+        jobs = []
+        if self.job_id:
+            jobs.append(self.job_id)
+        for job in self.additional_job_ids.sorted(lambda rec: ((rec.name or "").lower(), rec.id)):
+            if job not in jobs:
+                jobs.append(job)
+        return jobs
+
     @api.model
     def _prepare_identity_sync_vals(self, vals, record=None):
         identity_keys = {"title_academic", "first_name", "last_name"}
@@ -242,6 +339,160 @@ class HrEmployee(models.Model):
             synced_vals["mobile_phone"] = False
         return synced_vals
 
+    @api.depends("main_site_id", "main_site_id.name", "secondary_site_ids", "secondary_site_ids.name")
+    def _compute_all_site_names(self):
+        for employee in self:
+            employee.all_site_names = ", ".join(site.display_name for site in employee._get_site_sequence())
+
+    @api.depends("job_id", "job_id.name", "additional_job_ids", "additional_job_ids.name")
+    def _compute_all_job_names(self):
+        for employee in self:
+            employee.all_job_names = ", ".join(job.display_name for job in employee._get_job_sequence())
+
+    @api.depends("main_site_id", "secondary_site_ids", "job_id", "additional_job_ids")
+    def _compute_profile_summary_html(self):
+        for employee in self:
+            sites = employee._get_site_sequence()
+            jobs = employee._get_job_sequence()
+            site_items = "".join(
+                f"<span class='o_tenenet_employee_chip'>{escape(site.display_name)}</span>"
+                for site in sites
+            ) or "<span class='text-muted'>Nezadané</span>"
+            job_items = "".join(
+                f"<span class='o_tenenet_employee_chip'>{escape(job.display_name)}</span>"
+                for job in jobs
+            ) or "<span class='text-muted'>Nezadané</span>"
+            employee.profile_summary_html = Markup(
+                """
+                <div class="o_tenenet_employee_summary_cards">
+                    <div class="o_tenenet_employee_summary_card">
+                        <div class="o_tenenet_employee_summary_title">Pozície</div>
+                        <div class="o_tenenet_employee_chip_row">%s</div>
+                    </div>
+                    <div class="o_tenenet_employee_summary_card">
+                        <div class="o_tenenet_employee_summary_title">Miesta práce</div>
+                        <div class="o_tenenet_employee_chip_row">%s</div>
+                    </div>
+                </div>
+                """
+            ) % (Markup(job_items), Markup(site_items))
+
+    @api.depends(
+        "job_id",
+        "job_id.salary_range_ids",
+        "job_id.salary_range_ids.level_name",
+        "job_id.salary_range_ids.experience_years_from",
+        "job_id.salary_range_ids.experience_years_to",
+        "job_id.salary_range_ids.gross_min",
+        "job_id.salary_range_ids.gross_max",
+        "additional_job_ids",
+        "additional_job_ids.salary_range_ids",
+        "additional_job_ids.salary_range_ids.level_name",
+        "additional_job_ids.salary_range_ids.experience_years_from",
+        "additional_job_ids.salary_range_ids.experience_years_to",
+        "additional_job_ids.salary_range_ids.gross_min",
+        "additional_job_ids.salary_range_ids.gross_max",
+        "experience_years_total",
+    )
+    def _compute_matched_salary_ranges(self):
+        for employee in self:
+            experience = employee.experience_years_total or 0.0
+            matched_ranges = self.env["tenenet.hr.job.salary.range"]
+            for job in employee._get_job_sequence():
+                for salary_range in job.salary_range_ids.sorted(
+                    lambda rec: (rec.sequence, rec.experience_years_from, rec.id)
+                ):
+                    upper = salary_range.experience_years_to
+                    if experience < (salary_range.experience_years_from or 0.0):
+                        continue
+                    if upper not in (False, None) and experience > upper:
+                        continue
+                    matched_ranges |= salary_range
+            employee.matched_salary_range_ids = matched_ranges
+
+    @api.depends(
+        "job_id",
+        "job_id.salary_range_ids",
+        "job_id.salary_range_ids.sequence",
+        "job_id.salary_range_ids.level_name",
+        "job_id.salary_range_ids.experience_years_from",
+        "job_id.salary_range_ids.experience_years_to",
+        "job_id.salary_range_ids.gross_min",
+        "job_id.salary_range_ids.gross_max",
+        "job_id.salary_range_ids.study_requirements",
+        "job_id.salary_range_ids.notes",
+        "additional_job_ids",
+        "additional_job_ids.salary_range_ids",
+        "additional_job_ids.salary_range_ids.sequence",
+        "additional_job_ids.salary_range_ids.level_name",
+        "additional_job_ids.salary_range_ids.experience_years_from",
+        "additional_job_ids.salary_range_ids.experience_years_to",
+        "additional_job_ids.salary_range_ids.gross_min",
+        "additional_job_ids.salary_range_ids.gross_max",
+        "additional_job_ids.salary_range_ids.study_requirements",
+        "additional_job_ids.salary_range_ids.notes",
+        "experience_years_total",
+        "monthly_gross_salary_target",
+    )
+    def _compute_salary_guidance_html(self):
+        for employee in self:
+            cards = []
+            for salary_range in employee.matched_salary_range_ids.sorted(
+                lambda rec: (
+                    rec.job_id.display_name or "",
+                    rec.sequence,
+                    rec.experience_years_from,
+                    rec.id,
+                )
+            ):
+                years_label = (
+                    f"{salary_range.experience_years_from:g} - {salary_range.experience_years_to:g} rokov"
+                    if salary_range.experience_years_to not in (False, None)
+                    else f"od {salary_range.experience_years_from:g} rokov"
+                )
+                cards.append(
+                    """
+                    <div class="o_tenenet_salary_range_card">
+                        <div class="o_tenenet_salary_range_header">
+                            <span class="o_tenenet_salary_range_job">%s</span>
+                            <span class="o_tenenet_employee_chip">%s</span>
+                        </div>
+                        <div class="o_tenenet_salary_range_value">%s - %s EUR</div>
+                        <div class="o_tenenet_salary_range_meta">%s</div>
+                        %s
+                        %s
+                    </div>
+                    """
+                    % (
+                        escape(salary_range.job_id.display_name or "-"),
+                        escape(salary_range.level_name or "-"),
+                        escape(f"{salary_range.gross_min:,.2f}".replace(",", " ")),
+                        escape(f"{salary_range.gross_max:,.2f}".replace(",", " ")),
+                        escape(years_label),
+                        (
+                            f"<div class='o_tenenet_salary_range_note'><strong>Štúdium:</strong> {escape(salary_range.study_requirements)}</div>"
+                            if salary_range.study_requirements
+                            else ""
+                        ),
+                        (
+                            f"<div class='o_tenenet_salary_range_note'>{escape(salary_range.notes)}</div>"
+                            if salary_range.notes
+                            else ""
+                        ),
+                    )
+                )
+            if not cards:
+                cards.append("<div class='text-muted'>Pre zadané roky praxe zatiaľ nie je pripravené platové pásmo.</div>")
+            target_html = ""
+            if employee.monthly_gross_salary_target:
+                target_html = (
+                    "<div class='o_tenenet_salary_target'>Mesačná hrubá mzda: "
+                    f"<strong>{escape(f'{employee.monthly_gross_salary_target:,.2f}'.replace(',', ' '))} EUR</strong></div>"
+                )
+            employee.salary_guidance_html = Markup(
+                "<div class='o_tenenet_salary_guidance'>%s<div class='o_tenenet_salary_range_grid'>%s</div></div>"
+            ) % (Markup(target_html), Markup("".join(cards)))
+
     @api.depends("asset_ids", "asset_ids.cost", "asset_ids.active")
     def _compute_asset_total_value(self):
         for employee in self:
@@ -262,13 +513,18 @@ class HrEmployee(models.Model):
             vals = self._prepare_identity_sync_vals(vals, self)
             vals = self._prepare_position_sync_vals(vals, self)
             vals = self._prepare_private_phone_sync_vals(vals, self)
-            return super().write(vals)
+            result = super().write(vals)
+            if "monthly_gross_salary_target" in vals:
+                self.tenenet_cost_ids._sync_internal_residual_expense()
+            return result
 
         for record in self:
             record_vals = record._prepare_identity_sync_vals(vals, record)
             record_vals = record._prepare_position_sync_vals(record_vals, record)
             record_vals = record._prepare_private_phone_sync_vals(record_vals, record)
             super(HrEmployee, record).write(record_vals)
+            if "monthly_gross_salary_target" in vals:
+                record.tenenet_cost_ids._sync_internal_residual_expense()
         return True
 
     def read(self, fields=None, load="_classic_read"):
@@ -405,3 +661,15 @@ class HrEmployee(models.Model):
             else:
                 rec.tenenet_availability_state = "overbooked"
                 rec.tenenet_availability_label = "Preťažený"
+
+    @api.constrains("main_site_id", "secondary_site_ids")
+    def _check_work_sites(self):
+        allowed_types = {"prevadzka", "centrum"}
+        for rec in self:
+            if rec.main_site_id and rec.main_site_id.site_type not in allowed_types:
+                raise ValidationError("Hlavné miesto práce môže byť len prevádzka alebo centrum.")
+            invalid_secondary = rec.secondary_site_ids.filtered(lambda site: site.site_type not in allowed_types)
+            if invalid_secondary:
+                raise ValidationError("Vedľajšie miesta práce môžu byť len prevádzky alebo centrá.")
+            if rec.main_site_id and rec.main_site_id in rec.secondary_site_ids:
+                raise ValidationError("Hlavné miesto práce nesmie byť zároveň medzi vedľajšími miestami.")

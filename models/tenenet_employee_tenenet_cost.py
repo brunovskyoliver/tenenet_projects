@@ -32,6 +32,12 @@ class TenenetEmployeeTenenetCost(models.Model):
         currency_field="currency_id",
         help="Celková cena práce zamestnanca za daný mesiac (z mzdovej agendy)",
     )
+    monthly_gross_salary_target = fields.Monetary(
+        string="Mesačná hrubá mzda - cieľ",
+        currency_field="currency_id",
+        related="employee_id.monthly_gross_salary_target",
+        readonly=True,
+    )
     project_billed_gross = fields.Monetary(
         string="Fakturovaná hrubá mzda projektom",
         currency_field="currency_id",
@@ -70,6 +76,7 @@ class TenenetEmployeeTenenetCost(models.Model):
         "employee_id.assignment_ids.timesheet_ids.gross_salary",
         "employee_id.assignment_ids.timesheet_ids.total_labor_cost",
         "employee_id.assignment_ids.timesheet_ids.period",
+        "employee_id.monthly_gross_salary_target",
     )
     def _compute_residual(self):
         Timesheet = self.env["tenenet.project.timesheet"]
@@ -93,6 +100,32 @@ class TenenetEmployeeTenenetCost(models.Model):
             rec.tenenet_residual_hm = (rec.gross_salary_employee or 0.0) - billed_gross
             rec.tenenet_residual_ccp = (rec.total_labor_cost_employee or 0.0) - billed_ccp
 
+    def _sync_internal_residual_expense(self):
+        InternalExpense = self.env["tenenet.internal.expense"].sudo()
+        internal_project = self.env["tenenet.project"].sudo()._ensure_admin_tenenet_entities()
+        for rec in self:
+            existing = InternalExpense.search([("tenenet_cost_id", "=", rec.id)], limit=1)
+            target_hm = rec.employee_id.monthly_gross_salary_target or 0.0
+            gap_hm = max(0.0, target_hm - (rec.project_billed_gross or 0.0))
+            if gap_hm <= 0.001:
+                if existing:
+                    existing.unlink()
+                continue
+
+            vals = {
+                "employee_id": rec.employee_id.id,
+                "period": rec.period,
+                "category": "residual_wage",
+                "source_project_id": internal_project.id,
+                "tenenet_cost_id": rec.id,
+                "cost_hm": gap_hm,
+                "note": "Dorovnanie mesačnej hrubej mzdy do cieľovej hodnoty.",
+            }
+            if existing:
+                existing.write(vals)
+            else:
+                InternalExpense.create(vals)
+
     @api.model
     def _sync_for_employee_period(self, employee_id, period):
         """Create or ensure residual record exists for an employee+period after timesheet changes."""
@@ -101,9 +134,21 @@ class TenenetEmployeeTenenetCost(models.Model):
             ("period", "=", period),
         ], limit=1)
         if not existing:
-            self.create({
+            existing = self.create({
                 "employee_id": employee_id,
                 "period": period,
             })
         else:
             existing._compute_residual()
+        existing._sync_internal_residual_expense()
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records._sync_internal_residual_expense()
+        return records
+
+    def write(self, vals):
+        result = super().write(vals)
+        self._sync_internal_residual_expense()
+        return result

@@ -9,9 +9,18 @@ from odoo.tests import TransactionCase, tagged
 class TestTenenetPlan09ProjectTimesheet(TransactionCase):
     def setUp(self):
         super().setUp()
+        self.program = self.env["tenenet.program"].create({"name": "Program Timesheet", "code": "PLAN09_TS"})
         self.employee = self.env["hr.employee"].create({"name": "Zamestnanec Timesheet"})
-        self.project = self.env["tenenet.project"].create({"name": "Projekt Timesheet"})
-        self.project2 = self.env["tenenet.project"].create({"name": "Projekt Timesheet 2"})
+        self.project = self.env["tenenet.project"].create({
+            "name": "Projekt Timesheet",
+            "program_ids": [(6, 0, self.program.ids)],
+            "reporting_program_id": self.program.id,
+        })
+        self.project2 = self.env["tenenet.project"].create({
+            "name": "Projekt Timesheet 2",
+            "program_ids": [(6, 0, self.program.ids)],
+            "reporting_program_id": self.program.id,
+        })
         self.assignment = self.env["tenenet.project.assignment"].create({
             "employee_id": self.employee.id,
             "project_id": self.project.id,
@@ -209,6 +218,34 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
         ts.write({"hours_pp": 20.0})
         cost.invalidate_recordset()
         self.assertAlmostEqual(cost.project_billed_gross, 200.0, places=2)
+
+    def test_monthly_gross_target_creates_and_updates_residual_internal_expense(self):
+        self.employee.write({"monthly_gross_salary_target": 900.0})
+        ts = self.env["tenenet.project.timesheet"].create({
+            "assignment_id": self.assignment.id,
+            "period": "2026-07-01",
+            "hours_pp": 50.0,
+        })
+
+        cost = self.env["tenenet.employee.tenenet.cost"].search([
+            ("employee_id", "=", self.employee.id),
+            ("period", "=", "2026-07-01"),
+        ], limit=1)
+        expense = self.env["tenenet.internal.expense"].search([
+            ("tenenet_cost_id", "=", cost.id),
+        ], limit=1)
+
+        self.assertTrue(cost)
+        self.assertTrue(expense)
+        self.assertEqual(expense.category, "residual_wage")
+        self.assertTrue(expense.source_project_id.is_tenenet_internal)
+        self.assertFalse(expense.source_assignment_id)
+        self.assertAlmostEqual(cost.project_billed_gross, 500.0, places=2)
+        self.assertAlmostEqual(expense.cost_hm, 400.0, places=2)
+
+        ts.write({"hours_pp": 90.0})
+        expense.invalidate_recordset()
+        self.assertFalse(expense.exists())
 
     def test_monthly_matrix_loads_existing_hours(self):
         self.env["tenenet.project.timesheet"].create({

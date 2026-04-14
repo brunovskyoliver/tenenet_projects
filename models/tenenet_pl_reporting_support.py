@@ -821,7 +821,7 @@ class TenenetPLReportingSupport(models.AbstractModel):
         return rows
 
     def _get_internal_expense_amount(self, expense):
-        if expense.category in ("wage", "leave"):
+        if expense.category in ("wage", "leave", "residual_wage"):
             return expense.cost_hm or 0.0
         return expense.expense_amount or expense.cost_ccp or 0.0
 

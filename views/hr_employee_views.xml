@@ -4,9 +4,11 @@
             <field name="name">hr.employee.tenenet.list</field>
             <field name="model">hr.employee</field>
             <field name="arch" type="xml">
-                <list string="Zamestnanci">
+                <list string="Zamestnanci" default_order="main_site_id,tenenet_number,last_name,first_name,name">
                     <field name="name" />
-                    <field name="job_id" />
+                    <field name="main_site_id" optional="show" />
+                    <field name="all_job_names" string="Pozície" optional="show" />
+                    <field name="all_site_names" string="Miesta práce" optional="hide" />
                     <field name="tenenet_allocation_ratio_total" />
                     <field name="tenenet_free_ratio" />
                     <field
@@ -28,6 +30,8 @@
                 <search string="Zamestnanci">
                     <field name="name" />
                     <field name="job_id" />
+                    <field name="main_site_id" />
+                    <field name="all_job_names" />
                     <filter
                         string="Voľní"
                         name="free"
@@ -53,6 +57,11 @@
                             string="Profesie"
                             name="group_job"
                             context="{'group_by': 'job_id'}"
+                        />
+                        <filter
+                            string="Hlavné pracovisko"
+                            name="group_main_site"
+                            context="{'group_by': 'main_site_id'}"
                         />
                         <filter
                             string="Stav dostupnosti"
@@ -88,6 +97,8 @@
                                     name="service_catalog_id"
                                     string="Služba"
                                 />
+                                <field name="delivery_online" />
+                                <field name="delivery_in_person" />
                                 <field name="active" />
                             </list>
                             <form string="Služba">
@@ -101,6 +112,8 @@
                                             name="service_catalog_id"
                                             string="Služba"
                                         />
+                                        <field name="delivery_online" />
+                                        <field name="delivery_in_person" />
                                         <field name="active" />
                                     </group>
                                     <group>
@@ -112,15 +125,36 @@
                     </page>
                 </xpath>
 
+                <xpath expr="//page[@name='work_information']//field[@name='job_id']" position="after">
+                    <field name="additional_job_ids" widget="many2many_tags" string="Ďalšie pozície" />
+                </xpath>
+
+                <xpath expr="//page[@name='work_information']//field[@name='job_title']" position="replace"/>
+
+                <xpath expr="//page[@name='work_information']//field[@name='address_id']" position="replace">
+                    <field name="main_site_address_display" readonly="1"/>
+                </xpath>
+
+                <xpath expr="//page[@name='work_information']//field[@name='work_location_id']" position="replace">
+                    <field name="main_site_id" />
+                    <field name="secondary_site_ids" widget="many2many_tags" />
+                </xpath>
+
                 <xpath expr="//notebook" position="inside">
                     <page string="TENENET">
                         <group>
-                            <group>
+                            <group string="Profil">
                                 <field name="work_ratio" string="Úväzok (%)" />
+                                <field name="experience_years_total" />
                                 <field name="is_mgmt" />
                             </group>
-                            <group>
+                            <group string="Mzdové nastavenie">
                                 <field name="hourly_rate" />
+                                <field name="monthly_gross_salary_target" />
+                            </group>
+                        </group>
+                        <group>
+                            <group string="Kapacita a alokácia">
                                 <field
                                     name="tenenet_allocation_ratio_total"
                                     readonly="1"
@@ -133,6 +167,9 @@
                                     widget="badge"
                                 />
                             </group>
+                        </group>
+                        <group string="Platové usmernenie">
+                            <field name="salary_guidance_html" nolabel="1" widget="html" class="o_tenenet_salary_guidance_field"/>
                         </group>
                         <div class="o_tenenet_employee_assignments mt-4">
                             <div class="o_form_label mb-2">
@@ -258,6 +295,88 @@
                     expr="//page[@name='resume']//div[@id='o_employee_left']"
                     position="inside"
                 >
+                    <group string="Bio">
+                        <field
+                            name="bio"
+                            nolabel="1"
+                            widget="text"
+                            placeholder="Predstavte skúsenosti, zameranie a oblasť práce zamestnanca."
+                            class="o_tenenet_resume_text"
+                        />
+                    </group>
+                    <group string="Ročné hodnotenia">
+                        <field
+                            name="evaluation_ids"
+                            nolabel="1"
+                            context="{'default_employee_id': id}"
+                        >
+                            <kanban class="o_kanban_mobile">
+                                <field name="year_display"/>
+                                <field name="manager_name"/>
+                                <field name="visible_to_employee"/>
+                                <field name="summary"/>
+                                <templates>
+                                    <t t-name="card">
+                                        <div class="o_tenenet_eval_card">
+                                            <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                                <strong><field name="year_display"/></strong>
+                                                <span t-if="record.visible_to_employee.raw_value" class="badge text-bg-success">
+                                                    Zdieľané
+                                                </span>
+                                                <span t-else="" class="badge text-bg-secondary">
+                                                    Interné
+                                                </span>
+                                            </div>
+                                            <div class="text-muted small mb-2">
+                                                <field name="manager_name"/>
+                                            </div>
+                                            <div t-if="record.summary.raw_value" class="text-wrap">
+                                                <field name="summary"/>
+                                            </div>
+                                            <div t-else="" class="text-muted">
+                                                Bez celkového zhodnotenia.
+                                            </div>
+                                        </div>
+                                    </t>
+                                </templates>
+                            </kanban>
+                            <form string="Ročné hodnotenie">
+                                <sheet>
+                                        <group>
+                                            <group>
+                                                <field name="employee_id" invisible="1"/>
+                                                <field name="year_display"/>
+                                                <field name="manager_id"/>
+                                                <field name="author_user_id" readonly="1"/>
+                                            </group>
+                                            <group>
+                                                <field name="visible_to_employee"/>
+                                                <field name="active"/>
+                                            </group>
+                                        </group>
+                                        <separator string="Obsah hodnotenia"/>
+                                        <div class="o_tenenet_eval_form_stack">
+                                            <div class="o_tenenet_eval_form_block">
+                                                <label for="summary" string="Celkové zhodnotenie"/>
+                                                <field name="summary" nolabel="1"/>
+                                            </div>
+                                            <div class="o_tenenet_eval_form_block">
+                                                <label for="strengths" string="Silné stránky"/>
+                                                <field name="strengths" nolabel="1"/>
+                                            </div>
+                                            <div class="o_tenenet_eval_form_block">
+                                                <label for="goals" string="Ciele na ďalší rok"/>
+                                                <field name="goals" nolabel="1"/>
+                                            </div>
+                                            <div class="o_tenenet_eval_form_block">
+                                                <label for="recommendations" string="Odporúčania"/>
+                                                <field name="recommendations" nolabel="1"/>
+                                            </div>
+                                        </div>
+                                    </sheet>
+                                </form>
+                        </field>
+                    </group>
                     <group string="TENENET školenia">
                         <field
                             name="training_ids"
@@ -312,6 +431,10 @@
             <field name="model">hr.employee.public</field>
             <field name="inherit_id" ref="hr.hr_employee_public_view_form" />
             <field name="arch" type="xml">
+                <xpath expr="//page[@name='work_information']//div[@id='o_work_employee_main']/group[1]" position="inside">
+                    <field name="all_job_names" string="Pozície"/>
+                    <field name="all_site_names" string="Miesta práce"/>
+                </xpath>
                 <xpath expr="//page[@name='work_information']" position="after">
                     <page string="Služby">
                         <separator
@@ -320,6 +443,8 @@
                         <field name="service_ids" nolabel="1" colspan="2">
                             <list string="Služby">
                                 <field name="name" string="Služba" />
+                                <field name="delivery_online" />
+                                <field name="delivery_in_person" />
                                 <field name="active" />
                             </list>
                             <form string="Služba">
@@ -330,6 +455,8 @@
                                             string="Služba"
                                             readonly="1"
                                         />
+                                        <field name="delivery_online" readonly="1" />
+                                        <field name="delivery_in_person" readonly="1" />
                                         <field name="active" readonly="1" />
                                     </group>
                                     <group>
@@ -342,6 +469,67 @@
                             </form>
                         </field>
                     </page>
+                </xpath>
+                <xpath expr="//page[@name='resume']" position="inside">
+                    <group string="TENENET životopis">
+                        <group string="Bio">
+                            <field name="bio" nolabel="1" readonly="1" widget="text" class="o_tenenet_resume_text"/>
+                        </group>
+                        <group string="Ročné hodnotenia">
+                            <field name="evaluation_ids" nolabel="1">
+                                <kanban class="o_kanban_mobile">
+                                    <field name="year_display"/>
+                                    <field name="manager_name"/>
+                                    <field name="summary"/>
+                                    <templates>
+                                        <t t-name="card">
+                                            <div class="o_tenenet_eval_card">
+                                                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                                    <strong><field name="year_display"/></strong>
+                                                </div>
+                                                <div class="text-muted small mb-2">
+                                                    <field name="manager_name"/>
+                                                </div>
+                                                <div t-if="record.summary.raw_value" class="text-wrap">
+                                                    <field name="summary"/>
+                                                </div>
+                                                <div t-else="" class="text-muted">
+                                                    Hodnotenie ešte nie je zdieľané.
+                                                </div>
+                                            </div>
+                                        </t>
+                                    </templates>
+                                </kanban>
+                                <form string="Ročné hodnotenie">
+                                    <sheet>
+                                        <group>
+                                            <field name="year_display" readonly="1"/>
+                                            <field name="manager_name" readonly="1"/>
+                                        </group>
+                                        <separator string="Obsah hodnotenia"/>
+                                        <div class="o_tenenet_eval_form_stack">
+                                            <div class="o_tenenet_eval_form_block">
+                                                <label for="summary" string="Celkové zhodnotenie"/>
+                                                <field name="summary" nolabel="1" readonly="1"/>
+                                            </div>
+                                            <div class="o_tenenet_eval_form_block">
+                                                <label for="strengths" string="Silné stránky"/>
+                                                <field name="strengths" nolabel="1" readonly="1"/>
+                                            </div>
+                                            <div class="o_tenenet_eval_form_block">
+                                                <label for="goals" string="Ciele na ďalší rok"/>
+                                                <field name="goals" nolabel="1" readonly="1"/>
+                                            </div>
+                                            <div class="o_tenenet_eval_form_block">
+                                                <label for="recommendations" string="Odporúčania"/>
+                                                <field name="recommendations" nolabel="1" readonly="1"/>
+                                            </div>
+                                        </div>
+                                    </sheet>
+                                </form>
+                            </field>
+                        </group>
+                    </group>
                 </xpath>
             </field>
         </record>

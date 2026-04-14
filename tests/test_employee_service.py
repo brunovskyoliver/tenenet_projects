@@ -1,4 +1,4 @@
-from odoo.exceptions import AccessError
+from odoo.exceptions import AccessError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -127,6 +127,25 @@ class TestTenenetEmployeeService(TransactionCase):
                 "employee_id": self.employee.id,
                 "name": "Neopravnena zmena",
             })
+
+    def test_service_requires_at_least_one_delivery_mode(self):
+        with self.assertRaises(ValidationError):
+            self.service_model.create({
+                "employee_id": self.employee.id,
+                "name": "Krízová intervencia",
+                "delivery_online": False,
+                "delivery_in_person": False,
+            })
+
+        service = self.service_model.create({
+            "employee_id": self.employee.id,
+            "name": "Krízová intervencia",
+            "delivery_online": True,
+            "delivery_in_person": False,
+        })
+
+        self.assertTrue(service.delivery_online)
+        self.assertFalse(service.delivery_in_person)
 
     def test_hr_manager_has_full_access(self):
         service = self.service_model.with_user(self.hr_manager_user).create({

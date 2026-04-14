@@ -172,7 +172,7 @@ class TenenetCashflowReportHandler(models.AbstractModel):
         internal_expenses = self.env["tenenet.internal.expense"].sudo().search([
             ("period", ">=", year_start),
             ("period", "<=", year_end),
-            ("category", "=", "leave"),
+            ("category", "in", ["leave", "residual_wage"]),
         ])
         for expense in internal_expenses:
             result[expense.period.month] -= expense.cost_ccp or 0.0

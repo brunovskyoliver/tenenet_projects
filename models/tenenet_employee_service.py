@@ -1,4 +1,5 @@
 from odoo import api, fields, models
+from odoo.exceptions import ValidationError
 
 
 class TenenetEmployeeService(models.Model):
@@ -21,6 +22,8 @@ class TenenetEmployeeService(models.Model):
     )
     name = fields.Char(string="Služba", required=True)
     description = fields.Text(string="Poznámka")
+    delivery_online = fields.Boolean(string="Online", default=True)
+    delivery_in_person = fields.Boolean(string="Osobne", default=True)
     active = fields.Boolean(string="Aktívne", default=True)
     manager_user_ids = fields.Many2many(
         "res.users",
@@ -72,3 +75,9 @@ class TenenetEmployeeService(models.Model):
 
     def write(self, vals):
         return super().write(self._prepare_service_sync_vals(vals))
+
+    @api.constrains("delivery_online", "delivery_in_person")
+    def _check_delivery_modes(self):
+        for rec in self:
+            if not rec.delivery_online and not rec.delivery_in_person:
+                raise ValidationError("Služba musí byť dostupná online alebo osobne.")

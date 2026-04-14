@@ -141,3 +141,144 @@
         padding-right: 24px;
     }
 }
+
+.o_form_view {
+    .o_tenenet_employee_summary_cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 16px;
+        margin-bottom: 8px;
+    }
+
+    .o_tenenet_employee_summary_card,
+    .o_tenenet_salary_range_card,
+    .o_tenenet_eval_card {
+        border: 1px solid rgba(71, 85, 105, 0.9);
+        border-radius: 16px;
+        background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+        box-shadow: 0 16px 32px rgba(2, 6, 23, 0.24);
+        color: #e2e8f0;
+    }
+
+    .o_tenenet_employee_summary_card,
+    .o_tenenet_eval_card {
+        padding: 16px 18px;
+    }
+
+    .o_tenenet_employee_summary_title {
+        color: #93c5fd;
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+    }
+
+    .o_tenenet_employee_chip_row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .o_tenenet_employee_chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(59, 130, 246, 0.18);
+        color: #bfdbfe;
+        font-size: 0.88rem;
+        font-weight: 600;
+    }
+
+    .o_tenenet_resume_text textarea,
+    .o_tenenet_resume_text .o_input {
+        min-height: 110px;
+    }
+
+    .o_tenenet_eval_form_stack {
+        display: grid;
+        gap: 16px;
+        width: 100%;
+    }
+
+    .o_tenenet_eval_form_block {
+        width: 100%;
+    }
+
+    .o_tenenet_eval_form_block > .o_form_label {
+        display: block;
+        margin-bottom: 6px;
+    }
+
+    .o_tenenet_eval_form_block .o_field_widget,
+    .o_tenenet_eval_form_block .o_field_text,
+    .o_tenenet_eval_form_block .o_input {
+        width: 100%;
+    }
+
+    .o_tenenet_eval_form_block textarea,
+    .o_tenenet_eval_form_block .o_input {
+        min-height: 110px;
+    }
+
+    .o_tenenet_salary_guidance {
+        display: grid;
+        gap: 12px;
+    }
+
+    .o_tenenet_salary_guidance_field {
+        width: 100%;
+    }
+
+    .o_tenenet_salary_target {
+        color: #bfdbfe;
+        font-size: 0.95rem;
+    }
+
+    .o_tenenet_salary_range_grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+    }
+
+    .o_tenenet_salary_range_card {
+        padding: 14px 16px;
+    }
+
+    .o_tenenet_salary_range_header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+
+    .o_tenenet_salary_range_job {
+        color: #93c5fd;
+        font-weight: 700;
+    }
+
+    .o_tenenet_salary_range_value {
+        color: #f8fafc;
+        font-size: 1rem;
+        font-weight: 700;
+        margin-bottom: 6px;
+    }
+
+    .o_tenenet_salary_range_meta,
+    .o_tenenet_salary_range_note {
+        color: #cbd5e1;
+        font-size: 0.87rem;
+    }
+
+    .o_tenenet_eval_card {
+        min-height: 150px;
+    }
+
+    .o_tenenet_eval_card .text-muted,
+    .o_tenenet_salary_guidance .text-muted {
+        color: #94a3b8 !important;
+    }
+}

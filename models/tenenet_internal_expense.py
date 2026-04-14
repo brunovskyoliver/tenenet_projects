@@ -8,6 +8,7 @@ _logger = logging.getLogger(__name__)
 INTERNAL_EXPENSE_CATEGORY = [
     ("leave", "Dovolenka"),
     ("wage", "Mzda"),
+    ("residual_wage", "Dorovnanie mzdy"),
     ("expense", "Výdavok"),
 ]
 
@@ -76,6 +77,13 @@ class TenenetInternalExpense(models.Model):
         ondelete="set null",
         help="Priradenie, ku ktorému mal byť náklad priradený, ale nemohol byť (z dôvodu limitu alebo stropu).",
     )
+    tenenet_cost_id = fields.Many2one(
+        "tenenet.employee.tenenet.cost",
+        string="Zdrojové mesačné dorovnanie",
+        ondelete="cascade",
+        index=True,
+        help="Technický odkaz na mesačný prepočet dorovnania hrubej mzdy.",
+    )
     hour_type = fields.Selection(
         LEAVE_HOUR_TYPE,
         string="Typ hodín",
@@ -140,6 +148,10 @@ class TenenetInternalExpense(models.Model):
     _unique_hr_expense = models.Constraint(
         "UNIQUE(hr_expense_id)",
         "Pre jeden HR výdavok môže existovať len jeden interný náklad typu výdavok.",
+    )
+    _unique_tenenet_cost = models.Constraint(
+        "UNIQUE(tenenet_cost_id)",
+        "Pre jedno mesačné dorovnanie môže existovať len jeden interný náklad.",
     )
 
     @api.depends("employee_id", "period", "category")

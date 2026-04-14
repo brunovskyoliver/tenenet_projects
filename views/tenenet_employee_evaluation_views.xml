@@ -1,0 +1,84 @@
+<odoo>
+    <data>
+        <record id="view_tenenet_employee_evaluation_kanban" model="ir.ui.view">
+            <field name="name">tenenet.employee.evaluation.kanban</field>
+            <field name="model">tenenet.employee.evaluation</field>
+            <field name="arch" type="xml">
+                <kanban class="o_kanban_mobile">
+                    <field name="year_display"/>
+                    <field name="manager_name"/>
+                    <field name="visible_to_employee"/>
+                    <field name="summary"/>
+                    <templates>
+                        <t t-name="card">
+                            <div class="o_tenenet_eval_card">
+                                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                    <strong>
+                                        <field name="year_display"/>
+                                    </strong>
+                                    <span t-if="record.visible_to_employee.raw_value" class="badge text-bg-success">
+                                        Zdieľané
+                                    </span>
+                                    <span t-else="" class="badge text-bg-secondary">
+                                        Interné
+                                    </span>
+                                </div>
+                                <div class="text-muted small mb-2">
+                                    <field name="manager_name"/>
+                                </div>
+                                <div t-if="record.summary.raw_value" class="text-wrap">
+                                    <field name="summary"/>
+                                </div>
+                                <div t-else="" class="text-muted">
+                                    Bez celkového zhodnotenia.
+                                </div>
+                            </div>
+                        </t>
+                    </templates>
+                </kanban>
+            </field>
+        </record>
+
+        <record id="view_tenenet_employee_evaluation_form" model="ir.ui.view">
+            <field name="name">tenenet.employee.evaluation.form</field>
+            <field name="model">tenenet.employee.evaluation</field>
+            <field name="arch" type="xml">
+                <form string="Ročné hodnotenie">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="employee_id"/>
+                                <field name="year_display"/>
+                                <field name="manager_id"/>
+                                <field name="author_user_id" readonly="1"/>
+                            </group>
+                            <group>
+                                <field name="visible_to_employee"/>
+                                <field name="active"/>
+                            </group>
+                        </group>
+                        <separator string="Obsah hodnotenia"/>
+                        <div class="o_tenenet_eval_form_stack">
+                            <div class="o_tenenet_eval_form_block">
+                                <label for="summary" string="Celkové zhodnotenie"/>
+                                <field name="summary" nolabel="1" placeholder="Zhrnutie ročného hodnotenia..."/>
+                            </div>
+                            <div class="o_tenenet_eval_form_block">
+                                <label for="strengths" string="Silné stránky"/>
+                                <field name="strengths" nolabel="1"/>
+                            </div>
+                            <div class="o_tenenet_eval_form_block">
+                                <label for="goals" string="Ciele na ďalší rok"/>
+                                <field name="goals" nolabel="1"/>
+                            </div>
+                            <div class="o_tenenet_eval_form_block">
+                                <label for="recommendations" string="Odporúčania"/>
+                                <field name="recommendations" nolabel="1"/>
+                            </div>
+                        </div>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+    </data>
+</odoo>

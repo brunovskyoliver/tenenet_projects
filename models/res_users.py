@@ -7,6 +7,30 @@ from odoo.tools import format_date
 class ResUsers(models.Model):
     _inherit = "res.users"
 
+    bio = fields.Text(
+        related="employee_id.bio",
+        string="Bio",
+        readonly=False,
+        related_sudo=True,
+    )
+
+    @property
+    def SELF_READABLE_FIELDS(self):
+        return super().SELF_READABLE_FIELDS + ["bio"]
+
+    @property
+    def SELF_WRITEABLE_FIELDS(self):
+        return super().SELF_WRITEABLE_FIELDS + ["bio"]
+
+    def write(self, vals):
+        if (
+            not self.env.is_superuser()
+            and set(self.ids) == {self.env.user.id}
+            and set(vals).issubset(set(self.SELF_WRITEABLE_FIELDS))
+        ):
+            return super(ResUsers, self.sudo()).write(vals)
+        return super().write(vals)
+
     @api.model
     def default_get(self, fields_list):
         defaults = super().default_get(fields_list)

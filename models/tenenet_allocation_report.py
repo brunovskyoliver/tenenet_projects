@@ -159,7 +159,7 @@ class TenenetAllocationReportHandler(models.AbstractModel):
         }))
 
         leave_expenses = internal_expenses.filtered(lambda e: e.category == "leave")
-        wage_expenses = internal_expenses.filtered(lambda e: e.category == "wage")
+        wage_expenses = internal_expenses.filtered(lambda e: e.category in {"wage", "residual_wage"})
         expense_expenses = internal_expenses.filtered(lambda e: e.category == "expense")
 
         ie_leave_hm = defaultdict(float)

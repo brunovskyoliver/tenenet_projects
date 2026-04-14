@@ -10,6 +10,7 @@
                     <field name="employee_id"/>
                     <field name="category"/>
                     <field name="source_project_id" optional="show"/>
+                    <field name="tenenet_cost_id" optional="hide"/>
                     <field name="expense_type_config_id" optional="show"/>
                     <field name="expense_amount" optional="show"/>
                     <field name="hour_type" optional="show"/>
@@ -37,7 +38,8 @@
                             <field name="employee_id"/>
                             <field name="period"/>
                             <field name="category"/>
-                            <field name="source_project_id" invisible="category != 'expense'"/>
+                            <field name="source_project_id" invisible="category not in ['expense', 'residual_wage']"/>
+                            <field name="tenenet_cost_id" invisible="category != 'residual_wage'"/>
                             <field name="expense_type_config_id" invisible="category != 'expense'"/>
                             <field name="hour_type" invisible="category != 'leave'"/>
                             <field name="leave_id" invisible="category != 'leave'"/>
@@ -70,7 +72,7 @@
                 <field name="employee_id"/>
                 <field name="source_assignment_id"/>
                 <filter string="Dovolenka" name="filter_leave" domain="[('category','=','leave')]"/>
-                <filter string="Mzda" name="filter_wage" domain="[('category','=','wage')]"/>
+                <filter string="Mzda" name="filter_wage" domain="[('category','in',['wage', 'residual_wage'])]"/>
                 <group>
                     <filter string="Zamestnanec" name="group_employee" context="{'group_by': 'employee_id'}"/>
                     <filter string="Kategória" name="group_category" context="{'group_by': 'category'}"/>

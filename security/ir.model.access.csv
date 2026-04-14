@@ -74,9 +74,14 @@ access_tenenet_employee_training_user,tenenet.employee.training.user,model_tenen
 access_tenenet_employee_training_manager,tenenet.employee.training.manager,model_tenenet_employee_training,tenenet_projects.group_tenenet_manager,1,1,1,1
 access_tenenet_service_catalog_hr_user,tenenet.service.catalog.hr.user,model_tenenet_service_catalog,hr.group_hr_user,1,1,1,1
 access_tenenet_service_catalog_hr_manager,tenenet.service.catalog.hr.manager,model_tenenet_service_catalog,hr.group_hr_manager,1,1,1,1
+access_tenenet_service_catalog_base_user,tenenet.service.catalog.base.user,model_tenenet_service_catalog,base.group_user,1,0,0,0
 access_tenenet_employee_service_hr_user,tenenet.employee.service.hr.user,model_tenenet_employee_service,hr.group_hr_user,1,1,1,1
 access_tenenet_employee_service_hr_manager,tenenet.employee.service.hr.manager,model_tenenet_employee_service,hr.group_hr_manager,1,1,1,1
 access_tenenet_employee_service_base_user,tenenet.employee.service.base.user,model_tenenet_employee_service,base.group_user,1,0,0,0
+access_tenenet_employee_evaluation_user,tenenet.employee.evaluation.user,model_tenenet_employee_evaluation,base.group_user,1,1,1,1
+access_tenenet_employee_evaluation_hr_manager,tenenet.employee.evaluation.hr.manager,model_tenenet_employee_evaluation,hr.group_hr_manager,1,1,1,1
+access_tenenet_hr_job_salary_range_hr_user,tenenet.hr.job.salary.range.hr.user,model_tenenet_hr_job_salary_range,hr.group_hr_user,1,1,1,1
+access_tenenet_hr_job_salary_range_hr_manager,tenenet.hr.job.salary.range.hr.manager,model_tenenet_hr_job_salary_range,hr.group_hr_manager,1,1,1,1
 access_tenenet_project_leave_rule_user,tenenet.project.leave.rule.user,model_tenenet_project_leave_rule,tenenet_projects.group_tenenet_user,1,0,0,0
 access_tenenet_project_leave_rule_manager,tenenet.project.leave.rule.manager,model_tenenet_project_leave_rule,tenenet_projects.group_tenenet_manager,1,1,1,1
 access_tenenet_project_timesheet_user,tenenet.project.timesheet.user,model_tenenet_project_timesheet,tenenet_projects.group_tenenet_user,1,1,1,0

@@ -5,6 +5,9 @@
             <t t-call="tenenet_projects.TenenetEmployeeListReportFilterDate"/>
         </xpath>
         <xpath expr="//div[@id='filter_rounding_unit']" position="before">
+            <div id="filter_employee_main_sites" class="filter_employee_main_sites">
+                <t t-call="tenenet_projects.TenenetEmployeeListReportFilterMainSites"/>
+            </div>
             <div id="filter_employee_jobs" class="filter_employee_jobs">
                 <t t-call="tenenet_projects.TenenetEmployeeListReportFilterJobs"/>
             </div>
@@ -177,6 +180,22 @@
                         t-out="groupingOption.name"
                     />
                 </t>
+            </t>
+        </Dropdown>
+    </t>
+
+    <t t-name="tenenet_projects.TenenetEmployeeListReportFilterMainSites" owl="1">
+        <Dropdown menuClass="'account_report_filter employee_main_sites'">
+            <button class="btn btn-secondary">
+                <i class="fa fa-map-marker me-1"/>
+                <t t-out="selectedMainSiteLabel"/>
+            </button>
+
+            <t t-set-slot="content">
+                <div class="dropdown-item gap-2 align-items-center">
+                    <label>Hlavné pracoviská</label>
+                    <MultiRecordSelector t-props="mainSiteSelectorProps"/>
+                </div>
             </t>
         </Dropdown>
     </t>

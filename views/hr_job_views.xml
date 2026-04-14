@@ -1,0 +1,58 @@
+<odoo>
+    <data>
+        <record id="view_hr_job_form_tenenet" model="ir.ui.view">
+            <field name="name">hr.job.form.tenenet</field>
+            <field name="model">hr.job</field>
+            <field name="inherit_id" ref="hr.view_hr_job_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//notebook" position="inside">
+                    <page string="Platové pásma" groups="hr.group_hr_user">
+                        <div class="o_tenenet_employee_editor_card">
+                            <div class="o_form_label">Platové rozpätia podľa úrovne a rokov praxe</div>
+                            <field name="salary_range_ids" nolabel="1">
+                                <list editable="bottom" string="Platové pásma">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="level_name"/>
+                                    <field name="experience_years_from"/>
+                                    <field name="experience_years_to"/>
+                                    <field name="currency_id" column_invisible="1"/>
+                                    <field name="gross_min"/>
+                                    <field name="gross_max"/>
+                                    <field name="study_requirements" optional="hide"/>
+                                </list>
+                                <form string="Platové pásmo">
+                                    <sheet>
+                                        <group>
+                                            <group>
+                                                <field name="job_id" invisible="1"/>
+                                                <field name="sequence"/>
+                                                <field name="level_name"/>
+                                                <field name="currency_id"/>
+                                            </group>
+                                            <group>
+                                                <field name="experience_years_from"/>
+                                                <field name="experience_years_to"/>
+                                                <field name="gross_min"/>
+                                                <field name="gross_max"/>
+                                            </group>
+                                        </group>
+                                        <group col="1">
+                                            <div class="o_tenenet_employee_editor_card">
+                                                <label for="study_requirements" string="Odporúčané štúdium"/>
+                                                <field name="study_requirements" nolabel="1" widget="text"/>
+                                            </div>
+                                            <div class="o_tenenet_employee_editor_card">
+                                                <label for="notes" string="Poznámka"/>
+                                                <field name="notes" nolabel="1" widget="text"/>
+                                            </div>
+                                        </group>
+                                    </sheet>
+                                </form>
+                            </field>
+                        </div>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

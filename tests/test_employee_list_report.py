@@ -22,6 +22,18 @@ class TestTenenetEmployeeListReport(TransactionCase):
             self.german = (self.language_skill_type.skill_ids - self.english)[:1]
         self.job_psychologist = self.env["hr.job"].create({"name": "Psychológ"})
         self.job_coordinator = self.env["hr.job"].create({"name": "Koordinátor"})
+        self.site_bratislava = self.env["tenenet.project.site"].create({
+            "name": "Bratislava centrum",
+            "site_type": "centrum",
+        })
+        self.site_trnava = self.env["tenenet.project.site"].create({
+            "name": "Trnava prevádzka",
+            "site_type": "prevadzka",
+        })
+        self.site_nitra = self.env["tenenet.project.site"].create({
+            "name": "Nitra centrum",
+            "site_type": "centrum",
+        })
         self.program = self.env["tenenet.program"].create({"name": "Report Program", "code": "RPT"})
         self.international_project = self.env["tenenet.project"].create({
             "name": "Medzinárodný projekt",
@@ -46,6 +58,10 @@ class TestTenenetEmployeeListReport(TransactionCase):
             "parent_id": self.manager.id,
             "work_ratio": 100.0,
             "work_phone": "+421901111222",
+            "main_site_id": self.site_bratislava.id,
+            "secondary_site_ids": [(6, 0, self.site_trnava.ids)],
+            "additional_job_ids": [(6, 0, self.job_coordinator.ids)],
+            "experience_years_total": 6.0,
         })
         self.employee_full = self.env["hr.employee"].create({
             "tenenet_number": 18,
@@ -58,6 +74,7 @@ class TestTenenetEmployeeListReport(TransactionCase):
             "parent_id": self.manager.id,
             "work_ratio": 100.0,
             "work_phone": "+421902333444",
+            "main_site_id": self.site_nitra.id,
         })
         self.employee_free = self.env["hr.employee"].create({
             "tenenet_number": 19,
@@ -67,6 +84,7 @@ class TestTenenetEmployeeListReport(TransactionCase):
             "position": "Psychológ",
             "study_field": "Sociálna práca",
             "work_ratio": 100.0,
+            "main_site_id": self.site_trnava.id,
         })
         self.employee_without_job = self.env["hr.employee"].create({
             "tenenet_number": 20,
@@ -159,9 +177,12 @@ class TestTenenetEmployeeListReport(TransactionCase):
         self.assertEqual(columns["last_name"], "Zamestnanec")
         self.assertEqual(columns["first_name"], "Adam")
         self.assertEqual(columns["position"], "Psychológ")
+        self.assertIn("Koordinátor", columns["all_job_names"])
         self.assertEqual(columns["work_phone"], "+421901111222")
         self.assertEqual(columns["study_field"], "Psychológia")
         self.assertEqual(columns["manager_name"], "Mgr. Jana Vedúca")
+        self.assertEqual(columns["main_site_name"], "Bratislava centrum")
+        self.assertEqual(columns["secondary_site_names"], "Trnava prevádzka")
         self.assertEqual(columns["project_names"], "Medzinárodný projekt, Report Project")
         self.assertEqual(columns["program_names"], "Report Program")
         self.assertAlmostEqual(columns["utilization_percentage"], 0.0, places=2)
@@ -239,6 +260,24 @@ class TestTenenetEmployeeListReport(TransactionCase):
         self.assertIn(self.employee_free.name, line_names)
         self.assertNotIn(self.employee_full.name, line_names)
         self.assertNotIn(self.employee_without_job.name, line_names)
+
+    def test_profession_filter_matches_additional_jobs(self):
+        line_names = [
+            self._column_map(line)["employee_name"]
+            for line in self._employee_lines(job_ids=[self.job_coordinator.id])
+        ]
+
+        self.assertIn(self.employee_partial.name, line_names)
+        self.assertIn(self.employee_full.name, line_names)
+        self.assertNotIn(self.employee_free.name, line_names)
+
+    def test_main_site_filter_returns_only_matching_employees(self):
+        line_names = [
+            self._column_map(line)["employee_name"]
+            for line in self._employee_lines(main_site_ids=[self.site_trnava.id])
+        ]
+
+        self.assertEqual(line_names, [self.employee_free.name])
 
     def test_language_filter_returns_only_matching_employees(self):
         line_names = [
@@ -333,6 +372,21 @@ class TestTenenetEmployeeListReport(TransactionCase):
 
         self.assertEqual(columns["work_phone"], "")
         self.assertEqual(columns["study_field"], "Andragogika")
+
+    def test_search_matches_secondary_workplace_and_all_positions(self):
+        site_line_names = [
+            self._column_map(line)["employee_name"]
+            for line in self._employee_lines(filter_search_bar="trnava")
+        ]
+        job_line_names = [
+            self._column_map(line)["employee_name"]
+            for line in self._employee_lines(filter_search_bar="koordinátor")
+        ]
+
+        self.assertIn(self.employee_partial.name, site_line_names)
+        self.assertIn(self.employee_free.name, site_line_names)
+        self.assertIn(self.employee_partial.name, job_line_names)
+        self.assertIn(self.employee_full.name, job_line_names)
 
     def test_employees_without_job_are_handled_in_grouped_mode(self):
         lines = self._get_lines(grouping_mode="profession")

@@ -28,6 +28,10 @@ export class TenenetEmployeeListReportFilters extends AccountReportFilters {
         return this.controller.cachedFilterOptions.job_ids || [];
     }
 
+    get selectedMainSiteIds() {
+        return this.controller.cachedFilterOptions.main_site_ids || [];
+    }
+
     get selectedProjectIds() {
         return this.controller.cachedFilterOptions.project_ids || [];
     }
@@ -44,6 +48,13 @@ export class TenenetEmployeeListReportFilters extends AccountReportFilters {
         return this._formatSelectionLabel(
             this.controller.cachedFilterOptions.selected_job_names || [],
             "Profesie",
+        );
+    }
+
+    get selectedMainSiteLabel() {
+        return this._formatSelectionLabel(
+            this.controller.cachedFilterOptions.selected_main_site_names || [],
+            "Pracoviská",
         );
     }
 
@@ -94,6 +105,17 @@ export class TenenetEmployeeListReportFilters extends AccountReportFilters {
             resIds: this.selectedJobIds,
             update: (resIds) => this.updateRecordFilter("job_ids", resIds),
             placeholder: "Vyber profesie...",
+        };
+    }
+
+    get mainSiteSelectorProps() {
+        return {
+            resModel: "tenenet.project.site",
+            resIds: this.selectedMainSiteIds,
+            domain: [["site_type", "in", ["prevadzka", "centrum"]]],
+            update: (resIds) => this.updateRecordFilter("main_site_ids", resIds),
+            context: { active_test: false },
+            placeholder: "Vyber hlavné pracoviská...",
         };
     }
 

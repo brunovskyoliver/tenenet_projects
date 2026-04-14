@@ -1,0 +1,24 @@
+<odoo>
+    <data>
+        <record id="res_users_view_form_preferences_tenenet" model="ir.ui.view">
+            <field name="name">res.users.preferences.form.tenenet</field>
+            <field name="model">res.users</field>
+            <field name="inherit_id" ref="hr.res_users_view_form_preferences"/>
+            <field name="arch" type="xml">
+                <xpath expr="//page[@name='private_information']" position="after">
+                    <page string="Životopis">
+                        <group string="Bio">
+                            <field
+                                name="bio"
+                                nolabel="1"
+                                widget="text"
+                                placeholder="Predstavte stručne svoje skúsenosti, zameranie a oblasť práce."
+                                class="o_tenenet_resume_text"
+                            />
+                        </group>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

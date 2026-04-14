@@ -355,6 +355,36 @@ class TestTenenetPlan15CashflowReport(TransactionCase):
 
         self.assertAlmostEqual(salary_columns["month_04"], -2000.0, places=2)
 
+    def test_residual_wage_hits_cashflow_salary_and_allocation_internal_wage(self):
+        year = fields.Date.context_today(self).year + 1
+        self.employee.write({"monthly_gross_salary_target": 150.0})
+        self.env["tenenet.project.timesheet"].create({
+            "assignment_id": self.assignment.id,
+            "period": f"{year}-03-01",
+            "hours_pp": 10.0,
+        })
+
+        residual = self.env["tenenet.internal.expense"].search([
+            ("employee_id", "=", self.employee.id),
+            ("period", "=", f"{year}-03-01"),
+            ("category", "=", "residual_wage"),
+        ], limit=1)
+
+        self.assertTrue(residual)
+        self.assertTrue(residual.source_project_id.is_tenenet_internal)
+        self.assertAlmostEqual(residual.cost_hm, 50.0, places=2)
+        self.assertAlmostEqual(residual.cost_ccp, 68.1, places=2)
+
+        cashflow_salary = self._column_map(self._find_named_line(self._get_lines(year), "Mzdy"))
+        allocation_ccp = self._column_map(self._find_allocation_line(self._get_allocation_lines(year), "CCP"))
+        allocation_internal_wage = self._column_map(
+            self._find_allocation_line(self._get_allocation_lines(year), "Interné náklady - mzda (CCP)")
+        )
+
+        self.assertAlmostEqual(cashflow_salary["month_03"], -204.3, places=2)
+        self.assertAlmostEqual(allocation_ccp["month_03"], 136.2, places=2)
+        self.assertAlmostEqual(allocation_internal_wage["month_03"], 68.1, places=2)
+
     def test_income_override_rebalances_last_active_month_to_project_total(self):
         selected_year = fields.Date.context_today(self).year + 1
         self.env["tenenet.project.receipt"].create({

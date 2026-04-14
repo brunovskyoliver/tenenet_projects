@@ -28,6 +28,9 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
         "last_name",
         "first_name",
         "position",
+        "all_job_names",
+        "main_site_name",
+        "secondary_site_names",
         "study_field",
         "work_phone",
         "manager_name",
@@ -60,6 +63,7 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
 
         language_skill_type = self._get_language_skill_type()
         selected_jobs = self._get_selected_jobs(previous_options)
+        selected_main_sites = self._get_selected_main_sites(previous_options)
         selected_projects = self._get_selected_projects(previous_options)
         selected_programs = self._get_selected_programs(previous_options)
         selected_language_skills = self._get_selected_language_skills(previous_options, language_skill_type)
@@ -68,6 +72,8 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
 
         options["job_ids"] = selected_jobs.ids
         options["selected_job_names"] = selected_jobs.mapped("display_name")
+        options["main_site_ids"] = selected_main_sites.ids
+        options["selected_main_site_names"] = selected_main_sites.mapped("display_name")
         options["project_ids"] = selected_projects.ids
         options["selected_project_names"] = selected_projects.mapped("display_name")
         options["program_ids"] = selected_programs.ids
@@ -107,10 +113,14 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
         ]
 
     def _get_employee_records(self, options, search_term=None):
-        employees = self.env["hr.employee"].search([], order="tenenet_number, last_name, first_name, name")
+        employees = self.env["hr.employee"].search(
+            [],
+            order="main_site_id, tenenet_number, last_name, first_name, name",
+        )
         selected_period = self._get_selected_month_start(options)
         language_skill_type = self._get_language_skill_type()
         selected_job_ids = set(options.get("job_ids") or [])
+        selected_main_site_ids = set(options.get("main_site_ids") or [])
         selected_project_ids = set(options.get("project_ids") or [])
         selected_program_ids = set(options.get("program_ids") or [])
         selected_language_skill_ids = set(options.get("language_skill_ids") or [])
@@ -122,6 +132,21 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
 
         if selected_job_ids:
             employees = employees.filtered(lambda rec: rec.job_id.id in selected_job_ids)
+            employees |= self.env["hr.employee"].search([
+                ("id", "not in", employees.ids),
+                ("additional_job_ids", "in", list(selected_job_ids)),
+            ])
+            employees = employees.sorted(
+                key=lambda rec: (
+                    rec.main_site_id.display_name or "",
+                    rec.tenenet_number or 0,
+                    rec.last_name or "",
+                    rec.first_name or "",
+                    rec.name or "",
+                )
+            )
+        if selected_main_site_ids:
+            employees = employees.filtered(lambda rec: rec.main_site_id.id in selected_main_site_ids)
         if selected_project_ids:
             employees = employees.filtered(
                 lambda rec: bool(
@@ -162,6 +187,8 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
                 or lowered_search_term in (rec.last_name or "").lower()
                 or lowered_search_term in (rec.position or "").lower()
                 or lowered_search_term in (rec.job_id.name or "").lower()
+                or lowered_search_term in (rec.all_job_names or "").lower()
+                or lowered_search_term in (rec.all_site_names or "").lower()
                 or lowered_search_term in (rec.study_field or "").lower()
                 or lowered_search_term in (rec.work_phone or "").lower()
                 or lowered_search_term in (rec.parent_id.name or "").lower()
@@ -266,6 +293,11 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
                 self._get_selected_month_start(options),
             )
             return assignment_context[label]
+        if label == "main_site_name":
+            return employee.main_site_id.display_name or ""
+        if label == "secondary_site_names":
+            secondary_sites = employee._get_site_sequence()
+            return ", ".join(site.display_name for site in secondary_sites[1:])
         if label == "employee_name":
             return employee.name or ""
         if label == "manager_name":
@@ -275,6 +307,8 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
         if label == "utilization_percentage":
             utilization = utilization_by_employee.get(employee.id)
             return utilization.utilization_percentage if utilization else 0.0
+        if label == "all_job_names":
+            return employee.all_job_names or ""
         if label in self._STRING_COLUMNS:
             return employee[label] or ""
         if label in self._FLOAT_COLUMNS:
@@ -338,6 +372,10 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
     def _get_selected_jobs(self, previous_options):
         job_ids = self._sanitize_ids(previous_options and previous_options.get("job_ids"))
         return self.env["hr.job"].browse(job_ids).exists()
+
+    def _get_selected_main_sites(self, previous_options):
+        site_ids = self._sanitize_ids(previous_options and previous_options.get("main_site_ids"))
+        return self.env["tenenet.project.site"].with_context(active_test=False).browse(site_ids).exists()
 
     def _get_selected_projects(self, previous_options):
         project_ids = self._sanitize_ids(previous_options and previous_options.get("project_ids"))

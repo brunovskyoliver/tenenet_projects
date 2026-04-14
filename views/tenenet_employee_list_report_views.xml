@@ -78,6 +78,15 @@
                     <field name="figure_type">string</field>
                 </record>
                 <record
+                    id="tenenet_employee_list_report_column_all_jobs"
+                    model="account.report.column"
+                >
+                    <field name="sequence">52</field>
+                    <field name="name">Pozície</field>
+                    <field name="expression_label">all_job_names</field>
+                    <field name="figure_type">string</field>
+                </record>
+                <record
                     id="tenenet_employee_list_report_column_phone"
                     model="account.report.column"
                 >
@@ -102,6 +111,24 @@
                     <field name="sequence">70</field>
                     <field name="name">Priamy nadriadený</field>
                     <field name="expression_label">manager_name</field>
+                    <field name="figure_type">string</field>
+                </record>
+                <record
+                    id="tenenet_employee_list_report_column_main_site"
+                    model="account.report.column"
+                >
+                    <field name="sequence">71</field>
+                    <field name="name">Hlavné miesto práce</field>
+                    <field name="expression_label">main_site_name</field>
+                    <field name="figure_type">string</field>
+                </record>
+                <record
+                    id="tenenet_employee_list_report_column_secondary_sites"
+                    model="account.report.column"
+                >
+                    <field name="sequence">71</field>
+                    <field name="name">Vedľajšie miesta práce</field>
+                    <field name="expression_label">secondary_site_names</field>
                     <field name="figure_type">string</field>
                 </record>
                 <record
