@@ -181,7 +181,12 @@ class TenenetEmployeeAssetHandover(models.Model):
         team = self._get_helpdesk_team()
         stage = self._get_or_create_helpdesk_handover_stage(team)
         partner = self._get_employee_sign_partner()
-        assignee = self._get_helpdesk_ticket_assignee(team)
+        requester_user = self._get_helpdesk_requester_user(team)
+        assignee = self._get_helpdesk_ticket_assignee(team, requester_user=requester_user)
+        if not assignee and requester_user.active:
+            assignee = requester_user
+        if not assignee:
+            assignee = team.member_ids.filtered("active")[:1]
         ticket_vals = {
             "name": self.name,
             "team_id": team.id,
@@ -190,10 +195,21 @@ class TenenetEmployeeAssetHandover(models.Model):
             "partner_name": self.employee_id.name,
             "partner_email": partner.email or self.employee_id.work_email,
             "description": self._build_helpdesk_ticket_description(),
+            "tenenet_requested_by_user_id": requester_user.id,
         }
-        if assignee:
-            ticket_vals["user_id"] = assignee.id
-        ticket = self.env["helpdesk.ticket"].with_context(default_team_id=team.id).sudo().create(ticket_vals)
+        if not assignee:
+            raise UserError(
+                _(
+                    "Pre internú TENENET helpdesk požiadavku sa nepodarilo nájsť povoleného riešiteľa. "
+                    "Pridajte sebe alebo svojmu nadriadenému rolu TENENET helpdesk."
+                )
+            )
+        ticket_vals["user_id"] = assignee.id
+        ticket = self.env["helpdesk.ticket"].with_context(
+            default_team_id=team.id,
+            tenenet_requested_by_user_id=requester_user.id,
+            allow_tenenet_internal_system_create=True,
+        ).sudo().create(ticket_vals)
         self.helpdesk_ticket_id = ticket.id
         ticket.message_post(body=self._build_helpdesk_ticket_message())
         self.message_post(body=_("Bola vytvorená helpdesk požiadavka %s.", ticket._get_html_link()))
@@ -204,11 +220,22 @@ class TenenetEmployeeAssetHandover(models.Model):
         team = self.env["helpdesk.team"].sudo().search([
             ("name", "=", self._HELPDESK_TEAM_NAME),
             ("company_id", "=", self.company_id.id),
-        ], limit=1)
+            ("member_ids", "in", self.env.user.id),
+        ], limit=1, order="id desc")
+        if not team:
+            team = self.env["helpdesk.team"].sudo().search([
+            ("name", "=", self._HELPDESK_TEAM_NAME),
+            ("company_id", "=", self.company_id.id),
+            ], limit=1, order="id desc")
         if not team:
             team = self.env["helpdesk.team"].sudo().search([
                 ("name", "=", self._HELPDESK_TEAM_NAME),
-            ], limit=1)
+                ("member_ids", "in", self.env.user.id),
+            ], limit=1, order="id desc")
+        if not team:
+            team = self.env["helpdesk.team"].sudo().search([
+                ("name", "=", self._HELPDESK_TEAM_NAME),
+            ], limit=1, order="id desc")
         if not team:
             raise UserError(_(
                 "Nepodarilo sa nájsť helpdesk tím '%s'.",
@@ -275,17 +302,46 @@ class TenenetEmployeeAssetHandover(models.Model):
                 body=_("Požiadavka bola automaticky uzatvorená po podpise preberacieho protokolu.")
             )
 
-    def _get_helpdesk_ticket_assignee(self, team):
+    def _get_helpdesk_requester_user(self, team):
         self.ensure_one()
-        user = self.env.user
-        if user in team.member_ids:
-            return user
-        if team.auto_assignment:
-            assigned_user_ids = team._determine_user_to_assign({team: 1}).get(team.id) or []
-            assigned_user_id = assigned_user_ids[0] if assigned_user_ids else False
-            if assigned_user_id:
-                return self.env["res.users"].browse(assigned_user_id)
-        return self.env["res.users"]
+        candidate_users = (
+            self.env.user
+            | self.create_uid
+            | self.write_uid
+            | team.with_context(active_test=False).member_ids.filtered("active")
+        )
+        admin_user = self.env.ref("base.user_admin", raise_if_not_found=False)
+        if admin_user:
+            candidate_users |= admin_user
+        return candidate_users.filtered(lambda user: user.active and not user.share)[:1]
+
+    def _get_helpdesk_ticket_assignee(self, team, requester_user=None):
+        self.ensure_one()
+        requester_user = requester_user or self._get_helpdesk_requester_user(team)
+        helpdesk_ticket_model = self.env["helpdesk.ticket"]
+        if (
+            requester_user.active
+            and helpdesk_ticket_model._user_has_tenenet_helpdesk_role(requester_user)
+        ):
+            return requester_user
+        allowed_users = helpdesk_ticket_model._get_tenenet_allowed_assignment_users_for_user(
+            requester_user,
+            team=team,
+        )
+        employees = self.env["hr.employee"].sudo().search([
+            ("user_id", "=", requester_user.id),
+        ])
+        direct_managers = employees.mapped("parent_id.user_id")
+        grand_managers = employees.mapped("parent_id.parent_id.user_id")
+        for candidate in direct_managers | grand_managers:
+            if candidate in allowed_users:
+                return candidate
+        team_helpdesk_member = team.member_ids.filtered(
+            lambda user: user.active and helpdesk_ticket_model._user_has_tenenet_helpdesk_role(user)
+        )[:1]
+        if team_helpdesk_member:
+            return team_helpdesk_member
+        return team.member_ids.filtered("active")[:1] or self.env["res.users"]
 
     def _get_employee_sign_partner(self):
         self.ensure_one()

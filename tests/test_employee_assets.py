@@ -46,6 +46,10 @@ class TestTenenetEmployeeAssets(TransactionCase):
         self.base_user_group = self.env.ref("base.group_user")
         self.tenenet_user_group = self.env.ref("tenenet_projects.group_tenenet_user")
         self.tenenet_manager_group = self.env.ref("tenenet_projects.group_tenenet_manager")
+        self.tenenet_helpdesk_user_group = self.env.ref("tenenet_projects.group_tenenet_helpdesk_user")
+        self.env.user.sudo().write({
+            "group_ids": [Command.link(self.tenenet_helpdesk_user_group.id)],
+        })
         self.env.user.email = self.env.user.email or "admin@example.com"
         self.user_user = self.env["res.users"].with_context(no_reset_password=True).create(
             {
@@ -446,6 +450,7 @@ class TestTenenetEmployeeAssets(TransactionCase):
                 self.tenenet_manager_group.id,
                 hr_user_group.id,
                 helpdesk_user_group.id,
+                self.tenenet_helpdesk_user_group.id,
             ])],
         })
         self.helpdesk_team.member_ids = [Command.set([self.env.user.id, self.manager_user.id])]
@@ -465,6 +470,7 @@ class TestTenenetEmployeeAssets(TransactionCase):
             handover.action_send_for_signature()
 
         self.assertEqual(handover.helpdesk_ticket_id.user_id, self.manager_user)
+        self.assertEqual(handover.helpdesk_ticket_id.tenenet_requested_by_user_id, self.manager_user)
 
     def test_handover_helpdesk_ticket_stage_cannot_be_changed_manually(self):
         asset = self.env["tenenet.employee.asset"].create({

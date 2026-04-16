@@ -1,0 +1,186 @@
+<odoo>
+    <data>
+        <record id="view_helpdesk_ticket_quick_create_tenenet" model="ir.ui.view">
+            <field name="name">helpdesk.ticket.quick.create.tenenet</field>
+            <field name="model">helpdesk.ticket</field>
+            <field name="inherit_id" ref="helpdesk.quick_create_ticket_form"/>
+            <field name="arch" type="xml">
+                <field name="domain_user_ids" position="after">
+                    <field name="legend_normal" invisible="1"/>
+                    <field name="legend_blocked" invisible="1"/>
+                    <field name="legend_done" invisible="1"/>
+                    <field name="tenenet_assignment_domain_user_ids" invisible="1"/>
+                </field>
+                <field name="user_id" position="attributes">
+                    <attribute name="domain">[('id', 'in', tenenet_assignment_domain_user_ids)]</attribute>
+                </field>
+            </field>
+        </record>
+
+        <record id="view_helpdesk_ticket_form_tenenet" model="ir.ui.view">
+            <field name="name">helpdesk.ticket.form.tenenet</field>
+            <field name="model">helpdesk.ticket</field>
+            <field name="inherit_id" ref="helpdesk.helpdesk_ticket_view_form"/>
+            <field name="arch" type="xml">
+                <field name="company_id" position="after">
+                    <field name="legend_normal" invisible="1"/>
+                    <field name="legend_blocked" invisible="1"/>
+                    <field name="legend_done" invisible="1"/>
+                    <field name="tenenet_is_internal_team" invisible="1"/>
+                    <field name="tenenet_is_helpdesk_user" invisible="1"/>
+                    <field name="tenenet_is_helpdesk_editor" invisible="1"/>
+                    <field name="tenenet_is_helpdesk_manager" invisible="1"/>
+                    <field name="tenenet_assignment_domain_user_ids" invisible="1"/>
+                    <field name="tenenet_active_assigned_user_ids" invisible="1"/>
+                    <field name="tenenet_can_confirm_followup" invisible="1"/>
+                    <field name="tenenet_can_confirm_control" invisible="1"/>
+                </field>
+                <header position="inside">
+                    <button
+                        name="action_open_tenenet_followup_wizard"
+                        string="Vyžiadať follow-up"
+                        type="object"
+                        class="btn-secondary"
+                        invisible="not tenenet_is_internal_team or kanban_state == 'done'"
+                    />
+                    <button
+                        name="action_open_tenenet_control_wizard"
+                        string="Vyžiadať kontrolu"
+                        type="object"
+                        class="btn-secondary"
+                        invisible="not tenenet_is_internal_team or kanban_state == 'blocked'"
+                    />
+                    <button
+                        name="action_tenenet_confirm_followup"
+                        string="Potvrdiť follow-up"
+                        type="object"
+                        class="btn-primary"
+                        invisible="not tenenet_can_confirm_followup"
+                    />
+                    <button
+                        name="action_tenenet_confirm_control"
+                        string="Potvrdiť kontrolu"
+                        type="object"
+                        class="btn-primary"
+                        invisible="not tenenet_can_confirm_control"
+                    />
+                </header>
+                <field name="kanban_state" position="attributes">
+                    <attribute name="invisible">tenenet_is_internal_team</attribute>
+                </field>
+                <field name="user_id" position="attributes">
+                    <attribute name="domain">[('id', 'in', tenenet_assignment_domain_user_ids)]</attribute>
+                </field>
+                <field name="domain_user_ids" position="after">
+                    <field
+                        name="tenenet_active_assigned_user_ids"
+                        widget="many2many_tags"
+                        optional="show"
+                        readonly="1"
+                        invisible="not tenenet_is_internal_team"
+                    />
+                    <field name="tenenet_requested_by_user_id" readonly="1" invisible="not tenenet_is_internal_team"/>
+                    <field
+                        name="tenenet_followup_user_id"
+                        widget="many2one_avatar_user"
+                        domain="[('id', 'in', tenenet_assignment_domain_user_ids)]"
+                        invisible="not tenenet_is_internal_team or kanban_state != 'blocked'"
+                    />
+                    <field
+                        name="tenenet_control_user_id"
+                        widget="many2one_avatar_user"
+                        domain="[('id', 'in', tenenet_assignment_domain_user_ids)]"
+                        invisible="not tenenet_is_internal_team or kanban_state != 'done'"
+                    />
+                    <field name="tenenet_followup_confirmed_by_user_id" readonly="1" invisible="not tenenet_is_internal_team"/>
+                    <field name="tenenet_followup_confirmed_at" readonly="1" invisible="not tenenet_is_internal_team"/>
+                    <field name="tenenet_control_confirmed_by_user_id" readonly="1" invisible="not tenenet_is_internal_team"/>
+                    <field name="tenenet_control_confirmed_at" readonly="1" invisible="not tenenet_is_internal_team"/>
+                </field>
+            </field>
+        </record>
+
+        <record id="view_helpdesk_ticket_tree_tenenet" model="ir.ui.view">
+            <field name="name">helpdesk.ticket.tree.tenenet</field>
+            <field name="model">helpdesk.ticket</field>
+            <field name="inherit_id" ref="helpdesk.helpdesk_tickets_view_tree"/>
+            <field name="arch" type="xml">
+                <field name="kanban_state" position="before">
+                    <field name="legend_normal" column_invisible="True"/>
+                    <field name="legend_blocked" column_invisible="True"/>
+                    <field name="legend_done" column_invisible="True"/>
+                    <field name="tenenet_active_assigned_user_ids" column_invisible="True"/>
+                </field>
+                <field name="user_id" position="after">
+                    <field name="tenenet_active_assigned_user_ids" optional="hide" widget="many2many_tags"/>
+                    <field name="tenenet_requested_by_user_id" optional="hide"/>
+                    <field name="tenenet_followup_user_id" optional="hide" widget="many2one_avatar_user"/>
+                    <field name="tenenet_control_user_id" optional="hide" widget="many2one_avatar_user"/>
+                </field>
+            </field>
+        </record>
+
+        <record id="view_helpdesk_ticket_kanban_tenenet" model="ir.ui.view">
+            <field name="name">helpdesk.ticket.kanban.tenenet</field>
+            <field name="model">helpdesk.ticket</field>
+            <field name="inherit_id" ref="helpdesk.helpdesk_ticket_view_kanban"/>
+            <field name="arch" type="xml">
+                <kanban position="inside">
+                    <field name="legend_normal"/>
+                    <field name="legend_blocked"/>
+                    <field name="legend_done"/>
+                    <field name="tenenet_is_internal_team"/>
+                    <field name="tenenet_active_assigned_user_ids"/>
+                    <field name="tenenet_requested_by_user_id"/>
+                    <field name="tenenet_followup_user_id"/>
+                    <field name="tenenet_control_user_id"/>
+                </kanban>
+                <field name="properties" position="after">
+                    <t t-if="record.tenenet_is_internal_team.raw_value">
+                        <div class="text-muted small">
+                            Vytvoril: <field name="tenenet_requested_by_user_id"/>
+                        </div>
+                        <div class="text-muted small" t-if="record.tenenet_active_assigned_user_ids.raw_value.length">
+                            Aktívne pridelení: <field name="tenenet_active_assigned_user_ids" widget="many2many_tags"/>
+                        </div>
+                        <div
+                            class="text-muted small"
+                            t-if="record.kanban_state.raw_value == 'blocked' and record.tenenet_followup_user_id.raw_value"
+                        >
+                            Follow-up: <field name="tenenet_followup_user_id"/>
+                        </div>
+                        <div
+                            class="text-muted small"
+                            t-if="record.kanban_state.raw_value == 'done' and record.tenenet_control_user_id.raw_value"
+                        >
+                            Kontrola: <field name="tenenet_control_user_id"/>
+                        </div>
+                    </t>
+                </field>
+            </field>
+        </record>
+
+        <record id="view_helpdesk_ticket_search_tenenet" model="ir.ui.view">
+            <field name="name">helpdesk.ticket.search.tenenet</field>
+            <field name="model">helpdesk.ticket</field>
+            <field name="inherit_id" ref="helpdesk.helpdesk_tickets_view_search"/>
+            <field name="arch" type="xml">
+                <field name="user_id" position="after">
+                    <field name="tenenet_requested_by_user_id"/>
+                    <field name="tenenet_followup_user_id"/>
+                    <field name="tenenet_control_user_id"/>
+                </field>
+                <filter name="my_ticket" position="attributes">
+                    <attribute name="string">Moje pridelené</attribute>
+                    <attribute name="domain">[('tenenet_active_assigned_user_ids', 'in', uid)]</attribute>
+                </filter>
+                <filter name="my_follow_ticket" position="after">
+                    <filter string="Moje interné TENENET" name="tenenet_internal" domain="[('team_id.name', '=', 'Interné TENENET')]"/>
+                    <filter string="Mnou vytvorené" name="tenenet_requested_by_me" domain="[('tenenet_requested_by_user_id', '=', uid)]"/>
+                    <filter string="Follow-up na mne" name="tenenet_followup_me" domain="[('tenenet_followup_user_id', '=', uid)]"/>
+                    <filter string="Kontrola na mne" name="tenenet_control_me" domain="[('tenenet_control_user_id', '=', uid)]"/>
+                </filter>
+            </field>
+        </record>
+    </data>
+</odoo>
