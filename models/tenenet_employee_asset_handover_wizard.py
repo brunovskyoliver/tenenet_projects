@@ -46,14 +46,7 @@ class TenenetEmployeeAssetHandoverWizard(models.TransientModel):
             for line in self.line_ids
         ])
 
-        return {
-            "type": "ir.actions.act_window",
-            "name": _("Zamestnanec"),
-            "res_model": "hr.employee",
-            "res_id": self.employee_id.id,
-            "view_mode": "form",
-            "target": "current",
-        }
+        return {"type": "ir.actions.client", "tag": "soft_reload"}
 
 
 class TenenetEmployeeAssetHandoverWizardLine(models.TransientModel):

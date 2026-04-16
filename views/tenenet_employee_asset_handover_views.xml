@@ -149,7 +149,8 @@
                         <button name="action_confirm"
                                 type="object"
                                 string="Pridať a odoslať na podpis"
-                                class="btn-primary"/>
+                                class="btn-primary"
+                                close="1"/>
                         <button string="Zrušiť"
                                 special="cancel"
                                 class="btn-secondary"/>

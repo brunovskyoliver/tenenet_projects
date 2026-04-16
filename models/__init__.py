@@ -7,6 +7,7 @@ from . import res_partner
 from . import hr_employee
 from . import hr_employee_public
 from . import sign_request
+from . import helpdesk_ticket
 from . import tenenet_employee_asset_type
 from . import tenenet_employee_asset_handover
 from . import tenenet_employee_asset

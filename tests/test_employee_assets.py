@@ -337,8 +337,7 @@ class TestTenenetEmployeeAssets(TransactionCase):
 
         action = wizard.action_confirm()
 
-        self.assertEqual(action["res_model"], "hr.employee")
-        self.assertEqual(action["res_id"], self.employee.id)
+        self.assertEqual(action, {"type": "ir.actions.client", "tag": "soft_reload"})
         assets = self.env["tenenet.employee.asset"].search([("serial_number", "in", ["SN-WIZ-001", "SN-WIZ-002"])])
         self.assertEqual(len(assets), 2)
         self.assertEqual(set(assets.mapped("employee_id").ids), {self.employee.id})
@@ -437,6 +436,56 @@ class TestTenenetEmployeeAssets(TransactionCase):
 
         self.assertEqual(handover.sign_request_id.state, "signed")
         self.assertEqual(handover.helpdesk_ticket_id.stage_id, self.helpdesk_stage_done)
+
+    def test_handover_helpdesk_ticket_is_assigned_to_creator_when_team_member(self):
+        hr_user_group = self.env.ref("hr.group_hr_user")
+        helpdesk_user_group = self.env.ref("helpdesk.group_helpdesk_user")
+        self.manager_user.sudo().write({
+            "group_ids": [Command.set([
+                self.base_user_group.id,
+                self.tenenet_manager_group.id,
+                hr_user_group.id,
+                helpdesk_user_group.id,
+            ])],
+        })
+        self.helpdesk_team.member_ids = [Command.set([self.env.user.id, self.manager_user.id])]
+        handover = self.env["tenenet.employee.asset.handover"].with_user(self.manager_user).create({
+            "employee_id": self.employee.id,
+            "handover_date": "2026-04-14",
+        })
+        self.env["tenenet.employee.asset"].create({
+            "employee_id": self.employee.id,
+            "asset_type_id": self.asset_type_laptop.id,
+            "serial_number": "SN-ASSIGN-001",
+            "handover_date": "2026-04-14",
+            "handover_id": handover.id,
+        })
+
+        with self._patch_handover_pdf():
+            handover.action_send_for_signature()
+
+        self.assertEqual(handover.helpdesk_ticket_id.user_id, self.manager_user)
+
+    def test_handover_helpdesk_ticket_stage_cannot_be_changed_manually(self):
+        asset = self.env["tenenet.employee.asset"].create({
+            "employee_id": self.employee.id,
+            "asset_type_id": self.asset_type_laptop.id,
+            "serial_number": "SN-STAGE-001",
+            "handover_date": "2026-04-14",
+        })
+        handover = self.env["tenenet.employee.asset.handover"].create({
+            "employee_id": self.employee.id,
+            "handover_date": "2026-04-14",
+        })
+        asset.handover_id = handover.id
+
+        with self._patch_handover_pdf():
+            handover.action_send_for_signature()
+
+        with self.assertRaises(UserError):
+            handover.helpdesk_ticket_id.write({
+                "stage_id": self.helpdesk_stage_done.id,
+            })
 
     def test_employee_action_requires_work_email(self):
         self.employee.work_email = False
@@ -561,6 +610,21 @@ class TestTenenetEmployeeAssets(TransactionCase):
         self.assertTrue(
             root.xpath("//field[@name='asset_ids']//field[@name='sign_state']"),
             "Expected sign state in asset subview.",
+        )
+
+    def test_asset_handover_wizard_confirm_button_closes_dialog(self):
+        arch = self.env["tenenet.employee.asset.handover.wizard"].get_view(
+            view_id=self.env.ref("tenenet_projects.view_tenenet_employee_asset_handover_wizard_form").id,
+            view_type="form",
+        )["arch"]
+        root = etree.fromstring(arch.encode())
+        confirm_button = root.xpath("//button[@name='action_confirm']")
+
+        self.assertTrue(confirm_button, "Expected a confirm button on the asset handover wizard.")
+        self.assertEqual(
+            confirm_button[0].get("close"),
+            "1",
+            "Expected the asset handover wizard confirm button to close the dialog after reload.",
         )
 
     def _patch_handover_pdf(self):
