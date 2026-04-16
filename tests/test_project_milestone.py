@@ -44,6 +44,10 @@ class TestProjectMilestone(TransactionCase):
             "company_ids": [Command.set([self.company.id])],
             "group_ids": [Command.set([self.base_user_group.id, self.tenenet_manager_group.id])],
         })
+        self.program = self.env["tenenet.program"].create({
+            "name": "Program Míľniky",
+            "code": "PG_MILESTONE",
+        })
 
         self.garant_employee = self.env["hr.employee"].create({
             "name": "Garant projektu",
@@ -55,6 +59,7 @@ class TestProjectMilestone(TransactionCase):
         })
         self.project = self.env["tenenet.project"].create({
             "name": "Projekt s míľnikmi",
+            "program_ids": [(4, self.program.id)],
             "odborny_garant_id": self.garant_employee.id,
             "project_manager_id": self.pm_employee.id,
             "date_start": "2026-01-01",

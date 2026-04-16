@@ -12,14 +12,14 @@
                   sequence="5"
                   web_icon="tenenet_projects,static/description/clients.svg"
                   action="action_tenenet_clients"
-                  groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_manager"/>
+                  groups="tenenet_projects.group_tenenet_manager"/>
 
         <menuitem id="menu_tenenet_partners_root"
                   name="Partneri"
                   sequence="6"
                   web_icon="tenenet_projects,static/description/partners.svg"
                   action="action_tenenet_partners"
-                  groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_manager"/>
+                  groups="tenenet_projects.group_tenenet_manager"/>
 
         <menuitem id="menu_tenenet_root"
                   name="TENENET"
@@ -49,78 +49,91 @@
         <menuitem id="menu_tenenet_projects"
                   name="Projekty"
                   parent="menu_tenenet_root"
-                  sequence="1"/>
+                  sequence="1"
+                  groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"/>
 
         <menuitem id="menu_tenenet_projects_list"
                   name="Všetky projekty"
                   parent="menu_tenenet_projects"
                   action="action_tenenet_project"
-                  sequence="1"/>
+                  sequence="1"
+                  groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"/>
 
         <menuitem id="menu_tenenet_reporting"
                   name="Reporty"
                   parent="menu_tenenet_root"
-                  sequence="15"/>
+                  sequence="15"
+                  groups="tenenet_projects.group_tenenet_manager"/>
 
         <menuitem id="menu_tenenet_utilization_report"
                   name="Vyťaženosť report podľa zamestnanca"
                   parent="menu_tenenet_reporting"
                   action="action_tenenet_utilization_report"
-                  sequence="5"/>
+                  sequence="5"
+                  groups="tenenet_projects.group_tenenet_manager"/>
 
         <menuitem id="menu_tenenet_utilization_project_report"
                   name="Vyťaženosť report podľa projektu"
                   parent="menu_tenenet_reporting"
                   action="action_tenenet_utilization_project_report"
-                  sequence="6"/>
+                  sequence="6"
+                  groups="tenenet_projects.group_tenenet_manager"/>
 
         <menuitem id="menu_tenenet_project_yearly_labor_report"
                   name="Ročný report projektu"
                   parent="menu_tenenet_reporting"
                   action="action_tenenet_project_yearly_labor_report"
-                  sequence="10"/>
+                  sequence="10"
+                  groups="tenenet_projects.group_tenenet_manager"/>
 
         <menuitem id="menu_tenenet_allocation_report"
                   name="Rozúčtovanie"
                   parent="menu_tenenet_reporting"
                   action="action_tenenet_allocation_report"
-                  sequence="15"/>
+                  sequence="15"
+                  groups="tenenet_projects.group_tenenet_manager"/>
 
         <menuitem id="menu_tenenet_pl_line"
                   name="P&amp;L podľa programu"
                   parent="menu_tenenet_reporting"
                   action="action_tenenet_pl_report"
-                  sequence="20"/>
+                  sequence="20"
+                  groups="tenenet_projects.group_tenenet_manager"/>
 
         <menuitem id="menu_tenenet_pl_summary_report"
                   name="P&amp;L súhrn programov"
                   parent="menu_tenenet_reporting"
                   action="action_tenenet_pl_summary_report"
-                  sequence="21"/>
+                  sequence="21"
+                  groups="tenenet_projects.group_tenenet_manager"/>
 
         <menuitem id="menu_tenenet_cashflow_report"
                   name="CashFlow report"
                   parent="menu_tenenet_reporting"
                   action="action_tenenet_cashflow_report"
-                  sequence="22"/>
+                  sequence="22"
+                  groups="tenenet_projects.group_tenenet_manager"/>
 
         <menuitem id="menu_tenenet_internal_expense_report"
                   name="Interné náklady – ročný report podľa zamestnanca"
                   parent="menu_tenenet_reporting"
                   action="action_tenenet_internal_expense_report"
-                  sequence="23"/>
+                  sequence="23"
+                  groups="tenenet_projects.group_tenenet_manager"/>
 
         <menuitem id="menu_tenenet_internal_expense_project_report"
                   name="Interné náklady – ročný report podľa projektu"
                   parent="menu_tenenet_reporting"
                   action="action_tenenet_internal_expense_project_report"
-                  sequence="24"/>
+                  sequence="24"
+                  groups="tenenet_projects.group_tenenet_manager"/>
 
         <menuitem id="menu_tenenet_employee_list_report"
                   name="Zoznam zamestnancov"
                   parent="menu_tenenet_reporting"
                   action="action_tenenet_employee_list_report"
-                  sequence="26"/>
+                  sequence="26"
+                  groups="tenenet_projects.group_tenenet_manager"/>
 
         <menuitem id="menu_tenenet_alerts"
                   name="Upozornenia"

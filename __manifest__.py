@@ -13,7 +13,7 @@ and P&L reporting by program.
     'website': "https://www.tenenet.sk",
 
     'category': 'Project',
-    'version': '19.0.5.18.0',
+    'version': '19.0.5.19.0',
     'license': 'LGPL-3',
 
     'depends': ['base', 'hr', 'hr_holidays', 'hr_skills', 'hr_expense', 'account_reports', 'mail', 'sign', 'helpdesk', 'web_enterprise', 'web_gantt', 'web_grid'],

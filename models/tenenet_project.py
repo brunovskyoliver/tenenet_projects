@@ -1277,30 +1277,37 @@ class TenenetProject(models.Model):
                 or (rec.odborny_garant_id.id and rec.odborny_garant_id.id in employee_ids)
             )
 
-    def _sync_garant_pm_group(self):
+    def _sync_garant_pm_group(self, employees=None):
         group = self.env.ref("tenenet_projects.group_tenenet_garant_pm", raise_if_not_found=False)
         group_manager = self.env.ref("tenenet_projects.group_tenenet_manager", raise_if_not_found=False)
+        group_user = self.env.ref("tenenet_projects.group_tenenet_user", raise_if_not_found=False)
         if not group:
             return
-        affected = self.mapped("odborny_garant_id") | self.mapped("project_manager_id")
+        affected = employees or (self.mapped("odborny_garant_id") | self.mapped("project_manager_id"))
         for employee in affected:
             user = employee.user_id
             if not user:
                 continue
-            # Managers already have broader access — leave their groups untouched
+            in_group = group in user.group_ids
             if group_manager and group_manager in user.group_ids:
+                if in_group:
+                    user.sudo().write({"group_ids": [(3, group.id)]})
                 continue
-            still_qualifies = bool(self.env["tenenet.project"].search_count([
+            still_qualifies = bool(self.env["tenenet.project"].sudo().search_count([
                 ("active", "=", True),
                 "|",
                 ("odborny_garant_id", "=", employee.id),
                 ("project_manager_id", "=", employee.id),
             ]))
-            in_group = group in user.group_ids
             if still_qualifies and not in_group:
-                user.write({"group_ids": [(4, group.id)]})
+                commands = [(4, group.id)]
+                if group_user and group_user in user.group_ids:
+                    commands.append((3, group_user.id))
+                user.sudo().write({"group_ids": commands})
+            elif still_qualifies and group_user and group_user in user.group_ids:
+                user.sudo().write({"group_ids": [(3, group_user.id)]})
             elif not still_qualifies and in_group:
-                user.write({"group_ids": [(3, group.id)]})
+                user.sudo().write({"group_ids": [(3, group.id)]})
 
     def write(self, vals):
         old_graph_pairs = set()
@@ -1328,6 +1335,9 @@ class TenenetProject(models.Model):
         previous_site_ids = {}
         if "site_ids" in vals:
             previous_site_ids = {project.id: set(project.site_ids.ids) for project in self}
+        previous_role_employees = self.env["hr.employee"]
+        if {"odborny_garant_id", "project_manager_id", "active"} & set(vals):
+            previous_role_employees = self.mapped("odborny_garant_id") | self.mapped("project_manager_id")
         result = super().write(vals)
         if previous_site_ids:
             self._cleanup_assignment_sites_after_project_unlink(previous_site_ids)
@@ -1336,7 +1346,7 @@ class TenenetProject(models.Model):
         if "default_max_monthly_wage_hm" in vals:
             self.mapped("assignment_ids.timesheet_ids")._check_wage_cap()
         if "odborny_garant_id" in vals or "project_manager_id" in vals or "active" in vals:
-            self._sync_garant_pm_group()
+            self._sync_garant_pm_group(previous_role_employees | self.mapped("odborny_garant_id") | self.mapped("project_manager_id"))
         if {"is_recurring_license_project", "recurring_clone_anchor_date", "recurring_base_name"} & set(vals):
             self._ensure_recurring_metadata()
         if "finance_graph_year" in vals:

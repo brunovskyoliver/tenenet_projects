@@ -32,8 +32,8 @@
 
         <record id="group_tenenet_garant_pm" model="res.groups">
             <field name="name">TENENET Odborný garant / PM (technická)</field>
-            <!-- No privilege_id → not visible in the Users UI, purely auto-managed -->
-            <field name="implied_ids" eval="[(4, ref('tenenet_projects.group_tenenet_user'))]"/>
+            <!-- No privilege_id -> not visible in the Users UI, purely auto-managed. -->
+            <field name="implied_ids" eval="[(6, 0, [ref('base.group_user')])]"/>
         </record>
 
         <record id="group_tenenet_helpdesk_user" model="res.groups">
@@ -58,6 +58,369 @@
                 name="implied_ids"
                 eval="[(4, ref('tenenet_projects.group_tenenet_helpdesk_editor'))]"
             />
+        </record>
+
+        <record id="rule_tenenet_project_user_read_all" model="ir.rule">
+            <field name="name">TENENET projekty: používateľ číta projekty</field>
+            <field name="model_id" ref="model_tenenet_project"/>
+            <field name="domain_force">[('is_tenenet_internal', '=', False)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_project_garant_pm_assigned" model="ir.rule">
+            <field name="name">TENENET projekty: garant/PM spravuje svoje projekty</field>
+            <field name="model_id" ref="model_tenenet_project"/>
+            <field name="domain_force">[('is_tenenet_internal', '=', False), '|', ('odborny_garant_id.user_id', '=', user.id), ('project_manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_garant_pm'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_project_manager_all" model="ir.rule">
+            <field name="name">TENENET projekty: manažér spravuje všetko</field>
+            <field name="model_id" ref="model_tenenet_project"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_project_child_garant_pm_assigned" model="ir.rule">
+            <field name="name">TENENET projektové dáta: garant/PM len svoje projekty</field>
+            <field name="model_id" ref="model_tenenet_project_assignment"/>
+            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), '|', ('project_id.odborny_garant_id.user_id', '=', user.id), ('project_id.project_manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_garant_pm'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_project_child_manager_all" model="ir.rule">
+            <field name="name">TENENET projektové dáta: manažér všetko</field>
+            <field name="model_id" ref="model_tenenet_project_assignment"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_project_timesheet_garant_pm_assigned" model="ir.rule">
+            <field name="name">TENENET timesheety: garant/PM len svoje projekty</field>
+            <field name="model_id" ref="model_tenenet_project_timesheet"/>
+            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), '|', ('project_id.odborny_garant_id.user_id', '=', user.id), ('project_id.project_manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_garant_pm'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_project_timesheet_manager_all" model="ir.rule">
+            <field name="name">TENENET timesheety: manažér všetko</field>
+            <field name="model_id" ref="model_tenenet_project_timesheet"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_project_timesheet_line_garant_pm_assigned" model="ir.rule">
+            <field name="name">TENENET timesheet riadky: garant/PM len svoje projekty</field>
+            <field name="model_id" ref="model_tenenet_project_timesheet_line"/>
+            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), '|', ('project_id.odborny_garant_id.user_id', '=', user.id), ('project_id.project_manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_garant_pm'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_project_timesheet_line_manager_all" model="ir.rule">
+            <field name="name">TENENET timesheet riadky: manažér všetko</field>
+            <field name="model_id" ref="model_tenenet_project_timesheet_line"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_project_timesheet_matrix_garant_pm_assigned" model="ir.rule">
+            <field name="name">TENENET matice: garant/PM len svoje projekty</field>
+            <field name="model_id" ref="model_tenenet_project_timesheet_matrix"/>
+            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), '|', ('project_id.odborny_garant_id.user_id', '=', user.id), ('project_id.project_manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_garant_pm'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_project_timesheet_matrix_manager_all" model="ir.rule">
+            <field name="name">TENENET matice: manažér všetko</field>
+            <field name="model_id" ref="model_tenenet_project_timesheet_matrix"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_project_timesheet_matrix_line_garant_pm_assigned" model="ir.rule">
+            <field name="name">TENENET matice riadky: garant/PM len svoje projekty</field>
+            <field name="model_id" ref="model_tenenet_project_timesheet_matrix_line"/>
+            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), '|', ('project_id.odborny_garant_id.user_id', '=', user.id), ('project_id.project_manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_garant_pm'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_project_timesheet_matrix_line_manager_all" model="ir.rule">
+            <field name="name">TENENET matice riadky: manažér všetko</field>
+            <field name="model_id" ref="model_tenenet_project_timesheet_matrix_line"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_project_timesheet_matrix_entry_garant_pm_assigned" model="ir.rule">
+            <field name="name">TENENET matice bunky: garant/PM len svoje projekty</field>
+            <field name="model_id" ref="model_tenenet_project_timesheet_matrix_entry"/>
+            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), '|', ('project_id.odborny_garant_id.user_id', '=', user.id), ('project_id.project_manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_garant_pm'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_project_timesheet_matrix_entry_manager_all" model="ir.rule">
+            <field name="name">TENENET matice bunky: manažér všetko</field>
+            <field name="model_id" ref="model_tenenet_project_timesheet_matrix_entry"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_project_milestone_garant_pm_assigned" model="ir.rule">
+            <field name="name">TENENET míľniky: garant/PM len svoje projekty</field>
+            <field name="model_id" ref="model_tenenet_project_milestone"/>
+            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), '|', ('project_id.odborny_garant_id.user_id', '=', user.id), ('project_id.project_manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_garant_pm'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_project_milestone_manager_all" model="ir.rule">
+            <field name="name">TENENET míľniky: manažér všetko</field>
+            <field name="model_id" ref="model_tenenet_project_milestone"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_project_receipt_garant_pm_assigned" model="ir.rule">
+            <field name="name">TENENET príjmy projektu: garant/PM len svoje projekty</field>
+            <field name="model_id" ref="model_tenenet_project_receipt"/>
+            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), '|', ('project_id.odborny_garant_id.user_id', '=', user.id), ('project_id.project_manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_garant_pm'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_project_receipt_manager_all" model="ir.rule">
+            <field name="name">TENENET príjmy projektu: manažér všetko</field>
+            <field name="model_id" ref="model_tenenet_project_receipt"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_project_cashflow_garant_pm_assigned" model="ir.rule">
+            <field name="name">TENENET cashflow projektu: garant/PM len svoje projekty</field>
+            <field name="model_id" ref="model_tenenet_project_cashflow"/>
+            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), '|', ('project_id.odborny_garant_id.user_id', '=', user.id), ('project_id.project_manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_garant_pm'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_project_cashflow_manager_all" model="ir.rule">
+            <field name="name">TENENET cashflow projektu: manažér všetko</field>
+            <field name="model_id" ref="model_tenenet_project_cashflow"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_project_finance_monthly_line_garant_pm_assigned" model="ir.rule">
+            <field name="name">TENENET mesačné financie: garant/PM len svoje projekty</field>
+            <field name="model_id" ref="model_tenenet_project_finance_monthly_line"/>
+            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), '|', ('project_id.odborny_garant_id.user_id', '=', user.id), ('project_id.project_manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_garant_pm'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_project_finance_monthly_line_manager_all" model="ir.rule">
+            <field name="name">TENENET mesačné financie: manažér všetko</field>
+            <field name="model_id" ref="model_tenenet_project_finance_monthly_line"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_project_budget_line_garant_pm_assigned" model="ir.rule">
+            <field name="name">TENENET rozpočet: garant/PM len svoje projekty</field>
+            <field name="model_id" ref="model_tenenet_project_budget_line"/>
+            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), '|', ('project_id.odborny_garant_id.user_id', '=', user.id), ('project_id.project_manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_garant_pm'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_project_budget_line_manager_all" model="ir.rule">
+            <field name="name">TENENET rozpočet: manažér všetko</field>
+            <field name="model_id" ref="model_tenenet_project_budget_line"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_project_budget_line_month_garant_pm_assigned" model="ir.rule">
+            <field name="name">TENENET mesačný rozpočet: garant/PM len svoje projekty</field>
+            <field name="model_id" ref="model_tenenet_project_budget_line_month"/>
+            <field name="domain_force">[('budget_line_id.project_id.is_tenenet_internal', '=', False), '|', ('budget_line_id.project_id.odborny_garant_id.user_id', '=', user.id), ('budget_line_id.project_id.project_manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_garant_pm'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_project_budget_line_month_manager_all" model="ir.rule">
+            <field name="name">TENENET mesačný rozpočet: manažér všetko</field>
+            <field name="model_id" ref="model_tenenet_project_budget_line_month"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_project_allowed_expense_type_garant_pm_assigned" model="ir.rule">
+            <field name="name">TENENET povolené typy výdavkov: garant/PM len svoje projekty</field>
+            <field name="model_id" ref="model_tenenet_project_allowed_expense_type"/>
+            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), '|', ('project_id.odborny_garant_id.user_id', '=', user.id), ('project_id.project_manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_garant_pm'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_project_allowed_expense_type_manager_all" model="ir.rule">
+            <field name="name">TENENET povolené typy výdavkov: manažér všetko</field>
+            <field name="model_id" ref="model_tenenet_project_allowed_expense_type"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_project_expense_garant_pm_assigned" model="ir.rule">
+            <field name="name">TENENET výdavky projektu: garant/PM len svoje projekty</field>
+            <field name="model_id" ref="model_tenenet_project_expense"/>
+            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), '|', ('project_id.odborny_garant_id.user_id', '=', user.id), ('project_id.project_manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_garant_pm'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_project_expense_manager_all" model="ir.rule">
+            <field name="name">TENENET výdavky projektu: manažér všetko</field>
+            <field name="model_id" ref="model_tenenet_project_expense"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_project_leave_rule_garant_pm_assigned" model="ir.rule">
+            <field name="name">TENENET pravidlá dovoleniek: garant/PM len svoje projekty</field>
+            <field name="model_id" ref="model_tenenet_project_leave_rule"/>
+            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), '|', ('project_id.odborny_garant_id.user_id', '=', user.id), ('project_id.project_manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_garant_pm'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_project_leave_rule_manager_all" model="ir.rule">
+            <field name="name">TENENET pravidlá dovoleniek: manažér všetko</field>
+            <field name="model_id" ref="model_tenenet_project_leave_rule"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
         </record>
     </data>
 </odoo>

@@ -1,5 +1,5 @@
-from odoo import fields
-from odoo.exceptions import ValidationError
+from odoo import Command, fields
+from odoo.exceptions import AccessError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -36,6 +36,16 @@ class TestTenenetPlan02Project(TransactionCase):
         )
         self.employee = self.env["hr.employee"].create({"name": "Projektový Manažér"})
 
+    def _create_user(self, login, group_ids):
+        return self.env["res.users"].with_context(no_reset_password=True).create({
+            "name": login,
+            "login": login,
+            "email": f"{login}@example.com",
+            "company_id": self.env.company.id,
+            "company_ids": [Command.set([self.env.company.id])],
+            "group_ids": [Command.set(group_ids)],
+        })
+
     def test_project_create_with_relations(self):
         project = self.env["tenenet.project"].create(
             {
@@ -63,6 +73,82 @@ class TestTenenetPlan02Project(TransactionCase):
         self.assertIn(admin_program, project.program_ids)
         self.assertNotIn(admin_program, project.ui_program_ids)
         self.assertEqual(project.reporting_program_id, self.program)
+
+    def test_project_user_role_is_read_only(self):
+        base_group = self.env.ref("base.group_user")
+        user_group = self.env.ref("tenenet_projects.group_tenenet_user")
+        normal_user = self._create_user("project_readonly_user", [base_group.id, user_group.id])
+        project = self.env["tenenet.project"].create({
+            "name": "Projekt Readonly",
+            "program_ids": [(4, self.program.id)],
+        })
+
+        self.assertEqual(
+            self.env["tenenet.project"].with_user(normal_user).search_count([("id", "=", project.id)]),
+            1,
+        )
+        with self.assertRaises(AccessError):
+            project.with_user(normal_user).write({"description": "Blocked"})
+
+    def test_garant_pm_uses_hidden_role_and_only_assigned_projects(self):
+        base_group = self.env.ref("base.group_user")
+        user_group = self.env.ref("tenenet_projects.group_tenenet_user")
+        garant_group = self.env.ref("tenenet_projects.group_tenenet_garant_pm")
+        pm_user = self._create_user("project_pm_hidden", [base_group.id, user_group.id])
+        pm_employee = self.env["hr.employee"].create({
+            "name": "PM hidden role",
+            "user_id": pm_user.id,
+        })
+        assigned_project = self.env["tenenet.project"].create({
+            "name": "Projekt assigned PM",
+            "program_ids": [(4, self.program.id)],
+            "project_manager_id": pm_employee.id,
+        })
+        other_project = self.env["tenenet.project"].create({
+            "name": "Projekt not assigned PM",
+            "program_ids": [(4, self.program.id)],
+        })
+
+        pm_user.invalidate_recordset(["group_ids"])
+        self.assertIn(garant_group, pm_user.group_ids)
+        self.assertNotIn(user_group, pm_user.group_ids)
+        self.assertEqual(
+            self.env["tenenet.project"].with_user(pm_user).search_count([("id", "=", assigned_project.id)]),
+            1,
+        )
+        self.assertEqual(
+            self.env["tenenet.project"].with_user(pm_user).search_count([("id", "=", other_project.id)]),
+            0,
+        )
+
+        assigned_project.with_user(pm_user).write({"description": "Allowed"})
+        with self.assertRaises(AccessError):
+            other_project.with_user(pm_user).write({"description": "Blocked"})
+
+        assigned_project.write({"project_manager_id": False})
+        pm_user.invalidate_recordset(["group_ids"])
+        self.assertNotIn(garant_group, pm_user.group_ids)
+
+    def test_manager_role_survives_project_appointment(self):
+        base_group = self.env.ref("base.group_user")
+        manager_group = self.env.ref("tenenet_projects.group_tenenet_manager")
+        garant_group = self.env.ref("tenenet_projects.group_tenenet_garant_pm")
+        manager_user = self._create_user("project_manager_kept", [base_group.id, manager_group.id])
+        manager_employee = self.env["hr.employee"].create({
+            "name": "Manager stays manager",
+            "user_id": manager_user.id,
+        })
+
+        self.env["tenenet.project"].create({
+            "name": "Projekt manager stays manager",
+            "program_ids": [(4, self.program.id)],
+            "odborny_garant_id": manager_employee.id,
+            "project_manager_id": manager_employee.id,
+        })
+
+        manager_user.invalidate_recordset(["group_ids"])
+        self.assertIn(manager_group, manager_user.group_ids)
+        self.assertNotIn(garant_group, manager_user.group_ids)
 
     def test_reporting_program_is_auto_resolved_from_visible_programs(self):
         second_program = self.env["tenenet.program"].create({"name": "Program B", "code": "PG_B"})
