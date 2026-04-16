@@ -10,6 +10,8 @@
                     <field name="handover_date"/>
                     <field name="asset_count"/>
                     <field name="sign_state" widget="badge"/>
+                    <field name="helpdesk_ticket_stage_id" optional="hide" groups="tenenet_projects.group_tenenet_manager"/>
+                    <field name="helpdesk_ticket_id" optional="hide" groups="tenenet_projects.group_tenenet_manager"/>
                     <field name="sign_request_id"/>
                 </list>
             </field>
@@ -29,6 +31,11 @@
                                 type="object"
                                 string="Otvoriť podpis"
                                 invisible="not sign_request_id"/>
+                        <button name="action_open_helpdesk_ticket"
+                                type="object"
+                                string="Otvoriť helpdesk požiadavku"
+                                groups="tenenet_projects.group_tenenet_manager"
+                                invisible="not helpdesk_ticket_id"/>
                     </header>
                     <sheet>
                         <div class="oe_button_box" name="button_box">
@@ -42,6 +49,17 @@
                                     <span class="o_stat_text"><field name="sign_state"/></span>
                                 </div>
                             </button>
+                            <button name="action_open_helpdesk_ticket"
+                                    type="object"
+                                    class="oe_stat_button"
+                                    icon="fa-life-ring"
+                                    groups="tenenet_projects.group_tenenet_manager"
+                                    invisible="not helpdesk_ticket_id">
+                                <div class="o_stat_info">
+                                    <span class="o_stat_text">Helpdesk</span>
+                                    <span class="o_stat_text"><field name="helpdesk_ticket_stage_id"/></span>
+                                </div>
+                            </button>
                         </div>
                         <group>
                             <group>
@@ -52,6 +70,8 @@
                             <group>
                                 <field name="sign_request_id" readonly="1"/>
                                 <field name="sign_template_id" readonly="1"/>
+                                <field name="helpdesk_ticket_id" readonly="1" groups="tenenet_projects.group_tenenet_manager"/>
+                                <field name="helpdesk_ticket_stage_id" readonly="1" groups="tenenet_projects.group_tenenet_manager"/>
                             </group>
                         </group>
                         <notebook>
@@ -85,6 +105,7 @@
                     <field name="name"/>
                     <field name="employee_id"/>
                     <field name="sign_request_id"/>
+                    <field name="helpdesk_ticket_id" groups="tenenet_projects.group_tenenet_manager"/>
                     <filter string="Na podpis" name="to_sign" domain="[('sign_state', '=', 'sent')]"/>
                     <filter string="Podpísané" name="signed" domain="[('sign_state', '=', 'signed')]"/>
                     <group>

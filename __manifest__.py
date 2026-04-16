@@ -16,7 +16,7 @@ and P&L reporting by program.
     'version': '19.0.5.16.0',
     'license': 'LGPL-3',
 
-    'depends': ['base', 'hr', 'hr_holidays', 'hr_skills', 'hr_expense', 'account_reports', 'mail', 'sign', 'web_enterprise', 'web_gantt', 'web_grid'],
+    'depends': ['base', 'hr', 'hr_holidays', 'hr_skills', 'hr_expense', 'account_reports', 'mail', 'sign', 'helpdesk', 'web_enterprise', 'web_gantt', 'web_grid'],
 
 
     'assets': {

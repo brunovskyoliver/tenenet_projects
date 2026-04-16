@@ -6,6 +6,7 @@ from . import tenenet_project_contact
 from . import res_partner
 from . import hr_employee
 from . import hr_employee_public
+from . import sign_request
 from . import tenenet_employee_asset_type
 from . import tenenet_employee_asset_handover
 from . import tenenet_employee_asset

@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from lxml import etree
 
-from odoo import Command
+from odoo import Command, fields
 from odoo.addons.tenenet_projects.models.tenenet_employee_asset_handover import TenenetEmployeeAssetHandover
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
@@ -67,6 +67,26 @@ class TestTenenetEmployeeAssets(TransactionCase):
                 "group_ids": [Command.set([self.base_user_group.id, self.tenenet_manager_group.id])],
             }
         )
+        self.helpdesk_team = self.env["helpdesk.team"].create({
+            "name": "Interné TENENET",
+            "company_id": self.company.id,
+            "member_ids": [Command.link(self.env.user.id)],
+        })
+        self.helpdesk_stage_handover = self.env["helpdesk.stage"].create({
+            "name": "Preberací protokol",
+            "sequence": 5,
+            "team_ids": [Command.link(self.helpdesk_team.id)],
+        })
+        self.helpdesk_stage_done = self.env["helpdesk.stage"].create({
+            "name": "Vyriešené",
+            "sequence": 10,
+            "fold": True,
+            "team_ids": [Command.link(self.helpdesk_team.id)],
+        })
+        self.helpdesk_team.write({
+            "stage_ids": [Command.set([self.helpdesk_stage_handover.id, self.helpdesk_stage_done.id])],
+            "to_stage_id": self.helpdesk_stage_done.id,
+        })
 
     def test_employee_asset_creation(self):
         asset = self.env["tenenet.employee.asset"].create({
@@ -369,6 +389,11 @@ class TestTenenetEmployeeAssets(TransactionCase):
 
         self.assertTrue(handover.sign_template_id)
         self.assertTrue(handover.sign_request_id)
+        self.assertTrue(handover.helpdesk_ticket_id)
+        self.assertEqual(handover.helpdesk_ticket_id.team_id, self.helpdesk_team)
+        self.assertEqual(handover.helpdesk_ticket_id.stage_id, self.helpdesk_stage_handover)
+        self.assertEqual(handover.helpdesk_ticket_id.partner_id.email_normalized, "majetkovy.zamestnanec@example.com")
+        self.assertIn("/sign/document/%s/" % handover.sign_request_id.id, handover.helpdesk_ticket_id.description)
         self.assertEqual(handover.sign_request_id.reference_doc, handover)
         self.assertEqual(len(handover.sign_request_id.request_item_ids), 1)
         self.assertEqual(
@@ -384,6 +409,34 @@ class TestTenenetEmployeeAssets(TransactionCase):
         self.assertEqual(signature_items.posY, 0.475)
         self.assertEqual(signature_items.width, 0.255)
         self.assertEqual(signature_items.height, 0.060)
+
+    def test_handover_helpdesk_ticket_closes_after_signature(self):
+        asset = self.env["tenenet.employee.asset"].create({
+            "employee_id": self.employee.id,
+            "asset_type_id": self.asset_type_laptop.id,
+            "serial_number": "SN-SIGN-001",
+            "handover_date": "2026-04-14",
+        })
+        handover = self.env["tenenet.employee.asset.handover"].create({
+            "employee_id": self.employee.id,
+            "handover_date": "2026-04-14",
+        })
+        asset.handover_id = handover.id
+
+        with self._patch_handover_pdf():
+            handover.action_send_for_signature()
+
+        self.assertEqual(handover.helpdesk_ticket_id.stage_id, self.helpdesk_stage_handover)
+
+        handover.sign_request_id.request_item_ids.write({
+            "state": "completed",
+            "signing_date": fields.Date.today(),
+        })
+        with patch("odoo.addons.sign.models.sign_request.SignRequest._send_completed_documents", autospec=True, return_value=None):
+            handover.sign_request_id._sign()
+
+        self.assertEqual(handover.sign_request_id.state, "signed")
+        self.assertEqual(handover.helpdesk_ticket_id.stage_id, self.helpdesk_stage_done)
 
     def test_employee_action_requires_work_email(self):
         self.employee.work_email = False

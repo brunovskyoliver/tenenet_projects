@@ -1,5 +1,6 @@
 import base64
 from dateutil.relativedelta import relativedelta
+from markupsafe import Markup, escape
 
 from odoo import Command, api, fields, models, _
 from odoo.exceptions import UserError
@@ -61,12 +62,29 @@ class TenenetEmployeeAssetHandover(models.Model):
         copy=False,
         tracking=True,
     )
+    helpdesk_ticket_id = fields.Many2one(
+        "helpdesk.ticket",
+        string="Helpdesk požiadavka",
+        readonly=True,
+        copy=False,
+        tracking=True,
+    )
     sign_state = fields.Selection(
         related="sign_request_id.state",
         string="Stav podpisu",
         readonly=True,
         store=True,
     )
+    helpdesk_ticket_stage_id = fields.Many2one(
+        "helpdesk.stage",
+        string="Fáza požiadavky",
+        related="helpdesk_ticket_id.stage_id",
+        readonly=True,
+        store=True,
+    )
+
+    _HELPDESK_TEAM_NAME = "Interné TENENET"
+    _HELPDESK_HANDOVER_STAGE_NAME = "Preberací protokol"
 
     @api.depends("employee_id", "handover_date")
     def _compute_name(self):
@@ -100,9 +118,23 @@ class TenenetEmployeeAssetHandover(models.Model):
             "context": {"create": False},
         }
 
+    def action_open_helpdesk_ticket(self):
+        self.ensure_one()
+        if not self.helpdesk_ticket_id:
+            raise UserError(_("Pre tento protokol ešte nebola vytvorená helpdesk požiadavka."))
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Helpdesk požiadavka"),
+            "res_model": "helpdesk.ticket",
+            "view_mode": "form",
+            "res_id": self.helpdesk_ticket_id.id,
+            "target": "current",
+        }
+
     def action_send_for_signature(self, message=False):
         for handover in self:
             handover._create_sign_request(message=message)
+            handover._ensure_helpdesk_ticket()
         return True
 
     def _create_sign_request(self, message=False):
@@ -138,6 +170,107 @@ class TenenetEmployeeAssetHandover(models.Model):
         })
         self.message_post(body=_("Podpisová žiadosť bola odoslaná zamestnancovi %s.", partner.display_name))
         return sign_request
+
+    def _ensure_helpdesk_ticket(self):
+        self.ensure_one()
+        if self.helpdesk_ticket_id:
+            return self.helpdesk_ticket_id
+        if not self.sign_request_id:
+            raise UserError(_("Najskôr je potrebné vytvoriť podpisovú žiadosť."))
+
+        team = self._get_helpdesk_team()
+        stage = self._get_or_create_helpdesk_handover_stage(team)
+        partner = self._get_employee_sign_partner()
+        ticket_vals = {
+            "name": self.name,
+            "team_id": team.id,
+            "stage_id": stage.id,
+            "partner_id": partner.id,
+            "partner_name": self.employee_id.name,
+            "partner_email": partner.email or self.employee_id.work_email,
+            "description": self._build_helpdesk_ticket_description(),
+        }
+        ticket = self.env["helpdesk.ticket"].with_context(default_team_id=team.id).sudo().create(ticket_vals)
+        self.helpdesk_ticket_id = ticket.id
+        ticket.message_post(body=self._build_helpdesk_ticket_message())
+        self.message_post(body=_("Bola vytvorená helpdesk požiadavka %s.", ticket._get_html_link()))
+        return ticket
+
+    def _get_helpdesk_team(self):
+        self.ensure_one()
+        team = self.env["helpdesk.team"].sudo().search([
+            ("name", "=", self._HELPDESK_TEAM_NAME),
+            ("company_id", "=", self.company_id.id),
+        ], limit=1)
+        if not team:
+            team = self.env["helpdesk.team"].sudo().search([
+                ("name", "=", self._HELPDESK_TEAM_NAME),
+            ], limit=1)
+        if not team:
+            raise UserError(_(
+                "Nepodarilo sa nájsť helpdesk tím '%s'.",
+                self._HELPDESK_TEAM_NAME,
+            ))
+        return team
+
+    def _get_or_create_helpdesk_handover_stage(self, team):
+        self.ensure_one()
+        stage = team.stage_ids.filtered(lambda rec: rec.name == self._HELPDESK_HANDOVER_STAGE_NAME)[:1]
+        if stage:
+            return stage
+
+        close_stage = team.to_stage_id or team.stage_ids.filtered("fold")[:1]
+        sequence = max((close_stage.sequence - 1) if close_stage else 10, 1)
+        return self.env["helpdesk.stage"].sudo().create({
+            "name": self._HELPDESK_HANDOVER_STAGE_NAME,
+            "sequence": sequence,
+            "fold": False,
+            "team_ids": [Command.link(team.id)],
+        })
+
+    def _build_helpdesk_ticket_description(self):
+        self.ensure_one()
+        sign_url = escape(self._get_sign_url())
+        return Markup(
+            "<p>%s</p><p><a href=\"%s\" target=\"_blank\">%s</a></p><p>%s</p>"
+        ) % (
+            escape(_("Zamestnanec má podpísať preberací protokol firemného majetku.")),
+            sign_url,
+            escape(_("Otvoriť dokument na podpis")),
+            escape(_("Požiadavka sa uzatvorí automaticky po podpise dokumentu zamestnancom.")),
+        )
+
+    def _build_helpdesk_ticket_message(self):
+        self.ensure_one()
+        sign_url = escape(self._get_sign_url())
+        return Markup("<p>%s</p><p><a href=\"%s\" target=\"_blank\">%s</a></p>") % (
+            escape(_("Odkaz na podpis pre zamestnanca:")),
+            sign_url,
+            escape(_("Podpísať preberací protokol")),
+        )
+
+    def _get_sign_url(self):
+        self.ensure_one()
+        if not self.sign_request_id or not self.sign_request_id.request_item_ids:
+            raise UserError(_("Pre tento protokol ešte nebola vytvorená podpisová žiadosť."))
+        request_item = self.sign_request_id.request_item_ids[:1].sudo()
+        return "%s/sign/document/%s/%s" % (
+            self.get_base_url(),
+            self.sign_request_id.id,
+            request_item.access_token,
+        )
+
+    def _close_helpdesk_ticket_if_signed(self):
+        for handover in self.filtered(lambda rec: rec.helpdesk_ticket_id and rec.sign_state == "signed"):
+            close_stage = handover.helpdesk_ticket_id.team_id.to_stage_id or handover.helpdesk_ticket_id.team_id.stage_ids.filtered("fold")[:1]
+            if not close_stage:
+                continue
+            handover.helpdesk_ticket_id.sudo().write({
+                "stage_id": close_stage.id,
+            })
+            handover.helpdesk_ticket_id.message_post(
+                body=_("Požiadavka bola automaticky uzatvorená po podpise preberacieho protokolu.")
+            )
 
     def _get_employee_sign_partner(self):
         self.ensure_one()
