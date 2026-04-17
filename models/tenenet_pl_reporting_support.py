@@ -805,7 +805,31 @@ class TenenetPLReportingSupport(models.AbstractModel):
             project = timesheet.project_id
             bucket = project_values.setdefault(
                 project.id,
-                {"project": project, "name": self._get_project_line_name(project), "values": defaultdict(float)},
+                {
+                    "project": project,
+                    "name": self._get_project_line_name(project),
+                    "values": defaultdict(float),
+                    "_category_rows_by_key": {},
+                },
+            )
+            category_key = "settlement_only" if timesheet.assignment_id.settlement_only else "worked"
+            category_bucket = bucket["_category_rows_by_key"].setdefault(
+                category_key,
+                {
+                    "category_key": category_key,
+                    "name": "Iba zúčtované" if category_key == "settlement_only" else "Odpracované",
+                    "values": defaultdict(float),
+                    "_employee_rows_by_id": {},
+                },
+            )
+            employee = timesheet.employee_id
+            employee_bucket = category_bucket["_employee_rows_by_id"].setdefault(
+                employee.id,
+                {
+                    "employee": employee,
+                    "name": employee.display_name,
+                    "values": defaultdict(float),
+                },
             )
             covered_amount = max(
                 0.0,
@@ -815,10 +839,71 @@ class TenenetPLReportingSupport(models.AbstractModel):
                     0.0,
                 ),
             )
-            bucket["values"][timesheet.period.month] -= covered_amount
-        rows = [row for row in project_values.values() if any(row["values"].values())]
+            amount = -covered_amount
+            bucket["values"][timesheet.period.month] += amount
+            category_bucket["values"][timesheet.period.month] += amount
+            employee_bucket["values"][timesheet.period.month] += amount
+
+        category_order = {"worked": 10, "settlement_only": 20}
+        rows = []
+        for bucket in project_values.values():
+            category_rows_by_key = bucket.pop("_category_rows_by_key")
+            category_rows = []
+            for category_key in ("worked", "settlement_only"):
+                category_bucket = category_rows_by_key.get(category_key, {
+                    "category_key": category_key,
+                    "name": "Iba zúčtované" if category_key == "settlement_only" else "Odpracované",
+                    "values": defaultdict(float),
+                    "_employee_rows_by_id": {},
+                })
+                employee_rows = list(category_bucket.pop("_employee_rows_by_id").values())
+                employee_rows = [row for row in employee_rows if any(row["values"].values())]
+                employee_rows.sort(key=lambda row: (row["name"] or "").lower())
+                category_bucket["employee_rows"] = employee_rows
+                category_rows.append(category_bucket)
+            category_rows.sort(key=lambda row: category_order.get(row["category_key"], 99))
+            if any(bucket["values"].values()) or any(row.get("employee_rows") for row in category_rows):
+                bucket["category_rows"] = category_rows
+                rows.append(bucket)
         rows.sort(key=lambda row: (row["name"] or "").lower())
         return rows
+
+    def _predict_labor_project_rows(self, rows, selected_year):
+        predicted_rows = []
+        for row in rows:
+            row_copy = dict(row)
+            category_rows = []
+            for category_row in row_copy.get("category_rows", []):
+                category_copy = dict(category_row)
+                employee_rows = self._predict_report_rows(
+                    category_copy.get("employee_rows") or [],
+                    selected_year,
+                )
+                category_copy["employee_rows"] = employee_rows
+                if employee_rows:
+                    category_bundle = self._sum_month_value_bundles(*(
+                        employee_row["value_bundle"] for employee_row in employee_rows
+                    ))
+                else:
+                    category_bundle = self._predict_row_bundle(
+                        category_copy.get("values"),
+                        selected_year,
+                    )
+                category_copy["value_bundle"] = category_bundle
+                category_copy["values"] = category_bundle["values"]
+                category_rows.append(category_copy)
+
+            row_copy["category_rows"] = category_rows
+            if category_rows:
+                row_bundle = self._sum_month_value_bundles(*(
+                    category_row["value_bundle"] for category_row in category_rows
+                ))
+            else:
+                row_bundle = self._predict_row_bundle(row_copy.get("values"), selected_year)
+            row_copy["value_bundle"] = row_bundle
+            row_copy["values"] = row_bundle["values"]
+            predicted_rows.append(row_copy)
+        return predicted_rows
 
     def _get_internal_expense_amount(self, expense):
         if expense.category in ("wage", "leave", "residual_wage"):
@@ -1169,7 +1254,10 @@ class TenenetPLReportingSupport(models.AbstractModel):
         ]
         sales_rows = self._get_sales_rows(program, selected_year)
         fundraising_rows = self._predict_report_rows(self._get_fundraising_rows(program, selected_year), selected_year)
-        labor_project_rows = self._predict_report_rows(self._get_program_labor_cost_rows(program, selected_year), selected_year)
+        labor_project_rows = self._predict_labor_project_rows(
+            self._get_program_labor_cost_rows(program, selected_year),
+            selected_year,
+        )
         admin_cost_detail_rows = self._predict_report_rows(self._get_admin_cost_detail_rows(program, selected_year), selected_year)
         admin_manual_detail_row = self._get_admin_manual_detail_row(override_rows)
         if admin_manual_detail_row:

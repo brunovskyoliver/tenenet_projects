@@ -242,7 +242,13 @@ class TestTenenetPlan13PLReport(TransactionCase):
             "Náklady",
             "Mzdové náklady - program",
             "Projekt Alpha",
+            "Odpracované",
+            "Adam Zamestnanec",
+            "Iba zúčtované",
             "Projekt Multi",
+            "Odpracované",
+            "Beata Zamestnanec",
+            "Iba zúčtované",
             "Stravné a iné",
             "Pokrytie mzdových nákladov",
             "Výsledok po mzdových nákladoch",
@@ -557,6 +563,75 @@ class TestTenenetPlan13PLReport(TransactionCase):
         self.assertAlmostEqual(beta_columns["month_03"], -50.0, places=2)
         self.assertAlmostEqual(adam_columns["month_03"], -100.0, places=2)
         self.assertAlmostEqual(beata_columns["month_03"], -50.0, places=2)
+
+    def test_non_admin_program_labor_splits_worked_and_settlement_only_by_employee(self):
+        year = fields.Date.context_today(self).year + 1
+        settlement_assignment = self.env["tenenet.project.assignment"].create({
+            "employee_id": self.employee_b.id,
+            "project_id": self.project_a.id,
+            "program_id": self.program_a.id,
+            "allocation_ratio": 10.0,
+            "settlement_only": True,
+            "wage_hm": self.base_wage_hm,
+        })
+        self._create_timesheet(self.assignment_a, f"{year}-03-01", 100.0)
+        self._create_timesheet(settlement_assignment, f"{year}-03-01", 40.0)
+
+        lines = self._get_detail_lines(year, self.program_a, unfold_all=True)
+        labor_line = self._find_line(lines, "Mzdové náklady - program")
+        project_line = next(
+            line for line in lines
+            if line["name"] == "Projekt Alpha" and line.get("parent_id") == labor_line["id"]
+        )
+        worked_line = next(
+            line for line in lines
+            if line["name"] == "Odpracované" and line.get("parent_id") == project_line["id"]
+        )
+        settlement_line = next(
+            line for line in lines
+            if line["name"] == "Iba zúčtované" and line.get("parent_id") == project_line["id"]
+        )
+        worked_employee_line = next(
+            line for line in lines
+            if line["name"] == "Adam Zamestnanec" and line.get("parent_id") == worked_line["id"]
+        )
+        settlement_employee_line = next(
+            line for line in lines
+            if line["name"] == "Beata Zamestnanec" and line.get("parent_id") == settlement_line["id"]
+        )
+
+        self.assertAlmostEqual(self._column_map(labor_line)["month_03"], -140.0, places=2)
+        self.assertAlmostEqual(self._column_map(project_line)["month_03"], -140.0, places=2)
+        self.assertAlmostEqual(self._column_map(worked_line)["month_03"], -100.0, places=2)
+        self.assertAlmostEqual(self._column_map(settlement_line)["month_03"], -40.0, places=2)
+        self.assertAlmostEqual(self._column_map(worked_employee_line)["month_03"], -100.0, places=2)
+        self.assertAlmostEqual(self._column_map(settlement_employee_line)["month_03"], -40.0, places=2)
+
+    def test_non_admin_labor_employee_rows_do_not_show_prediction_rows(self):
+        today = fields.Date.context_today(self)
+        if today.month <= 2:
+            self.skipTest("Prediction test requires at least two historical months.")
+
+        self._create_timesheet(self.assignment_a, f"{today.year}-01-01", 100.0)
+        self._create_timesheet(self.assignment_a, f"{today.year}-02-01", 120.0)
+
+        lines = self._get_detail_lines(today.year, self.program_a, unfold_all=True)
+        labor_line = self._find_line(lines, "Mzdové náklady - program - Realita")
+        project_line = next(
+            line for line in lines
+            if line["name"] == "Projekt Alpha - Realita" and line.get("parent_id") == labor_line["id"]
+        )
+        worked_line = next(
+            line for line in lines
+            if line["name"] == "Odpracované - Realita" and line.get("parent_id") == project_line["id"]
+        )
+        child_names = [
+            line["name"] for line in lines
+            if line.get("parent_id") == worked_line["id"]
+        ]
+
+        self.assertIn("Adam Zamestnanec", child_names)
+        self.assertNotIn("Adam Zamestnanec - Predikcia", child_names)
 
     def test_admin_tenenet_does_not_show_fully_covered_project_labor(self):
         year = fields.Date.context_today(self).year + 1

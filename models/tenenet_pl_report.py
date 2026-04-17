@@ -464,16 +464,83 @@ class TenenetPLReportHandler(models.AbstractModel):
         values = self._get_selected_program_report_values(options)
         lines = []
         for row in values["labor_project_rows"]:
+            lines.extend(self._build_unfoldable_section_lines(
+                report,
+                options,
+                row["name"],
+                markup=f"tenenet_pl_labor_project_{row['project'].id}",
+                expand_function="_report_expand_unfoldable_line_tenenet_pl_labor_project_detail",
+                level=3,
+                parent_line_id=line_dict_id,
+                unfoldable=bool(row.get("category_rows")),
+                monthly_values=self._row_monthly_values(row),
+                model="tenenet.project",
+                record_id=row["project"].id,
+            ))
+        return self._build_expand_result(lines, progress)
+
+    def _report_expand_unfoldable_line_tenenet_pl_labor_project_detail(
+        self, line_dict_id, groupby, options, progress, offset, unfold_all_batch_data=None
+    ):
+        report = self.env["account.report"].browse(options["report_id"])
+        values = self._get_selected_program_report_values(options)
+        match = re.search(r"tenenet_pl_labor_project_(\d+)", str(line_dict_id))
+        if not match:
+            return self._build_expand_result([], progress)
+        project_id = int(match.group(1))
+        project_row = next(
+            (row for row in values["labor_project_rows"] if row["project"].id == project_id),
+            None,
+        )
+        lines = []
+        for row in (project_row or {}).get("category_rows", []):
+            lines.extend(self._build_unfoldable_section_lines(
+                report,
+                options,
+                row["name"],
+                markup=f"tenenet_pl_labor_project_{project_id}_{row['category_key']}",
+                expand_function="_report_expand_unfoldable_line_tenenet_pl_labor_category_detail",
+                level=4,
+                parent_line_id=line_dict_id,
+                unfoldable=bool(row.get("employee_rows")),
+                monthly_values=self._row_monthly_values(row),
+            ))
+        return self._build_expand_result(lines, progress)
+
+    def _report_expand_unfoldable_line_tenenet_pl_labor_category_detail(
+        self, line_dict_id, groupby, options, progress, offset, unfold_all_batch_data=None
+    ):
+        report = self.env["account.report"].browse(options["report_id"])
+        values = self._get_selected_program_report_values(options)
+        match = re.search(r"tenenet_pl_labor_project_(\d+)_(worked|settlement_only)", str(line_dict_id))
+        if not match:
+            return self._build_expand_result([], progress)
+        project_id = int(match.group(1))
+        category_key = match.group(2)
+        project_row = next(
+            (row for row in values["labor_project_rows"] if row["project"].id == project_id),
+            None,
+        )
+        category_row = next(
+            (
+                row for row in (project_row or {}).get("category_rows", [])
+                if row["category_key"] == category_key
+            ),
+            None,
+        )
+        lines = []
+        for row in (category_row or {}).get("employee_rows", []):
             lines.extend(self._build_value_lines(
                 report,
                 options,
                 row["name"],
                 self._row_monthly_values(row),
-                markup=f"tenenet_pl_labor_project_{row['project'].id}",
-                level=3,
+                markup=f"tenenet_pl_labor_employee_{project_id}_{category_key}_{row['employee'].id}",
+                level=5,
                 parent_line_id=line_dict_id,
-                model="tenenet.project",
-                record_id=row["project"].id,
+                model="hr.employee",
+                record_id=row["employee"].id,
+                include_prediction=False,
             ))
         return self._build_expand_result(lines, progress)
 
@@ -640,10 +707,12 @@ class TenenetPLReportHandler(models.AbstractModel):
         record_id=None,
         enable_unfold=False,
         expand_function=None,
+        include_prediction=True,
     ):
         value_bundle = self._value_bundle(monthly_values)
+        show_prediction = include_prediction and value_bundle["has_prediction"]
         roles = [("real", "Realita", value_bundle["real_values"])]
-        if value_bundle["has_prediction"]:
+        if show_prediction:
             roles.append(("predicted", "Predikcia", value_bundle["predicted_values"]))
 
         lines = []
@@ -653,9 +722,9 @@ class TenenetPLReportHandler(models.AbstractModel):
                     model,
                     record_id,
                     parent_line_id=parent_line_id,
-                    markup=f"{markup}_{role}" if value_bundle["has_prediction"] else markup,
+                    markup=f"{markup}_{role}" if show_prediction else markup,
                 ),
-                "name": f"{name} - {label}" if value_bundle["has_prediction"] else name,
+                "name": f"{name} - {label}" if show_prediction else name,
                 "columns": self._build_columns(
                     report,
                     options,

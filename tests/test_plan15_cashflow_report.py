@@ -53,6 +53,28 @@ class TestTenenetPlan15CashflowReport(TransactionCase):
         })
         return report._get_lines(options)
 
+    def _get_expanded_allocation_project_lines(self, year, project_name):
+        report = self.env.ref("tenenet_projects.tenenet_allocation_report")
+        options = report.get_options({
+            "date": {
+                "mode": "single",
+                "filter": "custom",
+                "date_to": f"{year}-12-31",
+            },
+            "employee_ids": [self.employee.id],
+        })
+        lines = report._get_lines(options)
+        project_line = next(line for line in lines if line["name"] == project_name)
+        return report.get_expanded_lines(
+            options,
+            project_line["id"],
+            project_line.get("groupby"),
+            project_line["expand_function"],
+            project_line.get("progress"),
+            0,
+            project_line.get("horizontal_split_side"),
+        )
+
     def _find_line(self, lines, project_name):
         return next(line for line in lines if self._column_map(line).get("project_label") == project_name)
 
@@ -334,6 +356,34 @@ class TestTenenetPlan15CashflowReport(TransactionCase):
         self.assertAlmostEqual(travel_columns["year_total"], 45.0, places=2)
         self.assertAlmostEqual(training_columns["month_04"], 70.0, places=2)
         self.assertAlmostEqual(training_columns["year_total"], 70.0, places=2)
+
+    def test_allocation_report_marks_settlement_only_wage_and_unposted_internal_header(self):
+        year = fields.Date.context_today(self).year + 1
+        self.assignment.allocation_ratio = 90.0
+        settlement_assignment = self.env["tenenet.project.assignment"].create({
+            "employee_id": self.employee.id,
+            "project_id": self.project_a.id,
+            "allocation_ratio": 10.0,
+            "settlement_only": True,
+            "wage_hm": 10.0,
+        })
+        self.env["tenenet.project.timesheet"].create({
+            "assignment_id": settlement_assignment.id,
+            "period": f"{year}-03-01",
+            "hours_pp": 10.0,
+        })
+
+        lines = self._get_allocation_lines(year)
+        line_names = [line["name"] for line in lines]
+        self.assertIn("Interné náklady (nezúčtované)", line_names)
+        self.assertIn("Projekt A (iba na zúčtovanie)", line_names)
+
+        expanded = self._get_expanded_allocation_project_lines(year, "Projekt A (iba na zúčtovanie)")
+        settlement_line = self._find_allocation_line(expanded, "Mzda iba na zúčtovanie")
+        settlement_columns = self._column_map(settlement_line)
+
+        self.assertAlmostEqual(settlement_columns["month_03"], 136.2, places=2)
+        self.assertAlmostEqual(settlement_columns["year_total"], 136.2, places=2)
 
     def test_salary_row_ignores_stale_override_values(self):
         year = fields.Date.context_today(self).year + 1
