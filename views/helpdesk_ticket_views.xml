@@ -34,7 +34,15 @@
                     <field name="tenenet_active_assigned_user_ids" invisible="1"/>
                     <field name="tenenet_can_confirm_followup" invisible="1"/>
                     <field name="tenenet_can_confirm_control" invisible="1"/>
-                    <field name="tenenet_onboarding_id" readonly="1" invisible="not tenenet_onboarding_id"/>
+                    <field name="tenenet_onboarding_id" invisible="1"/>
+                    <field name="tenenet_onboarding_phase" invisible="1"/>
+                    <field name="tenenet_onboarding_progress" invisible="1"/>
+                    <field name="tenenet_onboarding_task_count" invisible="1"/>
+                    <field name="tenenet_onboarding_task_done_count" invisible="1"/>
+                    <field name="tenenet_onboarding_employee_id" invisible="1"/>
+                    <field name="tenenet_onboarding_candidate_name" invisible="1"/>
+                    <field name="tenenet_onboarding_job_id" invisible="1"/>
+                    <field name="tenenet_onboarding_start_date" invisible="1"/>
                 </field>
                 <header position="inside">
                     <button
@@ -71,6 +79,63 @@
                 </field>
                 <field name="user_id" position="attributes">
                     <attribute name="domain">[('id', 'in', tenenet_assignment_domain_user_ids)]</attribute>
+                </field>
+                <field name="description" position="after">
+                    <div class="o_horizontal_separator mt-3 mb-2 text-uppercase fw-bolder small"
+                         invisible="not tenenet_onboarding_id">Onboarding</div>
+                    <div class="alert alert-info p-3 mb-3" invisible="not tenenet_onboarding_id">
+                        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                            <div>
+                                <div class="fw-bold fs-5">
+                                    <field name="tenenet_onboarding_id" readonly="1"/>
+                                </div>
+                                <div class="text-muted mt-1">
+                                    <span invisible="not tenenet_onboarding_employee_id">
+                                        <i class="fa fa-user me-1"/>
+                                        <field name="tenenet_onboarding_employee_id" readonly="1"/>
+                                    </span>
+                                    <span invisible="tenenet_onboarding_employee_id or not tenenet_onboarding_candidate_name">
+                                        <i class="fa fa-user-o me-1"/>
+                                        <field name="tenenet_onboarding_candidate_name" readonly="1"/>
+                                    </span>
+                                    <span class="ms-3" invisible="not tenenet_onboarding_job_id">
+                                        <i class="fa fa-briefcase me-1"/>
+                                        <field name="tenenet_onboarding_job_id" readonly="1"/>
+                                    </span>
+                                    <span class="ms-3" invisible="not tenenet_onboarding_start_date">
+                                        <i class="fa fa-calendar me-1"/>
+                                        <field name="tenenet_onboarding_start_date" readonly="1"/>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-3">
+                                <field name="tenenet_onboarding_phase" widget="badge"
+                                       decoration-info="tenenet_onboarding_phase == 'pre_hire'"
+                                       decoration-warning="tenenet_onboarding_phase == 'day_one'"
+                                       decoration-primary="tenenet_onboarding_phase == 'first_weeks'"
+                                       decoration-success="tenenet_onboarding_phase == 'done'"
+                                       readonly="1"
+                                       invisible="not tenenet_onboarding_id"/>
+                                <button name="action_open_onboarding_tasks"
+                                        type="object"
+                                        class="btn btn-sm btn-secondary"
+                                        invisible="not tenenet_onboarding_id">
+                                    <i class="fa fa-check-square-o me-1"/>
+                                    Úlohy
+                                    (<field name="tenenet_onboarding_task_done_count" readonly="1" nolabel="1"/>/<field name="tenenet_onboarding_task_count" readonly="1" nolabel="1"/>)
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mt-2" invisible="not tenenet_onboarding_id">
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar bg-success"
+                                     t-att-style="'width: ' + tenenet_onboarding_progress + '%;'"/>
+                            </div>
+                            <small class="text-muted">
+                                <field name="tenenet_onboarding_progress" readonly="1" widget="float" digits="[3,1]"/>% dokončené
+                            </small>
+                        </div>
+                    </div>
                 </field>
                 <field name="domain_user_ids" position="after">
                     <field

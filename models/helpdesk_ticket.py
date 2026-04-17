@@ -92,6 +92,57 @@ class HelpdeskTicket(models.Model):
         copy=False,
         ondelete="set null",
     )
+    tenenet_onboarding_phase = fields.Selection(
+        related="tenenet_onboarding_id.phase",
+        string="Fáza onboardingu",
+        readonly=True,
+    )
+    tenenet_onboarding_employee_id = fields.Many2one(
+        related="tenenet_onboarding_id.employee_id",
+        string="Zamestnanec",
+        readonly=True,
+    )
+    tenenet_onboarding_candidate_name = fields.Char(
+        related="tenenet_onboarding_id.candidate_name",
+        string="Meno kandidáta",
+        readonly=True,
+    )
+    tenenet_onboarding_job_id = fields.Many2one(
+        related="tenenet_onboarding_id.job_id",
+        string="Pozícia",
+        readonly=True,
+    )
+    tenenet_onboarding_start_date = fields.Date(
+        related="tenenet_onboarding_id.start_date",
+        string="Dátum nástupu",
+        readonly=True,
+    )
+    tenenet_onboarding_progress = fields.Float(
+        related="tenenet_onboarding_id.progress",
+        string="Postup (%)",
+        readonly=True,
+    )
+    tenenet_onboarding_task_count = fields.Integer(
+        related="tenenet_onboarding_id.task_count",
+        string="Počet úloh",
+        readonly=True,
+    )
+    tenenet_onboarding_task_done_count = fields.Integer(
+        related="tenenet_onboarding_id.task_done_count",
+        string="Splnené úlohy",
+        readonly=True,
+    )
+
+    def action_open_onboarding_tasks(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": "Úlohy onboardingu",
+            "res_model": "tenenet.onboarding.task",
+            "view_mode": "kanban,list,form",
+            "domain": [("onboarding_id", "=", self.tenenet_onboarding_id.id)],
+            "context": {"search_default_todo": 1},
+        }
 
     @api.depends("team_id", "team_id.name")
     @api.depends_context("uid")
