@@ -134,12 +134,18 @@ class TenenetProject(models.Model):
         readonly=True,
         help="Kanónický program používaný pre P&L reporting, cashflow a alokácie prevádzkových nákladov.",
     )
+    organizational_unit_override_id = fields.Many2one(
+        "tenenet.organizational.unit",
+        string="Organizačná zložka (override)",
+        ondelete="restrict",
+        help="Voliteľné prepísanie organizačnej zložky načítanej z reporting programu.",
+    )
     organizational_unit_id = fields.Many2one(
         "tenenet.organizational.unit",
         string="Organizačná zložka",
-        related="reporting_program_id.organizational_unit_id",
-        readonly=True,
+        compute="_compute_organizational_unit_id",
         store=True,
+        readonly=True,
     )
     site_ids = fields.Many2many(
         "tenenet.project.site",
@@ -401,6 +407,23 @@ class TenenetProject(models.Model):
         self.ensure_one()
         return self.program_ids.filtered(lambda program: not self._is_hidden_internal_program(program))
 
+    def _get_admin_tenenet_program(self):
+        return self.env["tenenet.program"].with_context(active_test=False).search(
+            [("code", "=", self.ADMIN_TENENET_PROGRAM_CODE)],
+            limit=1,
+        )
+
+    def _is_admin_primary_management_project(self):
+        self.ensure_one()
+        admin_program = self._get_admin_tenenet_program()
+        return bool(
+            admin_program
+            and not self.is_tenenet_internal
+            and self.project_type != "medzinarodny"
+            and admin_program in self.program_ids
+            and not self._get_visible_programs()
+        )
+
     def _get_primary_visible_program(self):
         self.ensure_one()
         visible_programs = self._get_visible_programs()
@@ -408,21 +431,27 @@ class TenenetProject(models.Model):
             return self.primary_program_id
         if self.reporting_program_id and self.reporting_program_id in visible_programs:
             return self.reporting_program_id
+        admin_program = self._get_admin_tenenet_program()
+        if admin_program and admin_program in self.program_ids and not visible_programs:
+            return admin_program
         return visible_programs[:1]
 
     def _get_effective_reporting_program(self):
         self.ensure_one()
         if self.is_tenenet_internal or self.project_type == "medzinarodny":
-            return self.env["tenenet.program"].with_context(active_test=False).search(
-                [("code", "=", self.ADMIN_TENENET_PROGRAM_CODE)],
-                limit=1,
-            )
+            return self._get_admin_tenenet_program()
         return self._get_primary_visible_program()
 
     @api.depends("program_ids", "program_ids.is_tenenet_internal", "project_type")
     def _compute_ui_program_ids(self):
         for rec in self:
-            rec.ui_program_ids = rec._get_visible_programs()
+            visible_programs = rec._get_visible_programs()
+            if visible_programs:
+                rec.ui_program_ids = visible_programs
+            elif rec._is_admin_primary_management_project():
+                rec.ui_program_ids = rec._get_admin_tenenet_program()
+            else:
+                rec.ui_program_ids = self.env["tenenet.program"]
 
     def _inverse_ui_program_ids(self):
         admin_program = self.env["tenenet.program"].with_context(active_test=False).search(
@@ -449,11 +478,20 @@ class TenenetProject(models.Model):
         for rec in self:
             rec.primary_program_id = False if rec.project_type == "medzinarodny" else rec._get_primary_visible_program()
 
+    @api.depends(
+        "organizational_unit_override_id",
+        "reporting_program_id",
+        "reporting_program_id.organizational_unit_id",
+    )
+    def _compute_organizational_unit_id(self):
+        for rec in self:
+            rec.organizational_unit_id = (
+                rec.organizational_unit_override_id
+                or rec.reporting_program_id.organizational_unit_id
+            )
+
     def _inverse_primary_program_id(self):
-        admin_program = self.env["tenenet.program"].with_context(active_test=False).search(
-            [("code", "=", self.ADMIN_TENENET_PROGRAM_CODE)],
-            limit=1,
-        )
+        admin_program = self._get_admin_tenenet_program()
         for rec in self:
             if rec.project_type == "medzinarodny":
                 rec.with_context(skip_program_type_normalization=True).write({
@@ -476,6 +514,10 @@ class TenenetProject(models.Model):
             values.get("primary_program_id")
             and self.env["tenenet.program"].browse(values["primary_program_id"]).exists()
         ) or False
+        reporting_program = (
+            values.get("reporting_program_id")
+            and self.env["tenenet.program"].browse(values["reporting_program_id"]).exists()
+        ) or False
         visible_program_ids = set()
         program_commands = list(values.get("program_ids") or [])
         for command in program_commands:
@@ -487,18 +529,31 @@ class TenenetProject(models.Model):
                 visible_program_ids.add(command[1])
         if not visible_program_ids and self.ids:
             visible_program_ids.update(self.program_ids.ids)
-        visible_programs = self.env["tenenet.program"].browse(list(visible_program_ids)).exists().filtered(
+        selected_programs = self.env["tenenet.program"].browse(list(visible_program_ids)).exists()
+        visible_programs = selected_programs.filtered(
             lambda program: not self._is_hidden_internal_program(program)
         )
         if primary_program:
-            visible_programs = primary_program
+            if primary_program == admin_program:
+                visible_programs = self.env["tenenet.program"]
+                selected_programs = admin_program
+            else:
+                visible_programs = primary_program
+        elif reporting_program and not self._is_hidden_internal_program(reporting_program):
+            visible_programs = reporting_program
         if project_type == "medzinarodny":
             target_programs = admin_program
-        else:
+        elif admin_program and selected_programs == admin_program and not visible_programs:
+            target_programs = admin_program
+        elif visible_programs:
             target_programs = visible_programs[:1] | admin_program
+        else:
+            target_programs = self.env["tenenet.program"]
         values["program_ids"] = [Command.set(target_programs.ids)]
         if project_type == "medzinarodny":
             values["primary_program_id"] = False
+        elif admin_program and target_programs == admin_program:
+            values["primary_program_id"] = admin_program.id
         elif target_programs.filtered(lambda program: not self._is_hidden_internal_program(program)):
             values["primary_program_id"] = target_programs.filtered(
                 lambda program: not self._is_hidden_internal_program(program)
@@ -521,8 +576,12 @@ class TenenetProject(models.Model):
                 if visible_programs:
                     raise ValidationError("Medzinárodný projekt nesmie mať zobrazený vlastný program.")
                 continue
+            if not visible_programs:
+                if admin_program and admin_program in rec.program_ids:
+                    continue
+                raise ValidationError("Projekt typu národný alebo služby musí mať hlavný program alebo Admin TENENET.")
             if len(visible_programs) != 1:
-                raise ValidationError("Projekt typu národný alebo služby musí mať presne jeden hlavný program.")
+                raise ValidationError("Projekt typu národný alebo služby musí mať najviac jeden hlavný program.")
 
     def _get_receipts_for_cashflow_year(self, year):
         self.ensure_one()

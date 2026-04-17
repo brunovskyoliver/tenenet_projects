@@ -10,6 +10,7 @@ class TestOrganizationalUnits(TransactionCase):
         super().setUp()
         self.unit_tenenet = self.env.ref("tenenet_projects.tenenet_organizational_unit_tenenet_oz")
         self.unit_scpp = self.env.ref("tenenet_projects.tenenet_organizational_unit_scpp")
+        self.unit_kalia = self.env.ref("tenenet_projects.tenenet_organizational_unit_kalia")
 
     def test_program_stores_organizational_unit_and_project_inherits_it(self):
         program = self.env["tenenet.program"].create({
@@ -24,6 +25,24 @@ class TestOrganizationalUnits(TransactionCase):
 
         self.assertEqual(program.organizational_unit_id, self.unit_scpp)
         self.assertEqual(project.reporting_program_id, program)
+        self.assertEqual(project.organizational_unit_id, self.unit_scpp)
+
+    def test_project_organizational_unit_override_wins_and_can_fallback(self):
+        program = self.env["tenenet.program"].create({
+            "name": "Program override org",
+            "code": "ORG_OVERRIDE",
+            "organizational_unit_id": self.unit_scpp.id,
+        })
+        project = self.env["tenenet.project"].create({
+            "name": "Projekt org override",
+            "program_ids": [(4, program.id)],
+            "organizational_unit_override_id": self.unit_kalia.id,
+        })
+
+        self.assertEqual(project.organizational_unit_id, self.unit_kalia)
+
+        project.write({"organizational_unit_override_id": False})
+
         self.assertEqual(project.organizational_unit_id, self.unit_scpp)
 
     def test_employee_requires_organizational_unit_when_active(self):

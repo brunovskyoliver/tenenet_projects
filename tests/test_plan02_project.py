@@ -296,6 +296,27 @@ class TestTenenetPlan02Project(TransactionCase):
 
         self.assertEqual(project.project_type, "narodny")
         self.assertEqual(project.primary_program_id, self.program)
+        with self.assertRaises(ValidationError):
+            self.env["tenenet.project"].create({
+                "name": "Národný projekt bez programu",
+                "project_type": "narodny",
+            })
+
+    def test_non_international_project_can_use_admin_tenenet_as_primary_program(self):
+        admin_program = self.env["tenenet.program"].search([("code", "=", "ADMIN_TENENET")], limit=1)
+        project = self.env["tenenet.project"].create(
+            {
+                "name": "Administratívny národný projekt",
+                "project_type": "narodny",
+                "program_ids": [Command.set(admin_program.ids)],
+            }
+        )
+
+        self.assertFalse(project._is_international_by_donor())
+        self.assertEqual(project.primary_program_id, admin_program)
+        self.assertEqual(project.reporting_program_id, admin_program)
+        self.assertEqual(project.ui_program_ids, admin_program)
+        self.assertEqual(project.program_ids, admin_program)
 
     def test_project_budget_lines_validate_program_membership(self):
         other_program = self.env["tenenet.program"].create({"name": "Iný program", "code": "PG_OTHER"})

@@ -441,6 +441,9 @@ def resolve_job(raw_position: str, raw_contract_position: str, program_code: str
         return "uctovnicka", notes
     if position == "recepcna":
         return "recepcna", notes
+    if position in {"recepcny centra", "recepcna centra"}:
+        notes.append("pozícia normalizovaná na recepčná")
+        return "recepcna", notes
     if position == "upratovacka":
         return "upratovacka", notes
     if position == "vyskumny/vyvojovy pracovnik":

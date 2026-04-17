@@ -142,14 +142,27 @@ class TestTenenetPlan13PLReport(TransactionCase):
     def _create_budget_line(self, project, year, budget_type, program, name, amount):
         if budget_type == "pausal":
             program = self.admin_program
-        return self.env["tenenet.project.budget.line"].create({
+        default_name = {
+            "labor": "Mzdové rozpočty",
+            "other": "Iné rozpočty",
+        }.get(budget_type, name)
+        values = {
             "project_id": project.id,
             "year": year,
             "budget_type": budget_type,
             "program_id": program.id,
-            "name": name,
+            "name": default_name,
             "amount": amount,
-        })
+        }
+        if budget_type == "other":
+            config = self.env["tenenet.expense.type.config"].search(
+                [("name", "=", "Iné rozpočty")],
+                limit=1,
+            )
+            if not config:
+                config = self.env["tenenet.expense.type.config"].create({"name": "Iné rozpočty"})
+            values["expense_type_config_id"] = config.id
+        return self.env["tenenet.project.budget.line"].create(values)
 
     def _create_budget_line_months(self, budget_line, month_amounts):
         budget_line.set_month_amounts({str(month): amount for month, amount in month_amounts.items()})
@@ -233,10 +246,13 @@ class TestTenenetPlan13PLReport(TransactionCase):
             "Projekt Multi",
             "Iné rozpočty",
             "Tržby",
+            "Tržby individuálne",
             "Tržby z registračky",
             "Tržby z faktúr",
             "Tržby - neklasifikované",
             "Zbierky",
+            "Zbierky individuálne",
+            "Zbierky korporátne",
             "Jarná zbierka",
             "Príjmy spolu",
             "Náklady",
@@ -280,7 +296,7 @@ class TestTenenetPlan13PLReport(TransactionCase):
         self.assertAlmostEqual(income_total_columns["month_03"], 2600.0, places=2)
         self.assertAlmostEqual(labor_cost_columns["month_03"], -100.0, places=2)
         self.assertAlmostEqual(labor_cost_columns["month_04"], -50.0, places=2)
-        self.assertAlmostEqual(coverage_columns["month_03"], 2500.0, places=2)
+        self.assertAlmostEqual(coverage_columns["month_03"], -100.0, places=2)
         self.assertAlmostEqual(pre_admin_columns["month_03"], 2500.0, places=2)
         expected_operating_month_03 = -sum(
             pool.allocation_ids.filtered(
@@ -492,6 +508,7 @@ class TestTenenetPlan13PLReport(TransactionCase):
         self.assertIn("Paušály", admin_names)
         self.assertIn("Prevádzkové príjmy", admin_names)
         self.assertIn("Náklady bez projektov", admin_names)
+        self.assertNotIn("Projekty", admin_names)
         self.assertNotIn("Tržby", admin_names)
         self.assertNotIn("Zbierky", admin_names)
         self.assertNotIn("Admin TENENET náklady", admin_names)
@@ -501,6 +518,31 @@ class TestTenenetPlan13PLReport(TransactionCase):
         self.assertAlmostEqual(non_project_columns["month_03"], -100.0, places=2)
         self.assertAlmostEqual(employee_cost_columns["month_03"], -100.0, places=2)
         self.assertNotIn("Projektový paušál A", program_names)
+
+    def test_admin_tenenet_shows_international_project_income_when_present(self):
+        year = fields.Date.context_today(self).year + 1
+        international_project = self.env["tenenet.project"].create({
+            "name": "Medzinárodný príjem",
+            "project_type": "medzinarodny",
+        })
+        self._create_receipt(international_project, f"{year}-01-01", 120.0)
+
+        admin_lines = self._get_detail_lines(year, self.admin_program, unfold_all=True)
+        admin_names = [line["name"] for line in admin_lines]
+        project_columns = self._column_map(self._find_line(admin_lines, "Medzinárodný príjem"))
+        income_total_columns = self._column_map(self._find_line(admin_lines, "Príjmy spolu"))
+
+        self.assertIn("Projekty", admin_names)
+        self.assertAlmostEqual(project_columns["year_total"], 120.0, places=2)
+        self.assertAlmostEqual(income_total_columns["year_total"], 120.0, places=2)
+
+        self.env["tenenet.pl.program.override"].with_context(grid_anchor=f"{year}-01-01").action_prepare_grid_year()
+        override_rows = self.env["tenenet.pl.program.override"].search([
+            ("year", "=", year),
+            ("program_id", "=", self.admin_program.id),
+            ("row_key", "=", f"income:{international_project.id}"),
+        ])
+        self.assertEqual(set(override_rows.mapped("row_label")), {"Projekty"})
 
     def test_program_budget_income_sections_are_added_separately(self):
         year = fields.Date.context_today(self).year + 1
@@ -761,6 +803,70 @@ class TestTenenetPlan13PLReport(TransactionCase):
             for line in lines
             if line.get("parent_id") == self._find_line(lines, "Náklady bez projektov")["id"]
         ])
+
+    def test_admin_primary_project_assignee_wages_are_management_labor_detail(self):
+        year = fields.Date.context_today(self).year + 1
+        admin_job = self.env["hr.job"].create({
+            "name": "Administratíva projektová",
+            "is_tenenet_admin_management": True,
+        })
+        admin_assignee = self.env["hr.employee"].create({
+            "name": "Cyril Administratíva",
+            "work_ratio": 100.0,
+        })
+        non_project_employee = self.env["hr.employee"].create({
+            "name": "Dana Neprojektová",
+            "work_ratio": 100.0,
+        })
+        self.employee_b.job_id = admin_job
+        admin_project = self.env["tenenet.project"].create({
+            "name": "Projekt administratívy",
+            "project_type": "narodny",
+            "program_ids": [Command.set(self.admin_program.ids)],
+        })
+        admin_assignment = self.env["tenenet.project.assignment"].create({
+            "employee_id": admin_assignee.id,
+            "project_id": admin_project.id,
+            "program_id": self.admin_program.id,
+            "allocation_ratio": 10.0,
+            "wage_hm": 5.0,
+        })
+        self._create_timesheet(admin_assignment, f"{year}-03-01", 10.0)
+        self.env["tenenet.internal.expense"].create({
+            "employee_id": self.employee_b.id,
+            "period": f"{year}-03-01",
+            "category": "expense",
+            "expense_amount": 200.0,
+        })
+        self.env["tenenet.internal.expense"].create({
+            "employee_id": non_project_employee.id,
+            "period": f"{year}-03-01",
+            "category": "expense",
+            "expense_amount": 30.0,
+        })
+
+        lines = self._get_detail_lines(year, self.admin_program, unfold_all=True)
+        labor_line = self._find_line(lines, "Mzdové náklady")
+        non_project_line = self._find_line(lines, "Náklady bez projektov")
+        mgmt_line = self._find_line(lines, "Mzdové náklady administratívy")
+        mgmt_columns = self._column_map(mgmt_line)
+        non_project_columns = self._column_map(non_project_line)
+        labor_child_names = [
+            line["name"]
+            for line in lines
+            if line.get("parent_id") == labor_line["id"]
+        ]
+        mgmt_child_names = [
+            line["name"]
+            for line in lines
+            if line.get("parent_id") == mgmt_line["id"]
+        ]
+
+        self.assertAlmostEqual(mgmt_columns["month_03"], -250.0, places=2)
+        self.assertAlmostEqual(non_project_columns["month_03"], -30.0, places=2)
+        self.assertIn("Cyril Administratíva", mgmt_child_names)
+        self.assertIn("Beata Zamestnanec", mgmt_child_names)
+        self.assertNotIn("Projekt administratívy", labor_child_names)
 
     def test_current_year_sales_prediction_fills_future_months_and_respects_manual_override(self):
         today = fields.Date.context_today(self)

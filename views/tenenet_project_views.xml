@@ -54,7 +54,8 @@
                             <group>
                                 <field name="primary_program_id" invisible="project_type == 'medzinarodny'" required="project_type != 'medzinarodny'"/>
                                 <field name="organizational_unit_id" readonly="1"/>
-                                <div class="text-muted" invisible="project_type != 'medzinarodny'">
+                                <field name="organizational_unit_override_id"/>
+                                <div class="text-muted" colspan="2" invisible="project_type != 'medzinarodny'">
                                     Program sa pri medzinárodnom projekte vedie iba pod Admin TENENET.
                                 </div>
                                 <field name="donor_id"/>
