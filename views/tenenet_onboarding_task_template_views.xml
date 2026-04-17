@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="action_tenenet_onboarding_task_template" model="ir.actions.act_window">
+            <field name="name">Šablóny úloh onboardingu</field>
+            <field name="res_model">tenenet.onboarding.task.template</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <record id="view_tenenet_onboarding_task_template_list" model="ir.ui.view">
+            <field name="name">tenenet.onboarding.task.template.list</field>
+            <field name="model">tenenet.onboarding.task.template</field>
+            <field name="arch" type="xml">
+                <list string="Šablóny úloh" editable="bottom" default_order="phase_sequence,sequence">
+                    <field name="sequence" widget="handle"/>
+                    <field name="phase"/>
+                    <field name="name"/>
+                    <field name="responsible_role"/>
+                    <field name="is_mandatory"/>
+                    <field name="project_only"/>
+                    <field name="active"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_tenenet_onboarding_task_template_form" model="ir.ui.view">
+            <field name="name">tenenet.onboarding.task.template.form</field>
+            <field name="model">tenenet.onboarding.task.template</field>
+            <field name="arch" type="xml">
+                <form string="Šablóna úlohy">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="name"/>
+                                <field name="phase"/>
+                                <field name="sequence"/>
+                            </group>
+                            <group>
+                                <field name="responsible_role"/>
+                                <field name="is_mandatory"/>
+                                <field name="project_only"/>
+                                <field name="active"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_tenenet_onboarding_task_template_search" model="ir.ui.view">
+            <field name="name">tenenet.onboarding.task.template.search</field>
+            <field name="model">tenenet.onboarding.task.template</field>
+            <field name="arch" type="xml">
+                <search string="Šablóny úloh">
+                    <field name="name"/>
+                    <filter string="Pred nástupom" name="pre_hire" domain="[('phase', '=', 'pre_hire')]"/>
+                    <filter string="Deň nástupu" name="day_one" domain="[('phase', '=', 'day_one')]"/>
+                    <filter string="Prvé týždne" name="first_weeks" domain="[('phase', '=', 'first_weeks')]"/>
+                    <separator/>
+                    <filter string="Len pre projekty" name="project_only" domain="[('project_only', '=', True)]"/>
+                    <filter string="Povinné" name="mandatory" domain="[('is_mandatory', '=', True)]"/>
+                    <filter string="Archivované" name="archived" domain="[('active', '=', False)]"/>
+                    <filter string="Fáza" name="group_phase" context="{'group_by': 'phase'}"/>
+                    <filter string="Rola" name="group_role" context="{'group_by': 'responsible_role'}"/>
+                </search>
+            </field>
+        </record>
+    </data>
+</odoo>

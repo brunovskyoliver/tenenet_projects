@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- =====================================================================
+             Action: tenenet.onboarding
+             ===================================================================== -->
+
+        <record id="action_tenenet_onboarding" model="ir.actions.act_window">
+            <field name="name">Onboarding procesy</field>
+            <field name="res_model">tenenet.onboarding</field>
+            <field name="view_mode">list,kanban,form</field>
+            <field name="context">{}</field>
+        </record>
+
+        <!-- =====================================================================
+             Form view: tenenet.onboarding
+             ===================================================================== -->
+
+        <record id="view_tenenet_onboarding_form" model="ir.ui.view">
+            <field name="name">tenenet.onboarding.form</field>
+            <field name="model">tenenet.onboarding</field>
+            <field name="arch" type="xml">
+                <form string="Onboarding proces">
+                    <header>
+                        <button
+                            name="action_next_phase"
+                            string="Ďalšia fáza"
+                            type="object"
+                            class="btn-primary"
+                            invisible="phase == 'done'"
+                        />
+                        <button
+                            name="action_complete"
+                            string="Dokončiť"
+                            type="object"
+                            class="btn-primary"
+                            invisible="phase != 'first_weeks'"
+                            confirm="Naozaj chcete označiť onboarding ako dokončený? Všetky povinné úlohy v aktuálnej fáze musia byť splnené."
+                        />
+                        <button
+                            name="action_previous_phase"
+                            string="Predchádzajúca fáza"
+                            type="object"
+                            class="btn-secondary"
+                            invisible="phase == 'pre_hire' or phase == 'done'"
+                        />
+                        <field
+                            name="phase"
+                            widget="statusbar"
+                            statusbar_visible="pre_hire,day_one,first_weeks,done"
+                        />
+                    </header>
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button
+                                name="action_open_helpdesk_ticket"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-ticket"
+                                invisible="not helpdesk_ticket_id"
+                            >
+                                <div class="o_field_widget o_stat_info">
+                                    <span class="o_stat_value">
+                                        <field name="helpdesk_ticket_stage_id"/>
+                                    </span>
+                                    <span class="o_stat_text">Helpdesk</span>
+                                </div>
+                            </button>
+                            <button
+                                name="action_open_tasks"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-check-square-o"
+                            >
+                                <div class="o_field_widget o_stat_info">
+                                    <span class="o_stat_value">
+                                        <field name="task_done_count"/>/<field name="task_count"/>
+                                    </span>
+                                    <span class="o_stat_text">Úlohy</span>
+                                </div>
+                            </button>
+                        </div>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" readonly="1"/>
+                            </h1>
+                        </div>
+                        <group>
+                            <group string="Zamestnanec">
+                                <field name="employee_id"/>
+                                <field name="candidate_name"/>
+                                <field name="job_id"/>
+                                <field name="start_date"/>
+                                <field name="project_related"/>
+                            </group>
+                            <group string="Postup">
+                                <field name="progress" widget="progressbar"/>
+                                <field name="task_count" string="Celkový počet úloh"/>
+                                <field name="task_done_count" string="Splnené"/>
+                            </group>
+                        </group>
+                        <group string="Zodpovedné osoby">
+                            <group>
+                                <field name="manager_user_id" widget="many2one_avatar_user"/>
+                                <field name="hr_user_id" widget="many2one_avatar_user"/>
+                                <field name="operations_user_id" widget="many2one_avatar_user"/>
+                                <field name="payroll_user_id" widget="many2one_avatar_user"/>
+                            </group>
+                            <group>
+                                <field name="project_manager_user_id" widget="many2one_avatar_user" invisible="not project_related"/>
+                                <field name="buddy_employee_id"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Aktuálna fáza" name="current_phase">
+                                <field
+                                    name="task_ids"
+                                    domain="[('phase', '=', phase)]"
+                                    context="{'default_phase': phase}"
+                                    widget="one2many"
+                                    mode="list"
+                                    invisible="phase == 'done'"
+                                >
+                                    <list editable="bottom" string="Úlohy aktuálnej fázy">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="name"/>
+                                        <field name="responsible_role" optional="hide"/>
+                                        <field name="responsible_user_id" widget="many2one_avatar_user"/>
+                                        <field name="is_mandatory" optional="hide"/>
+                                        <field name="state"
+                                            decoration-success="state == 'done'"
+                                            decoration-warning="state == 'skipped'"
+                                            decoration-muted="state == 'not_applicable'"
+                                        />
+                                        <field name="done_by_user_id" widget="many2one_avatar_user" optional="hide"/>
+                                        <field name="done_date" optional="hide"/>
+                                        <field name="note" optional="show"/>
+                                    </list>
+                                </field>
+                                <div invisible="phase != 'done'" class="alert alert-success">
+                                    <i class="fa fa-check-circle"/> Onboarding proces je dokončený.
+                                </div>
+                            </page>
+                            <page string="Všetky úlohy" name="all_tasks">
+                                <field
+                                    name="task_ids"
+                                    widget="one2many"
+                                    mode="list"
+                                >
+                                    <list editable="bottom" string="Všetky úlohy" default_order="phase_sequence,sequence">
+                                        <field name="phase"/>
+                                        <field name="sequence" widget="handle" optional="hide"/>
+                                        <field name="name"/>
+                                        <field name="responsible_role" optional="hide"/>
+                                        <field name="responsible_user_id" widget="many2one_avatar_user"/>
+                                        <field name="is_mandatory" optional="hide"/>
+                                        <field name="state"
+                                            decoration-success="state == 'done'"
+                                            decoration-warning="state == 'skipped'"
+                                            decoration-muted="state == 'not_applicable'"
+                                        />
+                                        <field name="done_by_user_id" widget="many2one_avatar_user" optional="hide"/>
+                                        <field name="done_date" optional="hide"/>
+                                        <field name="note" optional="show"/>
+                                    </list>
+                                </field>
+                            </page>
+                            <page string="Poznámky" name="notes">
+                                <field name="note" widget="html"/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <!-- =====================================================================
+             List view: tenenet.onboarding
+             ===================================================================== -->
+
+        <record id="view_tenenet_onboarding_list" model="ir.ui.view">
+            <field name="name">tenenet.onboarding.list</field>
+            <field name="model">tenenet.onboarding</field>
+            <field name="arch" type="xml">
+                <list string="Onboarding procesy" default_order="create_date desc">
+                    <field name="name"/>
+                    <field name="employee_id"/>
+                    <field name="job_id"/>
+                    <field name="phase" widget="badge"
+                        decoration-info="phase == 'pre_hire'"
+                        decoration-warning="phase == 'day_one'"
+                        decoration-primary="phase == 'first_weeks'"
+                        decoration-success="phase == 'done'"
+                    />
+                    <field name="progress" widget="progressbar"/>
+                    <field name="manager_user_id" widget="many2one_avatar_user"/>
+                    <field name="hr_user_id" widget="many2one_avatar_user"/>
+                    <field name="start_date"/>
+                    <field name="task_done_count" string="Splnené"/>
+                    <field name="task_count" string="Spolu"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- =====================================================================
+             Kanban view: tenenet.onboarding
+             ===================================================================== -->
+
+        <record id="view_tenenet_onboarding_kanban" model="ir.ui.view">
+            <field name="name">tenenet.onboarding.kanban</field>
+            <field name="model">tenenet.onboarding</field>
+            <field name="arch" type="xml">
+                <kanban default_group_by="phase" class="o_kanban_small_column">
+                    <field name="phase"/>
+                    <field name="employee_id"/>
+                    <field name="job_id"/>
+                    <field name="manager_user_id"/>
+                    <field name="hr_user_id"/>
+                    <field name="progress"/>
+                    <field name="task_done_count"/>
+                    <field name="task_count"/>
+                    <templates>
+                        <t t-name="card">
+                            <field name="name" class="fw-bold"/>
+                            <field name="job_id" class="text-muted"/>
+                            <div class="d-flex align-items-center mt-2">
+                                <div class="progress flex-grow-1 me-2" style="height: 8px;">
+                                    <div
+                                        class="progress-bar"
+                                        t-att-style="'width: ' + record.progress.value + '%;'"
+                                    />
+                                </div>
+                                <small><t t-out="record.task_done_count.value"/>/<t t-out="record.task_count.value"/></small>
+                            </div>
+                            <div class="d-flex mt-2">
+                                <field name="manager_user_id" widget="many2one_avatar_user"/>
+                                <field name="hr_user_id" widget="many2one_avatar_user"/>
+                            </div>
+                        </t>
+                    </templates>
+                </kanban>
+            </field>
+        </record>
+
+        <!-- =====================================================================
+             Search view: tenenet.onboarding
+             ===================================================================== -->
+
+        <record id="view_tenenet_onboarding_search" model="ir.ui.view">
+            <field name="name">tenenet.onboarding.search</field>
+            <field name="model">tenenet.onboarding</field>
+            <field name="arch" type="xml">
+                <search string="Onboarding">
+                    <field name="name"/>
+                    <field name="employee_id"/>
+                    <field name="job_id"/>
+                    <field name="manager_user_id"/>
+                    <field name="hr_user_id"/>
+                    <filter
+                        string="Moje"
+                        name="mine"
+                        domain="['|', '|', '|', '|',
+                            ('manager_user_id', '=', uid),
+                            ('hr_user_id', '=', uid),
+                            ('operations_user_id', '=', uid),
+                            ('payroll_user_id', '=', uid),
+                            ('buddy_employee_id.user_id', '=', uid)]"
+                    />
+                    <separator/>
+                    <filter string="V priebehu" name="in_progress" domain="[('phase', '!=', 'done')]"/>
+                    <filter string="Dokončené" name="done" domain="[('phase', '=', 'done')]"/>
+                    <filter string="Projektový nástup" name="project_related" domain="[('project_related', '=', True)]"/>
+                    <filter string="Fáza" name="group_phase" context="{'group_by': 'phase'}"/>
+                    <filter string="Manažér" name="group_manager" context="{'group_by': 'manager_user_id'}"/>
+                    <filter string="HR kontakt" name="group_hr" context="{'group_by': 'hr_user_id'}"/>
+                    <filter string="Zamestnanec" name="group_employee" context="{'group_by': 'employee_id'}"/>
+                </search>
+            </field>
+        </record>
+    </data>
+</odoo>

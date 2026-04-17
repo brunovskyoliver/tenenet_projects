@@ -34,3 +34,4 @@ from . import test_project_recurring_clone
 from . import test_budget_line_planner
 from . import test_organizational_units
 from . import test_employee_import_scripts
+from . import test_onboarding

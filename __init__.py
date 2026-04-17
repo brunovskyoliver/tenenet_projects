@@ -9,6 +9,7 @@ def post_init_hook(env):
     env["tenenet.program"]._sync_organizational_units(force=True)
     env["hr.employee"]._backfill_organizational_units(force=True)
     env["helpdesk.ticket"]._ensure_tenenet_internal_helpdesk_setup()
+    env["tenenet.onboarding"]._ensure_onboarding_helpdesk_stage()
 
 
 def pre_init_hook(env):

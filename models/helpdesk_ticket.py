@@ -85,6 +85,13 @@ class HelpdeskTicket(models.Model):
         compute="_compute_tenenet_confirmation_flags",
         export_string_translation=False,
     )
+    tenenet_onboarding_id = fields.Many2one(
+        "tenenet.onboarding",
+        string="Onboarding proces",
+        readonly=True,
+        copy=False,
+        ondelete="set null",
+    )
 
     @api.depends("team_id", "team_id.name")
     @api.depends_context("uid")
@@ -451,7 +458,7 @@ class HelpdeskTicket(models.Model):
         self._check_tenenet_write_access()
         self._check_tenenet_ticket_constraints(vals)
 
-        if "stage_id" in vals and not self.env.context.get("allow_handover_stage_write"):
+        if "stage_id" in vals and not self.env.context.get("allow_handover_stage_write") and not self.env.context.get("allow_onboarding_stage_write"):
             target_stage_id = vals.get("stage_id")
             tickets_with_manual_stage_change = self.filtered(
                 lambda ticket: ticket.stage_id.id != target_stage_id
@@ -464,6 +471,14 @@ class HelpdeskTicket(models.Model):
                     raise UserError(_(
                         "Stav helpdesk požiadavky pre preberací protokol nie je možné meniť ručne. "
                         "Požiadavka sa uzatvorí automaticky po podpise dokumentu."
+                    ))
+                locked_onboarding_tickets = tickets_with_manual_stage_change.filtered(
+                    lambda t: t.tenenet_onboarding_id
+                )
+                if locked_onboarding_tickets:
+                    raise UserError(_(
+                        "Stav helpdesk požiadavky pre onboarding proces nie je možné meniť ručne. "
+                        "Požiadavka sa uzatvorí automaticky po dokončení onboarding procesu."
                     ))
         return super().write(vals)
 

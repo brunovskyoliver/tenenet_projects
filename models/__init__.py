@@ -75,3 +75,6 @@ from . import tenenet_sk_holidays
 from . import tenenet_employee_list_report
 from . import tenenet_wage_framework
 from . import res_users
+from . import tenenet_onboarding_task_template
+from . import tenenet_onboarding
+from . import tenenet_onboarding_task

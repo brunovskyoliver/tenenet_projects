@@ -264,5 +264,26 @@
                   action="action_tenenet_pl_program_override"
                   sequence="46"
                   groups="tenenet_projects.group_tenenet_manager"/>
+
+        <!-- Onboarding menu -->
+        <menuitem id="menu_tenenet_onboarding_root"
+                  name="Onboarding"
+                  parent="menu_tenenet_root"
+                  sequence="16"
+                  groups="tenenet_projects.group_tenenet_helpdesk_user"/>
+
+        <menuitem id="menu_tenenet_onboarding_processes"
+                  name="Procesy"
+                  parent="menu_tenenet_onboarding_root"
+                  action="action_tenenet_onboarding"
+                  sequence="10"
+                  groups="tenenet_projects.group_tenenet_helpdesk_user"/>
+
+        <menuitem id="menu_tenenet_onboarding_task_templates"
+                  name="Šablóny úloh"
+                  parent="menu_tenenet_onboarding_root"
+                  action="action_tenenet_onboarding_task_template"
+                  sequence="20"
+                  groups="tenenet_projects.group_tenenet_helpdesk_manager"/>
     </data>
 </odoo>

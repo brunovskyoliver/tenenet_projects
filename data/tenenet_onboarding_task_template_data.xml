@@ -1,0 +1,620 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <!-- =================================================================
+             FÁZA: Pred nástupom (pre_hire) — z tabuľky HR_Prevádzka pred nástupom (Sheet 3)
+             ================================================================= -->
+
+        <!-- HR Tím — komunikácia a administratíva pred nástupom -->
+        <record id="onboarding_tmpl_pre_hire_hr_01" model="tenenet.onboarding.task.template">
+            <field name="name">Komunikácia s kandidátom ohľadom administratívnych záležitostí pred podpisom pracovnej zmluvy a nástupom</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">10</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_hr_02" model="tenenet.onboarding.task.template">
+            <field name="name">Doporučiť ďalšie informácie o TNNT: výročná správa na webe, sociálne siete</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">20</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">False</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_ops_01" model="tenenet.onboarding.task.template">
+            <field name="name">Potvrdiť s prevádzkou/COO, ktoré konkrétne pracovné pomôcky budú novému zamestnancovi pridelené (počítač, telefón, auto a iné)</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">30</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_hr_03" model="tenenet.onboarding.task.template">
+            <field name="name">Kandidát vypĺňa vstupný formulár s osobnými údajmi</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">40</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_hr_04" model="tenenet.onboarding.task.template">
+            <field name="name">Príprava pracovnej zmluvy na základe parametrov dohodnutých s manažérom a schválených CEO/COO/CFO — 2 rovnopisy</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">50</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_hr_05" model="tenenet.onboarding.task.template">
+            <field name="name">Každá pracovná zmluva prekontrolovaná HR manažérom pred podpisom nového zamestnanca</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">60</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_hr_06" model="tenenet.onboarding.task.template">
+            <field name="name">Zabezpečiť podpis pracovnej zmluvy s kandidátom/zamestnancom</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">70</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_hr_07" model="tenenet.onboarding.task.template">
+            <field name="name">Prihlášky/odhlášky do zdravotnej a sociálnej poisťovne a do bankových mzdových predpisov</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">80</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <!-- Prevádzka — IT setup -->
+        <record id="onboarding_tmpl_pre_hire_ops_02" model="tenenet.onboarding.task.template">
+            <field name="name">Zaslať IT podpore informácie potrebné k vytvoreniu emailového účtu a zoznam aplikácií/skupín, do ktorých má mať zamestnanec prístup</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">90</field>
+            <field name="responsible_role">operations</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <!-- HR — dokumenty od kandidáta -->
+        <record id="onboarding_tmpl_pre_hire_hr_08" model="tenenet.onboarding.task.template">
+            <field name="name">Kandidát dodá podpísaný životopis (CV) — audit kontroluje</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">100</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_hr_09" model="tenenet.onboarding.task.template">
+            <field name="name">Kandidát dodá potvrdenie zo školy/škôlky a kópiu rodného listu dieťaťa (ak si uplatňuje daňový bonus na dieťa)</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">110</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">False</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_hr_10" model="tenenet.onboarding.task.template">
+            <field name="name">Kandidát dodá kópiu výpisu z bankového účtu (meno + číslo účtu pre zaslanie mzdy)</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">120</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_hr_11" model="tenenet.onboarding.task.template">
+            <field name="name">Kandidát dodá výpis z registra trestov</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">130</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_hr_12" model="tenenet.onboarding.task.template">
+            <field name="name">Kandidát dodá overenú kópiu diplomu (Mgr. alebo iné)</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">140</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_hr_13" model="tenenet.onboarding.task.template">
+            <field name="name">Zápočtový list s uvedením predchádzajúcich zamestnaní a odpracovaných rokov</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">150</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_hr_14" model="tenenet.onboarding.task.template">
+            <field name="name">Kandidát dodá dokumenty k dôchodku/invalidite (ak je poberateľom — kópia rozhodnutia z Sociálnej poisťovne alebo ÚP)</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">160</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">False</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_hr_15" model="tenenet.onboarding.task.template">
+            <field name="name">Odpis z registra trestov tlačivo O7 (pre zamestnancov s SPODaSK/CDR podľa zákona 305/2005)</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">170</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">False</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_hr_16" model="tenenet.onboarding.task.template">
+            <field name="name">Prípadné certifikáty a potvrdenia o absolvovaných školeniach</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">180</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">False</field>
+        </record>
+
+        <!-- Podpis dokumentov -->
+        <record id="onboarding_tmpl_pre_hire_hr_17" model="tenenet.onboarding.task.template">
+            <field name="name">Vyplnenie a podpis dohody o zasielaní výplatnej pásky elektronicky</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">190</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_hr_18" model="tenenet.onboarding.task.template">
+            <field name="name">Kópia veľkého technického preukazu + podpis dohody o používaní osobného motorového vozidla (ak zamestnanec bude jazdiť súkromným autom)</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">200</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">False</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_hr_19" model="tenenet.onboarding.task.template">
+            <field name="name">Podpis vyhlásenia o nezdaniteľnom základe časti dane (jediný zamestnávateľ, uplatnenie daňovej úľavy)</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">210</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_hr_20" model="tenenet.onboarding.task.template">
+            <field name="name">Oboznámenie a podpis GDPR dokumentácie</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">220</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_hr_21" model="tenenet.onboarding.task.template">
+            <field name="name">Oboznámenie a podpis kľúčových smerníc (HR portál — po preštudovaní podpísať cca za 2 týždne)</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">230</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <!-- Prevádzka — zariadenie pracoviska -->
+        <record id="onboarding_tmpl_pre_hire_ops_03" model="tenenet.onboarding.task.template">
+            <field name="name">Pripraviť nastavenie mobilu + podpis odovzdávacieho a preberacieho protokolu na mobil (ak aplikovateľné)</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">240</field>
+            <field name="responsible_role">operations</field>
+            <field name="is_mandatory">False</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_ops_04" model="tenenet.onboarding.task.template">
+            <field name="name">Pripraviť a odovzdať protokol na počítač (preberací a odovzdávací protokol)</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">250</field>
+            <field name="responsible_role">operations</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_ops_05" model="tenenet.onboarding.task.template">
+            <field name="name">Nastavenie tlačiarní podľa potreby zamestnanca</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">260</field>
+            <field name="responsible_role">operations</field>
+            <field name="is_mandatory">False</field>
+        </record>
+
+        <!-- HR — pridelenie emailu a ďalšie -->
+        <record id="onboarding_tmpl_pre_hire_hr_22" model="tenenet.onboarding.task.template">
+            <field name="name">Prideliť emailovú adresu, poučiť o vizitke s GDPR klauzulou, nastavenie notifikácie emailu počas dovolenky</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">270</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_hr_23" model="tenenet.onboarding.task.template">
+            <field name="name">Prijatie a odovzdanie kľúčov + evidencia (preberací a odovzdávací protokol)</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">280</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_hr_24" model="tenenet.onboarding.task.template">
+            <field name="name">Výroba vizitiek (schválené manažérom)</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">290</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">False</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_hr_25" model="tenenet.onboarding.task.template">
+            <field name="name">Newsletter o novom zamestnancovi (vrátane zmien a prechodov v tímoch)</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">300</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">False</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_ops_06" model="tenenet.onboarding.task.template">
+            <field name="name">Výroba pečiatky a spracovanie odovzdávacieho protokolu (ak je potrebné razítko)</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">310</field>
+            <field name="responsible_role">operations</field>
+            <field name="is_mandatory">False</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_hr_26" model="tenenet.onboarding.task.template">
+            <field name="name">Odoslať informáciu PR: kde na webe a ako doplniť/zmeniť zamestnanca a jeho kontaktné údaje</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">320</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">False</field>
+        </record>
+
+        <!-- Manažér — dohoda na onboarding pláne a sprievodca -->
+        <record id="onboarding_tmpl_pre_hire_mgr_01" model="tenenet.onboarding.task.template">
+            <field name="name">Vzájomná dohoda HR &amp; IT &amp; Prevádzka na onboarding pláne, odovzdanie potrebných informácií</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">330</field>
+            <field name="responsible_role">manager</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_mgr_02" model="tenenet.onboarding.task.template">
+            <field name="name">Určiť „sprievodcu" pre nového zamestnanca a informovať HR tím</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">340</field>
+            <field name="responsible_role">manager</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_hr_27" model="tenenet.onboarding.task.template">
+            <field name="name">Doplniť údaje o nástupe a úväzku do HC zmeny a do tabuľky platov</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">350</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <!-- Projektové úlohy — len pre projektové nástupy (project_only=True) -->
+        <record id="onboarding_tmpl_pre_hire_proj_01" model="tenenet.onboarding.task.template">
+            <field name="name">Zadefinovať kvalifikačné kritériá pre výberový proces a mzdové podmienky podľa rozpočtu projektu</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">360</field>
+            <field name="responsible_role">project_manager</field>
+            <field name="is_mandatory">True</field>
+            <field name="project_only">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_proj_02" model="tenenet.onboarding.task.template">
+            <field name="name">Zapísať zamestnanca do ITMS cez kartu účastníka</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">370</field>
+            <field name="responsible_role">project_manager</field>
+            <field name="is_mandatory">True</field>
+            <field name="project_only">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_proj_03" model="tenenet.onboarding.task.template">
+            <field name="name">Odoslať ministerstvu dokumenty nového zamestnanca: pracovná zmluva s náplňou, prihláška do Soc a zdrav poisťovne, fotokópia dokladu o vzdelaní, karta účastníka</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">380</field>
+            <field name="responsible_role">project_manager</field>
+            <field name="is_mandatory">True</field>
+            <field name="project_only">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_proj_04" model="tenenet.onboarding.task.template">
+            <field name="name">Priradiť personálne zmeny do harmonogramu a poslať harmonogram projektovej manažérke (papierová aj elektronická verzia)</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">390</field>
+            <field name="responsible_role">project_manager</field>
+            <field name="is_mandatory">True</field>
+            <field name="project_only">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_proj_05" model="tenenet.onboarding.task.template">
+            <field name="name">Aktualizovať rozúčtovaciu tabuľku podľa zmeny (každý mzdový výdavok musí byť krytý konkrétnym finančným zdrojom)</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">400</field>
+            <field name="responsible_role">project_manager</field>
+            <field name="is_mandatory">True</field>
+            <field name="project_only">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_proj_06" model="tenenet.onboarding.task.template">
+            <field name="name">Preniesť informácie o zmenách v rozúčtovacej tabuľke CFO na úpravu cashflow plánu</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">410</field>
+            <field name="responsible_role">cfo</field>
+            <field name="is_mandatory">True</field>
+            <field name="project_only">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_proj_07" model="tenenet.onboarding.task.template">
+            <field name="name">Zaradiť nového zamestnanca do účtovného strediska (mzdové oddelenie: suma, odkedy, aké stredisko)</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">420</field>
+            <field name="responsible_role">payroll</field>
+            <field name="is_mandatory">True</field>
+            <field name="project_only">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_pre_hire_proj_08" model="tenenet.onboarding.task.template">
+            <field name="name">Nahlásiť zmenu personálu do IS SoS</field>
+            <field name="phase">pre_hire</field>
+            <field name="sequence">430</field>
+            <field name="responsible_role">project_manager</field>
+            <field name="is_mandatory">True</field>
+            <field name="project_only">True</field>
+        </record>
+
+        <!-- =================================================================
+             FÁZA: Deň nástupu (day_one) — z tabuľky CHECKLIST (Sheet 2)
+             ================================================================= -->
+
+        <record id="onboarding_tmpl_day_one_hr_01" model="tenenet.onboarding.task.template">
+            <field name="name">Prezentácia o organizácii TENENET — vstupné HR školenie (vrátane aplikácií: dochádzka, HR portál, SOCIO — manuál a školiace videá)</field>
+            <field name="phase">day_one</field>
+            <field name="sequence">10</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_day_one_hr_02" model="tenenet.onboarding.task.template">
+            <field name="name">Mzdová účtovníčka — kompletizácia reportingu a podkladov pre mzdy</field>
+            <field name="phase">day_one</field>
+            <field name="sequence">20</field>
+            <field name="responsible_role">payroll</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_day_one_hr_03" model="tenenet.onboarding.task.template">
+            <field name="name">BOZP školenie a Prvá pomoc (alebo naplánovanie s termínom)</field>
+            <field name="phase">day_one</field>
+            <field name="sequence">30</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_day_one_hr_04" model="tenenet.onboarding.task.template">
+            <field name="name">Pripraviť internú komunikáciu — oznámenie o nástupe nového zamestnanca</field>
+            <field name="phase">day_one</field>
+            <field name="sequence">40</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_day_one_ops_01" model="tenenet.onboarding.task.template">
+            <field name="name">Odovzdanie pracovných pomôcok (PC, mobil) a zabezpečenie preberacieho protokolu od zamestnanca (protokol odovzdať HR tímu)</field>
+            <field name="phase">day_one</field>
+            <field name="sequence">50</field>
+            <field name="responsible_role">operations</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_day_one_ops_02" model="tenenet.onboarding.task.template">
+            <field name="name">IT Onboarding — prevzatie počítača a nastavenie prístupov</field>
+            <field name="phase">day_one</field>
+            <field name="sequence">60</field>
+            <field name="responsible_role">operations</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_day_one_mgr_01" model="tenenet.onboarding.task.template">
+            <field name="name">Predstaviť nového zamestnanca kolegom a uviesť ho do tímu; evidovať narodeniny zamestnanca</field>
+            <field name="phase">day_one</field>
+            <field name="sequence">70</field>
+            <field name="responsible_role">manager</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_day_one_mgr_02" model="tenenet.onboarding.task.template">
+            <field name="name">SOCIO školenie — užívateľsky (zaškolenie v systéme SOCIO)</field>
+            <field name="phase">day_one</field>
+            <field name="sequence">80</field>
+            <field name="responsible_role">manager</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_day_one_hr_05" model="tenenet.onboarding.task.template">
+            <field name="name">Poskytnúť info o Knižnici TNNT a možnosti psychodiagnostiky na štúdium</field>
+            <field name="phase">day_one</field>
+            <field name="sequence">90</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">False</field>
+        </record>
+
+        <record id="onboarding_tmpl_day_one_hr_06" model="tenenet.onboarding.task.template">
+            <field name="name">Vysvetliť najčastejšie otázky pomocou HR portálu: stratégia hodnotenia, zoznam benefitov, komunikačné nástroje + informácie o TNNT</field>
+            <field name="phase">day_one</field>
+            <field name="sequence">100</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <!-- =================================================================
+             FÁZA: Prvé týždne (first_weeks) — z tabuliek Manažér_Prvé týždne + HR_Prvé týždne (Sheets 5+6)
+             ================================================================= -->
+
+        <!-- Manažér — pravidelné rozhovory a follow-up -->
+        <record id="onboarding_tmpl_first_weeks_mgr_01" model="tenenet.onboarding.task.template">
+            <field name="name">Viesť pravidelné rozhovory s nováčikom (prvý pracovný týždeň každý deň, následne min. 1× týždenne)</field>
+            <field name="phase">first_weeks</field>
+            <field name="sequence">10</field>
+            <field name="responsible_role">manager</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_first_weeks_mgr_02" model="tenenet.onboarding.task.template">
+            <field name="name">Žiadať spätnú väzbu a dávať pravidelnú spätnú väzbu nováčikovi</field>
+            <field name="phase">first_weeks</field>
+            <field name="sequence">20</field>
+            <field name="responsible_role">manager</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_first_weeks_mgr_03" model="tenenet.onboarding.task.template">
+            <field name="name">Zabezpečiť pravidelné stretnutia so sprievodcom (buddy)</field>
+            <field name="phase">first_weeks</field>
+            <field name="sequence">30</field>
+            <field name="responsible_role">manager</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_first_weeks_mgr_04" model="tenenet.onboarding.task.template">
+            <field name="name">Skontrolovať absolvovanie všetkých povinných školení</field>
+            <field name="phase">first_weeks</field>
+            <field name="sequence">40</field>
+            <field name="responsible_role">manager</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_first_weeks_mgr_05" model="tenenet.onboarding.task.template">
+            <field name="name">Presvedčiť sa, že nováčik sa zúčastnil vstupného školenia a má všetky materiálno-technické zabezpečenie</field>
+            <field name="phase">first_weeks</field>
+            <field name="sequence">50</field>
+            <field name="responsible_role">manager</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_first_weeks_mgr_06" model="tenenet.onboarding.task.template">
+            <field name="name">Zosumarizovať a uistiť sa o ovládaní relevantných aplikácií (Alveno, SOCIO, Evup Curo a ďalšie)</field>
+            <field name="phase">first_weeks</field>
+            <field name="sequence">60</field>
+            <field name="responsible_role">manager</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_first_weeks_mgr_07" model="tenenet.onboarding.task.template">
+            <field name="name">Pravidelne získavať spätnú väzbu od sprievodcu o zaúčaní nováčika</field>
+            <field name="phase">first_weeks</field>
+            <field name="sequence">70</field>
+            <field name="responsible_role">manager</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <!-- Manažér — voliteľný feedback rozhovor -->
+        <record id="onboarding_tmpl_first_weeks_mgr_08" model="tenenet.onboarding.task.template">
+            <field name="name">Uskutočniť feedback rozhovor s nováčikom (otázky: pocity v pozícii, čo sa páči, čo prekvapilo, čo chýbalo, či má potrebné nástroje a pod.)</field>
+            <field name="phase">first_weeks</field>
+            <field name="sequence">80</field>
+            <field name="responsible_role">manager</field>
+            <field name="is_mandatory">False</field>
+        </record>
+
+        <record id="onboarding_tmpl_first_weeks_mgr_09" model="tenenet.onboarding.task.template">
+            <field name="name">Schvaľuje zápožičky (ak bolo požiadané)</field>
+            <field name="phase">first_weeks</field>
+            <field name="sequence">90</field>
+            <field name="responsible_role">manager</field>
+            <field name="is_mandatory">False</field>
+        </record>
+
+        <!-- HR — prvé týždne -->
+        <record id="onboarding_tmpl_first_weeks_hr_01" model="tenenet.onboarding.task.template">
+            <field name="name">Overiť, či bol nováčik oboznámený s pracoviskom a sprievodca mu ukázal priestory, pracovisko a zoznámil ho s kolegami</field>
+            <field name="phase">first_weeks</field>
+            <field name="sequence">100</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_first_weeks_hr_02" model="tenenet.onboarding.task.template">
+            <field name="name">Overiť, či má nováčik absolvované všetky povinné školenia</field>
+            <field name="phase">first_weeks</field>
+            <field name="sequence">110</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_first_weeks_hr_03" model="tenenet.onboarding.task.template">
+            <field name="name">Overiť, či prebieha zaškolenie nováčika sprievodcom a nadriadeným</field>
+            <field name="phase">first_weeks</field>
+            <field name="sequence">120</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <record id="onboarding_tmpl_first_weeks_hr_04" model="tenenet.onboarding.task.template">
+            <field name="name">Overiť, či má nováčik všetky potrebné nástroje, pracovné pomôcky a zdroje na výkon práce</field>
+            <field name="phase">first_weeks</field>
+            <field name="sequence">130</field>
+            <field name="responsible_role">hr</field>
+            <field name="is_mandatory">True</field>
+        </record>
+
+        <!-- Odborný garant — inštitucionálne notifikácie (pre SPODaSK/CDR) -->
+        <record id="onboarding_tmpl_first_weeks_gar_01" model="tenenet.onboarding.task.template">
+            <field name="name">SPODaSK/CDR: odoslať Sprievodný list a Príloha 5 na akreditačnú komisiu MPSVR SR (za všetky personálne zmeny naraz)</field>
+            <field name="phase">first_weeks</field>
+            <field name="sequence">140</field>
+            <field name="responsible_role">guarantor</field>
+            <field name="is_mandatory">False</field>
+        </record>
+
+        <record id="onboarding_tmpl_first_weeks_gar_02" model="tenenet.onboarding.task.template">
+            <field name="name">SPODaSK/CDR: odoslať pracovnú zmluvu nového zamestnanca s popisom pracovnej náplne na akreditačnú komisiu</field>
+            <field name="phase">first_weeks</field>
+            <field name="sequence">150</field>
+            <field name="responsible_role">guarantor</field>
+            <field name="is_mandatory">False</field>
+        </record>
+
+        <record id="onboarding_tmpl_first_weeks_gar_03" model="tenenet.onboarding.task.template">
+            <field name="name">SPODaSK/CDR: odoslať overenú fotokópiu dokladu o vzdelaní a potvrdenie o minimálnej praxi</field>
+            <field name="phase">first_weeks</field>
+            <field name="sequence">160</field>
+            <field name="responsible_role">guarantor</field>
+            <field name="is_mandatory">False</field>
+        </record>
+
+        <record id="onboarding_tmpl_first_weeks_gar_04" model="tenenet.onboarding.task.template">
+            <field name="name">SPODaSK/CDR: odoslať Odpis z registra trestov č. 7</field>
+            <field name="phase">first_weeks</field>
+            <field name="sequence">170</field>
+            <field name="responsible_role">guarantor</field>
+            <field name="is_mandatory">False</field>
+        </record>
+
+        <record id="onboarding_tmpl_first_weeks_gar_05" model="tenenet.onboarding.task.template">
+            <field name="name">Zdravotnícki zamestnanci (ZZ v AVL, PSC, PAS): oznámenia na inštitúcie — MZ SR, ÚpDnZS, NZCI, CURO, VUC, zdravotná poisťovňa</field>
+            <field name="phase">first_weeks</field>
+            <field name="sequence">180</field>
+            <field name="responsible_role">guarantor</field>
+            <field name="is_mandatory">False</field>
+        </record>
+
+        <record id="onboarding_tmpl_first_weeks_gar_06" model="tenenet.onboarding.task.template">
+            <field name="name">Sociálne služby (SVI, ŠSP, TTSKI, KC): oznámenie zmeny personálu do ISOS portálu</field>
+            <field name="phase">first_weeks</field>
+            <field name="sequence">190</field>
+            <field name="responsible_role">guarantor</field>
+            <field name="is_mandatory">False</field>
+        </record>
+
+        <record id="onboarding_tmpl_first_weeks_gar_07" model="tenenet.onboarding.task.template">
+            <field name="name">Kália (obete trestných činov): oznámenie odborných zamestnancov na MS SR</field>
+            <field name="phase">first_weeks</field>
+            <field name="sequence">200</field>
+            <field name="responsible_role">guarantor</field>
+            <field name="is_mandatory">False</field>
+        </record>
+    </data>
+</odoo>

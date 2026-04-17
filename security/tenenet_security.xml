@@ -422,5 +422,56 @@
             <field name="perm_create" eval="1"/>
             <field name="perm_unlink" eval="1"/>
         </record>
+
+        <!-- Onboarding record rules -->
+        <record id="rule_tenenet_onboarding_user_own" model="ir.rule">
+            <field name="name">Onboarding: používateľ vidí svoje procesy</field>
+            <field name="model_id" ref="model_tenenet_onboarding"/>
+            <field name="domain_force">['|', '|', '|', '|', '|',
+                ('manager_user_id', '=', user.id),
+                ('hr_user_id', '=', user.id),
+                ('operations_user_id', '=', user.id),
+                ('project_manager_user_id', '=', user.id),
+                ('payroll_user_id', '=', user.id),
+                ('buddy_employee_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_helpdesk_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_onboarding_editor_all" model="ir.rule">
+            <field name="name">Onboarding: editor vidí všetko</field>
+            <field name="model_id" ref="model_tenenet_onboarding"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_helpdesk_editor'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_onboarding_manager_all" model="ir.rule">
+            <field name="name">Onboarding: manažér spravuje všetko</field>
+            <field name="model_id" ref="model_tenenet_onboarding"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_helpdesk_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_onboarding_task_template_manager_all" model="ir.rule">
+            <field name="name">Onboarding šablóny: manažér spravuje</field>
+            <field name="model_id" ref="model_tenenet_onboarding_task_template"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_helpdesk_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
     </data>
 </odoo>

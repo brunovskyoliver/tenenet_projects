@@ -174,6 +174,24 @@ class HrEmployee(models.Model):
         "employee_id",
         string="Firemný majetok",
     )
+    tenenet_onboarding_ids = fields.One2many(
+        "tenenet.onboarding",
+        "employee_id",
+        string="Onboarding procesy",
+    )
+    tenenet_onboarding_count = fields.Integer(
+        string="Počet onboardingov",
+        compute="_compute_tenenet_onboarding_count",
+    )
+    tenenet_onboarding_state = fields.Selection(
+        [
+            ("not_started", "Nezačatý"),
+            ("in_progress", "Prebieha"),
+            ("completed", "Dokončený"),
+        ],
+        string="Stav onboardingu",
+        compute="_compute_tenenet_onboarding_state",
+    )
     asset_currency_id = fields.Many2one(
         "res.currency",
         string="Mena majetku",
@@ -450,6 +468,33 @@ class HrEmployee(models.Model):
     def _compute_asset_total_value(self):
         for employee in self:
             employee.asset_total_value = sum(employee.asset_ids.filtered("active").mapped("cost"))
+
+    @api.depends("tenenet_onboarding_ids")
+    def _compute_tenenet_onboarding_count(self):
+        for employee in self:
+            employee.tenenet_onboarding_count = len(employee.tenenet_onboarding_ids)
+
+    @api.depends("tenenet_onboarding_ids.phase")
+    def _compute_tenenet_onboarding_state(self):
+        for employee in self:
+            onboardings = employee.tenenet_onboarding_ids
+            if not onboardings:
+                employee.tenenet_onboarding_state = "not_started"
+            elif any(o.phase != "done" for o in onboardings):
+                employee.tenenet_onboarding_state = "in_progress"
+            else:
+                employee.tenenet_onboarding_state = "completed"
+
+    def action_open_onboardings(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_window",
+            "name": _("Onboarding procesy"),
+            "res_model": "tenenet.onboarding",
+            "view_mode": "list,form",
+            "domain": [("employee_id", "=", self.id)],
+            "context": {"default_employee_id": self.id},
+        }
 
     @api.model_create_multi
     def create(self, vals_list):
