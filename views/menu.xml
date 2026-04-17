@@ -265,11 +265,18 @@
                   sequence="46"
                   groups="tenenet_projects.group_tenenet_manager"/>
 
-        <!-- Onboarding menu -->
+        <!-- Onboarding — under standard Employees (hr.menu_hr_root) app -->
         <menuitem id="menu_tenenet_onboarding_root"
                   name="Onboarding"
-                  parent="menu_tenenet_root"
-                  sequence="16"
+                  parent="hr.menu_hr_root"
+                  sequence="50"
+                  groups="tenenet_projects.group_tenenet_helpdesk_user"/>
+
+        <menuitem id="menu_tenenet_onboarding_my_tasks"
+                  name="Moje úlohy"
+                  parent="menu_tenenet_onboarding_root"
+                  action="action_tenenet_onboarding_my_tasks"
+                  sequence="5"
                   groups="tenenet_projects.group_tenenet_helpdesk_user"/>
 
         <menuitem id="menu_tenenet_onboarding_processes"

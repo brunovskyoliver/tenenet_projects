@@ -152,6 +152,7 @@ and P&L reporting by program.
         'data/tenenet_onboarding_task_template_data.xml',
         'views/tenenet_onboarding_views.xml',
         'views/tenenet_onboarding_task_template_views.xml',
+        'views/tenenet_onboarding_task_views.xml',
         'views/menu.xml',
     ],
     'demo': [

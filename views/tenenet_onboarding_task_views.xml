@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- =====================================================================
+             Action: My onboarding tasks  (kanban first = default)
+             ===================================================================== -->
+
+        <record id="action_tenenet_onboarding_my_tasks" model="ir.actions.act_window">
+            <field name="name">Moje úlohy onboardingu</field>
+            <field name="res_model">tenenet.onboarding.task</field>
+            <field name="view_mode">kanban,list,form</field>
+            <field name="context">{'search_default_my_tasks': 1, 'search_default_todo': 1}</field>
+        </record>
+
+        <!-- =====================================================================
+             Form view: tenenet.onboarding.task
+             ===================================================================== -->
+
+        <record id="view_tenenet_onboarding_task_form" model="ir.ui.view">
+            <field name="name">tenenet.onboarding.task.form</field>
+            <field name="model">tenenet.onboarding.task</field>
+            <field name="arch" type="xml">
+                <form string="Úloha onboardingu">
+                    <header>
+                        <button name="action_mark_done"
+                                string="Označiť ako hotové"
+                                type="object"
+                                class="btn-primary"
+                                invisible="state == 'done'"/>
+                        <button name="action_skip"
+                                string="Preskočiť"
+                                type="object"
+                                invisible="state != 'todo'"/>
+                        <button name="action_mark_not_applicable"
+                                string="Nevzťahuje sa"
+                                type="object"
+                                invisible="state == 'not_applicable' or state == 'done'"/>
+                        <button name="action_reset_todo"
+                                string="Vrátiť na realizáciu"
+                                type="object"
+                                invisible="state == 'todo'"/>
+                        <field name="state" widget="statusbar"
+                               statusbar_visible="todo,done,skipped,not_applicable"/>
+                    </header>
+                    <sheet style="max-width: 100%;">
+                        <div class="mb-3">
+                            <div style="font-size: 1.4rem; font-weight: 600; line-height: 1.4; word-break: break-word; white-space: normal;">
+                                <field name="name" placeholder="Názov úlohy"
+                                       style="resize: none; white-space: normal; word-break: break-word; width: 100%; min-height: 2.8rem;"/>
+                            </div>
+                            <div class="text-muted mt-1">
+                                <i class="fa fa-arrow-right me-1"/>
+                                <field name="onboarding_id" readonly="1"/>
+                            </div>
+                        </div>
+                        <group>
+                            <group string="Zaradenie">
+                                <field name="phase"/>
+                                <field name="is_mandatory"/>
+                                <field name="sequence"/>
+                            </group>
+                            <group string="Zodpovednosť">
+                                <field name="responsible_role"/>
+                                <field name="responsible_user_id" widget="many2one_avatar_user"/>
+                                <field name="done_by_user_id" widget="many2one_avatar_user"
+                                       invisible="state == 'todo'" readonly="1"/>
+                                <field name="done_date"
+                                       invisible="state == 'todo'" readonly="1"/>
+                            </group>
+                        </group>
+                        <group string="Poznámka">
+                            <field name="note" nolabel="1" placeholder="Voliteľná poznámka k úlohe..."/>
+                        </group>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <!-- =====================================================================
+             Kanban view: tenenet.onboarding.task
+             ===================================================================== -->
+
+        <record id="view_tenenet_onboarding_task_kanban" model="ir.ui.view">
+            <field name="name">tenenet.onboarding.task.kanban</field>
+            <field name="model">tenenet.onboarding.task</field>
+            <field name="arch" type="xml">
+                <kanban default_group_by="state" class="o_kanban_small_column">
+                    <field name="name"/>
+                    <field name="state"/>
+                    <field name="phase"/>
+                    <field name="phase_sequence"/>
+                    <field name="sequence"/>
+                    <field name="is_mandatory"/>
+                    <field name="onboarding_id"/>
+                    <field name="responsible_user_id"/>
+                    <field name="note"/>
+                    <templates>
+                        <t t-name="card" class="p-2">
+                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                <field name="name" class="fw-bold"/>
+                                <span t-if="record.is_mandatory.raw_value"
+                                      class="badge text-bg-danger ms-2 flex-shrink-0"
+                                      title="Povinná úloha">P</span>
+                            </div>
+                            <div class="text-muted small mb-2">
+                                <i class="fa fa-user me-1"/>
+                                <field name="onboarding_id"/>
+                            </div>
+                            <div class="d-flex align-items-center justify-content-between">
+                                <field name="phase" widget="badge"/>
+                                <field name="responsible_user_id" widget="many2one_avatar_user"/>
+                            </div>
+                            <t t-if="record.note.value">
+                                <div class="text-muted small mt-1 fst-italic border-top pt-1">
+                                    <field name="note"/>
+                                </div>
+                            </t>
+                        </t>
+                    </templates>
+                </kanban>
+            </field>
+        </record>
+
+        <!-- =====================================================================
+             List view: tenenet.onboarding.task (standalone)
+             ===================================================================== -->
+
+        <record id="view_tenenet_onboarding_task_standalone_list" model="ir.ui.view">
+            <field name="name">tenenet.onboarding.task.standalone.list</field>
+            <field name="model">tenenet.onboarding.task</field>
+            <field name="arch" type="xml">
+                <list string="Úlohy onboardingu" editable="bottom"
+                      default_order="phase_sequence,sequence">
+                    <field name="phase_sequence" column_invisible="1"/>
+                    <field name="onboarding_id" readonly="1"/>
+                    <field name="phase"/>
+                    <field name="name"/>
+                    <field name="responsible_user_id" widget="many2one_avatar_user" optional="hide"/>
+                    <field name="is_mandatory" optional="hide"/>
+                    <field name="state"
+                        decoration-success="state == 'done'"
+                        decoration-warning="state == 'skipped'"
+                        decoration-muted="state == 'not_applicable'"
+                    />
+                    <field name="done_by_user_id" widget="many2one_avatar_user" optional="hide"/>
+                    <field name="done_date" optional="hide"/>
+                    <field name="note" optional="show"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- =====================================================================
+             Search view: tenenet.onboarding.task (standalone)
+             ===================================================================== -->
+
+        <record id="view_tenenet_onboarding_task_search" model="ir.ui.view">
+            <field name="name">tenenet.onboarding.task.search</field>
+            <field name="model">tenenet.onboarding.task</field>
+            <field name="arch" type="xml">
+                <search string="Úlohy onboardingu">
+                    <field name="name"/>
+                    <field name="onboarding_id"/>
+                    <filter string="Moje úlohy" name="my_tasks"
+                            domain="[('responsible_user_id', '=', uid)]"/>
+                    <separator/>
+                    <filter string="Na realizáciu" name="todo" domain="[('state', '=', 'todo')]"/>
+                    <filter string="Hotovo" name="done" domain="[('state', '=', 'done')]"/>
+                    <filter string="Preskočené" name="skipped" domain="[('state', '=', 'skipped')]"/>
+                    <separator/>
+                    <filter string="Pred nástupom" name="pre_hire" domain="[('phase', '=', 'pre_hire')]"/>
+                    <filter string="Deň nástupu" name="day_one" domain="[('phase', '=', 'day_one')]"/>
+                    <filter string="Prvé týždne" name="first_weeks" domain="[('phase', '=', 'first_weeks')]"/>
+                    <separator/>
+                    <filter string="Povinné" name="mandatory" domain="[('is_mandatory', '=', True)]"/>
+                    <filter string="Onboarding" name="group_onboarding" context="{'group_by': 'onboarding_id'}"/>
+                    <filter string="Fáza" name="group_phase" context="{'group_by': 'phase'}"/>
+                    <filter string="Stav" name="group_state" context="{'group_by': 'state'}"/>
+                </search>
+            </field>
+        </record>
+    </data>
+</odoo>

@@ -10,6 +10,7 @@ from .tenenet_onboarding_task_template import (
 class TenenetOnboardingTask(models.Model):
     _name = "tenenet.onboarding.task"
     _description = "Úloha onboarding procesu"
+    _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "phase_sequence, sequence, id"
 
     onboarding_id = fields.Many2one(
@@ -18,7 +19,7 @@ class TenenetOnboardingTask(models.Model):
         required=True,
         ondelete="cascade",
     )
-    name = fields.Char(
+    name = fields.Text(
         string="Úloha",
         required=True,
     )
@@ -53,12 +54,14 @@ class TenenetOnboardingTask(models.Model):
         string="Stav",
         default="todo",
         required=True,
+        tracking=True,
     )
     done_by_user_id = fields.Many2one(
         "res.users",
         string="Splnil",
         readonly=True,
         copy=False,
+        tracking=True,
     )
     done_date = fields.Datetime(
         string="Dátum splnenia",
@@ -118,3 +121,43 @@ class TenenetOnboardingTask(models.Model):
             if "phase" in vals and "phase_sequence" not in vals:
                 vals["phase_sequence"] = PHASE_SEQUENCE.get(vals["phase"], 99)
         return super().create(vals_list)
+
+    # --------------------------------------------------------------------------
+    # State action buttons
+    # --------------------------------------------------------------------------
+
+    def action_mark_done(self):
+        self.ensure_one()
+        self.write({"state": "done"})
+        return self._next_todo_task_action()
+
+    def _next_todo_task_action(self):
+        self.ensure_one()
+        next_task = self.env["tenenet.onboarding.task"].search([
+            ("onboarding_id", "=", self.onboarding_id.id),
+            ("state", "=", "todo"),
+            ("id", "!=", self.id),
+        ], order="phase_sequence, sequence, id", limit=1)
+        if next_task:
+            return {
+                "type": "ir.actions.act_window",
+                "res_model": "tenenet.onboarding.task",
+                "res_id": next_task.id,
+                "view_mode": "form",
+                "views": [(False, "form")],
+                "target": "current",
+            }
+        return {"type": "ir.actions.act_window_close"}
+
+    def action_skip(self):
+        self.ensure_one()
+        self.write({"state": "skipped"})
+        return self._next_todo_task_action()
+
+    def action_mark_not_applicable(self):
+        self.ensure_one()
+        self.write({"state": "not_applicable"})
+        return self._next_todo_task_action()
+
+    def action_reset_todo(self):
+        self.write({"state": "todo"})
