@@ -127,13 +127,8 @@
                             </div>
                         </div>
                         <div class="mt-2" invisible="not tenenet_onboarding_id">
-                            <div class="progress" style="height: 6px;">
-                                <div class="progress-bar bg-success"
-                                     t-att-style="'width: ' + tenenet_onboarding_progress + '%;'"/>
-                            </div>
-                            <small class="text-muted">
-                                <field name="tenenet_onboarding_progress" readonly="1" widget="float" digits="[3,1]"/>% dokončené
-                            </small>
+                            <field name="tenenet_onboarding_progress" readonly="1"
+                                   widget="progressbar" string="Postup"/>
                         </div>
                     </div>
                 </field>
