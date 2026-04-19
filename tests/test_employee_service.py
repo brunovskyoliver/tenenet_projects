@@ -1,4 +1,4 @@
-from odoo.exceptions import AccessError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -57,26 +57,31 @@ class TestTenenetEmployeeService(TransactionCase):
         self.assertNotIn(self.employee_user, manager_users)
         self.assertNotIn(self.outsider_user, manager_users)
 
-    def test_higher_up_can_manage_employee_services(self):
-        service = self.service_model.with_user(self.manager_user).create({
+    def test_higher_up_can_read_employee_services_but_not_manage_them(self):
+        service = self.service_model.with_user(self.hr_manager_user).create({
             "employee_id": self.employee.id,
             "name": "Krizova intervencia",
         })
 
-        self.assertEqual(service.employee_id, self.employee)
-        self.assertEqual(service.name, "Krizova intervencia")
+        self.assertEqual(service.with_user(self.manager_user).employee_id, self.employee)
+        self.assertEqual(service.with_user(self.manager_user).name, "Krizova intervencia")
         self.assertEqual(service.service_catalog_id.name, "Krizova intervencia")
 
-        service.with_user(self.grand_manager_user).write({"name": "Supervizia"})
-        self.assertEqual(service.name, "Supervizia")
-        self.assertEqual(service.service_catalog_id.name, "Supervizia")
+        with self.assertRaises(UserError):
+            service.with_user(self.grand_manager_user).write({"name": "Supervizia"})
+
+        with self.assertRaises(UserError):
+            self.service_model.with_user(self.manager_user).create({
+                "employee_id": self.employee.id,
+                "name": "Case management",
+            })
 
     def test_service_catalog_remembers_services_for_reuse(self):
-        first_service = self.service_model.with_user(self.manager_user).create({
+        first_service = self.service_model.with_user(self.hr_manager_user).create({
             "employee_id": self.employee.id,
             "name": "Dlhové poradenstvo",
         })
-        second_service = self.service_model.with_user(self.manager_user).create({
+        second_service = self.service_model.with_user(self.hr_manager_user).create({
             "employee_id": self.employee.id,
             "service_catalog_id": first_service.service_catalog_id.id,
         })
@@ -93,22 +98,22 @@ class TestTenenetEmployeeService(TransactionCase):
         self.assertEqual(service.with_user(self.employee_user).name, "Socialne poradenstvo")
         self.assertEqual(service.with_user(self.outsider_user).name, "Socialne poradenstvo")
 
-        with self.assertRaises(AccessError):
+        with self.assertRaises(UserError):
             self.service_model.with_user(self.employee_user).create({
                 "employee_id": self.employee.id,
                 "name": "Case management",
             })
 
-        with self.assertRaises(AccessError):
+        with self.assertRaises(UserError):
             self.service_model.with_user(self.outsider_user).create({
                 "employee_id": self.employee.id,
                 "name": "Dlhové poradenstvo",
             })
 
-        with self.assertRaises(AccessError):
+        with self.assertRaises(UserError):
             service.with_user(self.employee_user).write({"name": "Zmena"})
 
-        with self.assertRaises(AccessError):
+        with self.assertRaises(UserError):
             service.with_user(self.outsider_user).unlink()
 
     def test_regular_employee_can_read_services_in_public_profile(self):
@@ -122,7 +127,7 @@ class TestTenenetEmployeeService(TransactionCase):
         self.assertEqual(service.with_user(self.regular_user).name, "Socialne poradenstvo")
         self.assertEqual(public_employee.service_ids.mapped("name"), ["Socialne poradenstvo"])
 
-        with self.assertRaises(AccessError):
+        with self.assertRaises(UserError):
             self.service_model.with_user(self.regular_user).create({
                 "employee_id": self.employee.id,
                 "name": "Neopravnena zmena",

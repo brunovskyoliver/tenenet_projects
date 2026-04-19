@@ -60,6 +60,358 @@
             />
         </record>
 
+        <record id="rule_hr_employee_tenenet_owner_read_write" model="ir.rule">
+            <field name="name">Zamestnanci: vlastná karta čítanie a úprava</field>
+            <field name="model_id" ref="hr.model_hr_employee"/>
+            <field name="domain_force">[('user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_hr_employee_tenenet_higher_up_read_only" model="ir.rule">
+            <field name="name">Zamestnanci: podriadení iba na čítanie</field>
+            <field name="model_id" ref="hr.model_hr_employee"/>
+            <field name="domain_force">[('service_manager_user_ids', 'in', user.id)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_hr_employee_tenenet_hr_manager_all" model="ir.rule">
+            <field name="name">Zamestnanci: HR administrátor všetko</field>
+            <field name="model_id" ref="hr.model_hr_employee"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('hr.group_hr_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_hr_employee_tenenet_hr_user_read_all" model="ir.rule">
+            <field name="name">Zamestnanci: HR používateľ číta všetko</field>
+            <field name="model_id" ref="hr.model_hr_employee"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('hr.group_hr_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_hr_employee_tenenet_manager_read_all" model="ir.rule">
+            <field name="name">Zamestnanci: TENENET manažér číta iba podriadených</field>
+            <field name="model_id" ref="hr.model_hr_employee"/>
+            <field name="domain_force">[('service_manager_user_ids', 'in', user.id)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_employee_weekly_workplace_read_all" model="ir.rule">
+            <field name="name">Týždenný rozvrh pracovísk: čítanie pre používateľov</field>
+            <field name="model_id" ref="model_tenenet_employee_weekly_workplace"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_employee_weekly_workplace_owner_read_write" model="ir.rule">
+            <field name="name">Týždenný rozvrh pracovísk: vlastný na úpravu</field>
+            <field name="model_id" ref="model_tenenet_employee_weekly_workplace"/>
+            <field name="domain_force">[('employee_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_employee_weekly_workplace_hr_manager_all" model="ir.rule">
+            <field name="name">Týždenný rozvrh pracovísk: HR administrátor všetko</field>
+            <field name="model_id" ref="model_tenenet_employee_weekly_workplace"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('hr.group_hr_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_project_employee_card_owner_higher_up" model="ir.rule">
+            <field name="name">TENENET projekty: čítanie cez kartu zamestnanca</field>
+            <field name="model_id" ref="model_tenenet_project"/>
+            <field name="domain_force">['|', ('assignment_ids.employee_id.user_id', '=', user.id), ('assignment_ids.employee_id.service_manager_user_ids', 'in', user.id)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_project_employee_card_hr_manager_all" model="ir.rule">
+            <field name="name">TENENET projekty: HR administrátor číta pre kartu zamestnanca</field>
+            <field name="model_id" ref="model_tenenet_project"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('hr.group_hr_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_project_assignment_employee_card_owner_higher_up" model="ir.rule">
+            <field name="name">Priradenia: vlastná karta a podriadení</field>
+            <field name="model_id" ref="model_tenenet_project_assignment"/>
+            <field name="domain_force">['|', ('employee_id.user_id', '=', user.id), ('employee_id.service_manager_user_ids', 'in', user.id)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_project_assignment_user_read_all" model="ir.rule">
+            <field name="name">Priradenia: TENENET používateľ číta všetko</field>
+            <field name="model_id" ref="model_tenenet_project_assignment"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_project_assignment_hr_manager_all" model="ir.rule">
+            <field name="name">Priradenia: HR administrátor všetko</field>
+            <field name="model_id" ref="model_tenenet_project_assignment"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('hr.group_hr_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_employee_asset_handover_employee_card_owner_higher_up" model="ir.rule">
+            <field name="name">Preberacie protokoly: vlastná karta a podriadení</field>
+            <field name="model_id" ref="model_tenenet_employee_asset_handover"/>
+            <field name="domain_force">['|', ('employee_id.user_id', '=', user.id), ('employee_id.service_manager_user_ids', 'in', user.id)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_employee_asset_handover_user_read_all" model="ir.rule">
+            <field name="name">Preberacie protokoly: TENENET používateľ číta všetko</field>
+            <field name="model_id" ref="model_tenenet_employee_asset_handover"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_employee_asset_handover_manager_all" model="ir.rule">
+            <field name="name">Preberacie protokoly: TENENET manažér všetko</field>
+            <field name="model_id" ref="model_tenenet_employee_asset_handover"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_employee_asset_handover_hr_manager_all" model="ir.rule">
+            <field name="name">Preberacie protokoly: HR administrátor všetko</field>
+            <field name="model_id" ref="model_tenenet_employee_asset_handover"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('hr.group_hr_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_employee_asset_employee_card_owner_higher_up" model="ir.rule">
+            <field name="name">Majetok zamestnanca: vlastná karta a podriadení</field>
+            <field name="model_id" ref="model_tenenet_employee_asset"/>
+            <field name="domain_force">['|', ('employee_id.user_id', '=', user.id), ('employee_id.service_manager_user_ids', 'in', user.id)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_employee_asset_user_read_all" model="ir.rule">
+            <field name="name">Majetok zamestnanca: TENENET používateľ číta všetko</field>
+            <field name="model_id" ref="model_tenenet_employee_asset"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_employee_asset_manager_all" model="ir.rule">
+            <field name="name">Majetok zamestnanca: TENENET manažér všetko</field>
+            <field name="model_id" ref="model_tenenet_employee_asset"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_employee_asset_hr_manager_all" model="ir.rule">
+            <field name="name">Majetok zamestnanca: HR administrátor všetko</field>
+            <field name="model_id" ref="model_tenenet_employee_asset"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('hr.group_hr_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_employee_site_key_employee_card_owner_higher_up" model="ir.rule">
+            <field name="name">Kľúče zamestnanca: vlastná karta a podriadení</field>
+            <field name="model_id" ref="model_tenenet_employee_site_key"/>
+            <field name="domain_force">['|', ('employee_id.user_id', '=', user.id), ('employee_id.service_manager_user_ids', 'in', user.id)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_employee_site_key_user_read_all" model="ir.rule">
+            <field name="name">Kľúče zamestnanca: TENENET používateľ číta všetko</field>
+            <field name="model_id" ref="model_tenenet_employee_site_key"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_employee_site_key_manager_all" model="ir.rule">
+            <field name="name">Kľúče zamestnanca: TENENET manažér všetko</field>
+            <field name="model_id" ref="model_tenenet_employee_site_key"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_employee_site_key_hr_manager_all" model="ir.rule">
+            <field name="name">Kľúče zamestnanca: HR administrátor všetko</field>
+            <field name="model_id" ref="model_tenenet_employee_site_key"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('hr.group_hr_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_employee_training_employee_card_owner_higher_up" model="ir.rule">
+            <field name="name">Školenia zamestnanca: vlastná karta a podriadení</field>
+            <field name="model_id" ref="model_tenenet_employee_training"/>
+            <field name="domain_force">['|', ('employee_id.user_id', '=', user.id), ('employee_id.service_manager_user_ids', 'in', user.id)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_employee_training_user_read_all" model="ir.rule">
+            <field name="name">Školenia zamestnanca: TENENET používateľ číta všetko</field>
+            <field name="model_id" ref="model_tenenet_employee_training"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_employee_training_manager_all" model="ir.rule">
+            <field name="name">Školenia zamestnanca: TENENET manažér všetko</field>
+            <field name="model_id" ref="model_tenenet_employee_training"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_employee_training_hr_manager_all" model="ir.rule">
+            <field name="name">Školenia zamestnanca: HR administrátor všetko</field>
+            <field name="model_id" ref="model_tenenet_employee_training"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('hr.group_hr_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_employee_wage_override_employee_card_owner_higher_up" model="ir.rule">
+            <field name="name">Mzdové výnimky: vlastná karta a podriadení</field>
+            <field name="model_id" ref="model_tenenet_employee_wage_override"/>
+            <field name="domain_force">['|', ('employee_id.user_id', '=', user.id), ('employee_id.service_manager_user_ids', 'in', user.id)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_employee_wage_override_hr_user_all" model="ir.rule">
+            <field name="name">Mzdové výnimky: HR používateľ všetko</field>
+            <field name="model_id" ref="model_tenenet_employee_wage_override"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('hr.group_hr_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_employee_wage_override_hr_manager_all" model="ir.rule">
+            <field name="name">Mzdové výnimky: HR administrátor všetko</field>
+            <field name="model_id" ref="model_tenenet_employee_wage_override"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('hr.group_hr_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
         <record id="rule_tenenet_project_user_read_all" model="ir.rule">
             <field name="name">TENENET projekty: používateľ číta projekty</field>
             <field name="model_id" ref="model_tenenet_project"/>
@@ -463,11 +815,55 @@
             <field name="perm_unlink" eval="1"/>
         </record>
 
+        <record id="rule_tenenet_onboarding_hr_manager_all" model="ir.rule">
+            <field name="name">Onboarding: HR manažér spravuje všetko</field>
+            <field name="model_id" ref="model_tenenet_onboarding"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('hr.group_hr_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_onboarding_system_all" model="ir.rule">
+            <field name="name">Onboarding: systémový administrátor spravuje všetko</field>
+            <field name="model_id" ref="model_tenenet_onboarding"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('base.group_system'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
         <record id="rule_tenenet_onboarding_task_template_manager_all" model="ir.rule">
             <field name="name">Onboarding šablóny: manažér spravuje</field>
             <field name="model_id" ref="model_tenenet_onboarding_task_template"/>
             <field name="domain_force">[(1, '=', 1)]</field>
             <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_helpdesk_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_onboarding_task_template_hr_manager_all" model="ir.rule">
+            <field name="name">Onboarding šablóny: HR manažér spravuje</field>
+            <field name="model_id" ref="model_tenenet_onboarding_task_template"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('hr.group_hr_manager'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
+        </record>
+
+        <record id="rule_tenenet_onboarding_task_template_system_all" model="ir.rule">
+            <field name="name">Onboarding šablóny: systémový administrátor spravuje</field>
+            <field name="model_id" ref="model_tenenet_onboarding_task_template"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('base.group_system'))]"/>
             <field name="perm_read" eval="1"/>
             <field name="perm_write" eval="1"/>
             <field name="perm_create" eval="1"/>

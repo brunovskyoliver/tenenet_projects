@@ -1,6 +1,9 @@
+from copy import deepcopy
+
+from lxml import etree
 from markupsafe import Markup, escape
 
-from odoo import api, fields, models, _
+from odoo import SUPERUSER_ID, api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 
 
@@ -110,6 +113,7 @@ class HrEmployee(models.Model):
     salary_guidance_html = fields.Html(
         string="Mzdové odporúčanie",
         compute="_compute_salary_guidance_html",
+        compute_sudo=True,
         sanitize=False,
     )
     education_info = fields.Text(string="Vzdelanie")
@@ -182,6 +186,7 @@ class HrEmployee(models.Model):
     tenenet_onboarding_count = fields.Integer(
         string="Počet onboardingov",
         compute="_compute_tenenet_onboarding_count",
+        compute_sudo=True,
     )
     tenenet_onboarding_state = fields.Selection(
         [
@@ -191,6 +196,7 @@ class HrEmployee(models.Model):
         ],
         string="Stav onboardingu",
         compute="_compute_tenenet_onboarding_state",
+        compute_sudo=True,
     )
     asset_currency_id = fields.Many2one(
         "res.currency",
@@ -213,6 +219,16 @@ class HrEmployee(models.Model):
         "employee_id",
         string="Služby",
     )
+    weekly_workplace_ids = fields.One2many(
+        "tenenet.employee.weekly.workplace",
+        "employee_id",
+        string="Týždenný rozvrh pracovísk",
+    )
+    tenenet_weekly_site_domain_ids = fields.Many2many(
+        "tenenet.project.site",
+        compute="_compute_tenenet_weekly_site_domain_ids",
+        string="Povolené pracoviská pre rozvrh",
+    )
     tenenet_cost_ids = fields.One2many(
         "tenenet.employee.tenenet.cost",
         "employee_id",
@@ -231,6 +247,22 @@ class HrEmployee(models.Model):
     can_manage_services = fields.Boolean(
         string="Môže spravovať služby",
         compute="_compute_can_manage_services",
+    )
+    tenenet_is_card_owner = fields.Boolean(
+        string="Vlastná karta",
+        compute="_compute_tenenet_employee_access_flags",
+    )
+    tenenet_is_employee_higher_up = fields.Boolean(
+        string="Nadriadený v hierarchii",
+        compute="_compute_tenenet_employee_access_flags",
+    )
+    tenenet_can_edit_self_employee_fields = fields.Boolean(
+        string="Môže upraviť vlastné údaje",
+        compute="_compute_tenenet_employee_access_flags",
+    )
+    tenenet_can_request_employee_update = fields.Boolean(
+        string="Môže požiadať o aktualizáciu",
+        compute="_compute_tenenet_employee_access_flags",
     )
     tenenet_allocation_ratio_total = fields.Float(
         string="Projektový úväzok spolu (%)",
@@ -297,12 +329,12 @@ class HrEmployee(models.Model):
 
     def _get_job_sequence(self):
         self.ensure_one()
-        jobs = []
+        jobs = self.env["hr.job"]
         if self.job_id:
-            jobs.append(self.job_id)
+            jobs |= self.job_id
         for job in self.additional_job_ids.sorted(lambda rec: ((rec.name or "").lower(), rec.id)):
             if job not in jobs:
-                jobs.append(job)
+                jobs |= job
         return jobs
 
     def action_send_unsigned_assets_for_signature(self):
@@ -418,6 +450,8 @@ class HrEmployee(models.Model):
 
     @api.model
     def _prepare_private_phone_sync_vals(self, vals, record=None):
+        if "mobile_phone" not in vals and "private_phone" not in vals:
+            return vals
         synced_vals = dict(vals)
         legacy_mobile = synced_vals.get("mobile_phone", record.mobile_phone if record else False)
         private_phone = synced_vals.get("private_phone", record.private_phone if record else False)
@@ -430,6 +464,11 @@ class HrEmployee(models.Model):
     def _compute_all_site_names(self):
         for employee in self:
             employee.all_site_names = ", ".join(site.display_name for site in employee._get_site_sequence())
+
+    @api.depends("main_site_id", "secondary_site_ids")
+    def _compute_tenenet_weekly_site_domain_ids(self):
+        for employee in self:
+            employee.tenenet_weekly_site_domain_ids = employee.main_site_id | employee.secondary_site_ids
 
     @api.depends("job_id", "job_id.name", "additional_job_ids", "additional_job_ids.name")
     def _compute_all_job_names(self):
@@ -472,12 +511,16 @@ class HrEmployee(models.Model):
     @api.depends("tenenet_onboarding_ids")
     def _compute_tenenet_onboarding_count(self):
         for employee in self:
-            employee.tenenet_onboarding_count = len(employee.tenenet_onboarding_ids)
+            employee.tenenet_onboarding_count = self.env["tenenet.onboarding"].sudo().search_count([
+                ("employee_id", "=", employee.id),
+            ])
 
     @api.depends("tenenet_onboarding_ids.phase")
     def _compute_tenenet_onboarding_state(self):
         for employee in self:
-            onboardings = employee.tenenet_onboarding_ids
+            onboardings = self.env["tenenet.onboarding"].sudo().search([
+                ("employee_id", "=", employee.id),
+            ])
             if not onboardings:
                 employee.tenenet_onboarding_state = "not_started"
             elif any(o.phase != "done" for o in onboardings):
@@ -506,7 +549,87 @@ class HrEmployee(models.Model):
             synced_vals_list.append(synced_vals)
         return super().create(synced_vals_list)
 
+    @api.model
+    def _tenenet_is_hr_manager(self):
+        return self.env.is_superuser() or self.env.user.has_group("hr.group_hr_manager")
+
+    @api.model
+    def _tenenet_self_editable_employee_fields(self):
+        return {
+            "additional_note",
+            "bio",
+            "resume_line_ids",
+            "weekly_workplace_ids",
+        }
+
+    @api.model
+    def _tenenet_private_card_sudo_read_fields(self):
+        return {
+            "work_location_name",
+            "work_location_type",
+        }
+
+    @api.model
+    def _tenenet_private_card_access_records(self):
+        if self:
+            return self.sudo()
+
+        employee_ids = self.env.context.get("tenenet_private_card_access_employee_ids") or []
+        if not employee_ids:
+            return self.env["hr.employee"]
+        return self.env["hr.employee"].sudo().browse(employee_ids).exists()
+
+    @api.model
+    def _tenenet_fields_get_with_group_bypass(self, allfields=None, attributes=None):
+        result = super().fields_get(allfields=allfields, attributes=attributes)
+        requested_fields = allfields or self._fields.keys()
+        for field_name in requested_fields:
+            if field_name in result:
+                continue
+            field = self._fields.get(field_name)
+            if not field or not self._tenenet_field_requires_group_bypass(field_name):
+                continue
+            description = field.get_description(self.env, attributes=attributes)
+            if "readonly" in description:
+                description["readonly"] = description["readonly"] or not self._has_field_access(field, "write")
+            result[field_name] = description
+        return result
+
+    @api.model
+    def fields_get(self, allfields=None, attributes=None):
+        if not self._tenenet_should_expand_private_form_view("form"):
+            return super().fields_get(allfields=allfields, attributes=attributes)
+        return self._tenenet_fields_get_with_group_bypass(allfields=allfields, attributes=attributes)
+
+    def _tenenet_check_employee_write_access(self, vals):
+        if self._tenenet_is_hr_manager():
+            return
+        requested_fields = set(vals)
+        if not requested_fields:
+            return
+        forbidden_fields = requested_fields - self._tenenet_self_editable_employee_fields()
+        for employee in self:
+            if employee.user_id == self.env.user and not forbidden_fields:
+                continue
+            if employee.user_id == self.env.user:
+                raise UserError(
+                    _(
+                        "Vlastnú kartu môžete upravovať iba v povolených poliach: bio, životopis, poznámka a týždenný rozvrh pracovísk."
+                    )
+                )
+            if self.env.user in employee.service_manager_user_ids:
+                raise UserError(_("Nadriadený môže kartu zamestnanca iba čítať."))
+            raise UserError(_("Nemáte oprávnenie upravovať túto kartu zamestnanca."))
+
     def write(self, vals):
+        if not self.env.context.get("tenenet_self_write_sudo"):
+            self._tenenet_check_employee_write_access(vals)
+            if (
+                not self._tenenet_is_hr_manager()
+                and set(vals).issubset(self._tenenet_self_editable_employee_fields())
+                and all(employee.user_id == self.env.user for employee in self)
+            ):
+                return self.sudo().with_context(tenenet_self_write_sudo=True).write(vals)
         if len(self) == 1:
             vals = self._prepare_identity_sync_vals(vals, self)
             vals = self._prepare_position_sync_vals(vals, self)
@@ -525,8 +648,135 @@ class HrEmployee(models.Model):
                 record.tenenet_cost_ids._sync_internal_residual_expense()
         return True
 
+    def _tenenet_can_read_private_card_fields(self):
+        if self._tenenet_is_hr_manager():
+            return True
+        current_user = self.env.user
+        employees = self._tenenet_private_card_access_records()
+        if not employees:
+            return False
+        for employee in employees:
+            if employee.user_id == current_user:
+                continue
+            if current_user in employee.service_manager_user_ids:
+                continue
+            return False
+        return True
+
+    def _has_field_access(self, field, operation):
+        if super()._has_field_access(field, operation):
+            return True
+        return bool(
+            operation == "read"
+            and self
+            and self._tenenet_can_read_private_card_fields()
+            and self._tenenet_field_requires_group_bypass(field.name)
+        )
+
+    def _tenenet_field_requires_group_bypass(self, field_name):
+        field = self._fields.get(field_name)
+        return bool(
+            field
+            and (
+                field_name in self._tenenet_private_card_sudo_read_fields()
+                or (field.groups and not self.env.user.has_groups(field.groups))
+                or self._tenenet_related_field_requires_group_bypass(field)
+                or self._tenenet_computed_field_requires_group_bypass(field)
+            )
+        )
+
+    def _tenenet_computed_field_requires_group_bypass(self, field):
+        if not getattr(field, "compute", None):
+            return False
+
+        for depends_field_name in getattr(field, "depends", ()) or ():
+            root_field_name = depends_field_name.split(".", 1)[0]
+            depends_field = self._fields.get(root_field_name)
+            if (
+                depends_field
+                and depends_field.groups
+                and not self.env.user.has_groups(depends_field.groups)
+            ):
+                return True
+        return False
+
+    def _tenenet_related_field_requires_group_bypass(self, field):
+        related_path = getattr(field, "related", None)
+        if not related_path:
+            return False
+        if isinstance(related_path, str):
+            related_path = related_path.split(".")
+
+        model = self
+        for related_field_name in related_path:
+            related_field = model._fields.get(related_field_name)
+            if not related_field:
+                return False
+            if related_field.groups and not self.env.user.has_groups(related_field.groups):
+                return True
+            if getattr(related_field, "comodel_name", None):
+                model = self.env[related_field.comodel_name]
+            else:
+                break
+        return False
+
     def read(self, fields=None, load="_classic_read"):
-        values_list = super().read(fields=fields, load=load)
+        requested_fields = list(fields) if fields else None
+        read_fields = requested_fields
+        inject_additional_note = bool(
+            requested_fields
+            and "additional_note" in requested_fields
+            and not self.env.user.has_group("hr.group_hr_user")
+        )
+        group_bypass_fields = []
+        if (
+            requested_fields
+            and not self.env.su
+            and not self.env.user.has_group("hr.group_hr_user")
+            and self._tenenet_can_read_private_card_fields()
+        ):
+            group_bypass_fields = [
+                field_name
+                for field_name in requested_fields
+                if self._tenenet_field_requires_group_bypass(field_name)
+            ]
+
+        fields_to_remove = set(group_bypass_fields)
+        if inject_additional_note:
+            fields_to_remove.add("additional_note")
+
+        if fields_to_remove:
+            read_fields = [
+                field
+                for field in requested_fields
+                if field not in fields_to_remove
+            ]
+            if not read_fields:
+                read_fields = ["id"]
+
+        if inject_additional_note:
+            fields_to_remove.add("additional_note")
+
+        values_list = super().read(fields=read_fields, load=load)
+
+        if group_bypass_fields:
+            employees = self.sudo().browse([values["id"] for values in values_list])
+            sudo_values_by_id = {
+                values["id"]: values
+                for values in employees.read(group_bypass_fields, load=load)
+            }
+            for values in values_list:
+                values.update({
+                    field: sudo_values_by_id.get(values["id"], {}).get(field)
+                    for field in group_bypass_fields
+                })
+
+        if inject_additional_note and "additional_note" not in group_bypass_fields:
+            employees = self.sudo().browse([values["id"] for values in values_list])
+            note_by_id = {employee.id: employee.additional_note for employee in employees}
+            for values in values_list:
+                values["additional_note"] = note_by_id.get(values["id"])
+
         if fields and "private_phone" not in fields:
             return values_list
 
@@ -535,6 +785,164 @@ class HrEmployee(models.Model):
             if not access_map.get(values["id"]):
                 values["private_phone"] = False
         return values_list
+
+    def web_read(self, specification):
+        if (
+            self.env.context.get("tenenet_private_card_web_read_sudo")
+            or self.env.su
+            or self.env.user.has_group("hr.group_hr_user")
+            or not specification
+            or not self._tenenet_can_read_private_card_fields()
+        ):
+            return super().web_read(specification)
+
+        sudo_field_names = [
+            field_name
+            for field_name in specification
+            if self._tenenet_field_requires_group_bypass(field_name)
+        ]
+        if not sudo_field_names:
+            return super().web_read(specification)
+
+        sudo_fields = set(sudo_field_names)
+        normal_specification = {
+            field_name: field_spec
+            for field_name, field_spec in specification.items()
+            if field_name not in sudo_fields
+        }
+        sudo_specification = {
+            field_name: specification[field_name]
+            for field_name in sudo_field_names
+        }
+        values_list = super().web_read(normal_specification or {"id": {}})
+        sudo_values_by_id = {
+            values["id"]: values
+            for values in self.sudo()
+            .with_context(tenenet_private_card_web_read_sudo=True)
+            .web_read(sudo_specification)
+        }
+        for values in values_list:
+            values.update({
+                field_name: sudo_values_by_id.get(values["id"], {}).get(field_name)
+                for field_name in sudo_field_names
+            })
+        return values_list
+
+    @api.model
+    def _tenenet_private_form_page_names(self):
+        return ("personal_information", "payroll_information", "hr_settings")
+
+    @api.model
+    def _tenenet_should_expand_private_form_view(self, view_type):
+        return bool(
+            view_type == "form"
+            and not self.env.su
+            and self.env.user.has_group("base.group_user")
+            and not self.env.user.has_group("hr.group_hr_user")
+        )
+
+    @api.model
+    def _tenenet_prepare_readonly_private_form_page(self, page):
+        page.set("invisible", "not (tenenet_is_card_owner or tenenet_is_employee_higher_up)")
+
+        for node in page.xpath(".//*[@groups]"):
+            node.attrib.pop("groups", None)
+
+        for button in page.xpath(".//button | .//a[@type]"):
+            parent = button.getparent()
+            if parent is not None:
+                parent.remove(button)
+
+        for arch_node in page.xpath(".//list | .//form | .//kanban"):
+            arch_node.attrib.pop("editable", None)
+            arch_node.set("create", "False")
+            arch_node.set("edit", "False")
+            arch_node.set("delete", "False")
+
+        for field_node in page.xpath(".//field"):
+            field_node.set("readonly", "1")
+
+        return page
+
+    @api.model
+    def _tenenet_merge_view_models(self, current_models, privileged_models):
+        merged_models = {
+            model: list(field_names)
+            for model, field_names in (current_models or {}).items()
+        }
+        for model, field_names in (privileged_models or {}).items():
+            merged_field_names = set(merged_models.get(model, []))
+            merged_field_names.update(field_names)
+            merged_models[model] = list(merged_field_names)
+        return merged_models
+
+    @api.model
+    def _tenenet_merge_private_form_pages(self, current_arch, privileged_arch):
+        current_root = etree.fromstring(current_arch.encode())
+        privileged_root = etree.fromstring(privileged_arch.encode())
+
+        current_notebook = current_root.xpath("//notebook")
+        privileged_notebook = privileged_root.xpath("//notebook")
+        if not current_notebook or not privileged_notebook:
+            return current_arch
+
+        current_notebook = current_notebook[0]
+        privileged_notebook = privileged_notebook[0]
+        current_pages = {
+            page.get("name"): page
+            for page in current_notebook.xpath("./page")
+            if page.get("name")
+        }
+        privileged_pages = {
+            page.get("name"): page
+            for page in privileged_notebook.xpath("./page")
+            if page.get("name")
+        }
+        tenenet_page = next(
+            (page for page in current_notebook.xpath("./page") if page.get("string") == "TENENET"),
+            None,
+        )
+        insert_at = current_notebook.index(tenenet_page) if tenenet_page is not None else len(current_notebook)
+
+        for page_name in self._tenenet_private_form_page_names():
+            source_page = privileged_pages.get(page_name)
+            if source_page is None:
+                continue
+            page_copy = deepcopy(source_page)
+            self._tenenet_prepare_readonly_private_form_page(page_copy)
+            current_page = current_pages.get(page_name)
+            if current_page is not None:
+                current_notebook.replace(current_page, page_copy)
+            else:
+                current_notebook.insert(insert_at, page_copy)
+                insert_at += 1
+
+        return etree.tostring(current_root, encoding="unicode")
+
+    def get_view(self, view_id=None, view_type="form", **options):
+        if not self._tenenet_should_expand_private_form_view(view_type):
+            return super().get_view(view_id=view_id, view_type=view_type, **options)
+
+        access_employee_ids = tuple(self.ids or self.env.context.get("tenenet_private_card_access_employee_ids") or ())
+        result = super(
+            HrEmployee,
+            self.with_context(tenenet_private_card_access_employee_ids=access_employee_ids),
+        ).get_view(view_id=view_id, view_type=view_type, **options)
+        privileged_result = super(
+            HrEmployee,
+            self.with_user(SUPERUSER_ID).with_context(
+                tenenet_private_card_access_employee_ids=access_employee_ids,
+            ),
+        ).get_view(view_id=view_id, view_type=view_type, **options)
+        result["arch"] = self._tenenet_merge_private_form_pages(
+            result["arch"],
+            privileged_result["arch"],
+        )
+        result["models"] = self._tenenet_merge_view_models(
+            result.get("models"),
+            privileged_result.get("models"),
+        )
+        return result
 
     @api.model
     def _sync_optional_payroll_cleanup_view(self):
@@ -640,14 +1048,39 @@ class HrEmployee(models.Model):
                 manager_users |= rec.parent_id.service_manager_user_ids
             rec.service_manager_user_ids = manager_users
 
+    @api.depends_context("uid")
     def _compute_can_manage_services(self):
-        current_user = self.env.user
-        is_hr_manager = current_user.has_group("hr.group_hr_manager")
+        is_hr_manager = self._tenenet_is_hr_manager()
         for rec in self:
-            rec.can_manage_services = bool(
-                is_hr_manager
-                or rec.service_manager_user_ids.filtered(lambda user: user == current_user)
-            )
+            rec.can_manage_services = bool(is_hr_manager)
+
+    @api.depends("user_id", "service_manager_user_ids")
+    @api.depends_context("uid")
+    def _compute_tenenet_employee_access_flags(self):
+        current_user = self.env.user
+        is_hr_manager = self._tenenet_is_hr_manager()
+        for rec in self:
+            is_owner = bool(rec.user_id and rec.user_id == current_user)
+            is_higher_up = bool(rec.service_manager_user_ids.filtered(lambda user: user == current_user))
+            rec.tenenet_is_card_owner = is_owner
+            rec.tenenet_is_employee_higher_up = is_higher_up
+            rec.tenenet_can_edit_self_employee_fields = bool(is_hr_manager or is_owner)
+            rec.tenenet_can_request_employee_update = bool(is_hr_manager or is_owner)
+
+    def action_tenenet_open_employee_update_request_wizard(self):
+        self.ensure_one()
+        if not self.tenenet_can_request_employee_update:
+            raise UserError(_("Nemáte oprávnenie požiadať o aktualizáciu tejto karty."))
+        return {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": _("Aktualizovať"),
+                "message": _("Táto funkcia je zatiaľ pripravená len ako zástupné tlačidlo."),
+                "type": "warning",
+                "sticky": False,
+            },
+        }
 
     def _get_private_phone_access_map(self, user=None):
         current_user = user or self.env.user

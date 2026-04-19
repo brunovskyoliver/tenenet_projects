@@ -144,6 +144,7 @@ and P&L reporting by program.
         'views/helpdesk_ticket_views.xml',
         'views/tenenet_helpdesk_ticket_state_wizard_views.xml',
         'views/tenenet_employee_asset_handover_views.xml',
+        'views/tenenet_employee_update_request_wizard_views.xml',
         'views/hr_employee_views.xml',
         'views/tenenet_wage_views.xml',
         'views/hr_holidays_overrides.xml',

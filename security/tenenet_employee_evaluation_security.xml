@@ -12,14 +12,14 @@
         </record>
 
         <record id="rule_tenenet_employee_evaluation_manager_manage" model="ir.rule">
-            <field name="name">Hodnotenie zamestnanca: manažér spravuje podriadených</field>
+            <field name="name">Hodnotenie zamestnanca: manažér číta podriadených</field>
             <field name="model_id" ref="model_tenenet_employee_evaluation"/>
             <field name="domain_force">[('employee_id.service_manager_user_ids', 'in', user.id)]</field>
             <field name="groups" eval="[(4, ref('base.group_user'))]"/>
             <field name="perm_read" eval="1"/>
-            <field name="perm_write" eval="1"/>
-            <field name="perm_create" eval="1"/>
-            <field name="perm_unlink" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
         </record>
 
         <record id="rule_tenenet_employee_evaluation_hr_manager_all" model="ir.rule">

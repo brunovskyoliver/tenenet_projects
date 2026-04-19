@@ -114,7 +114,26 @@
             <field name="model">hr.employee</field>
             <field name="inherit_id" ref="hr.view_employee_form" />
             <field name="arch" type="xml">
+                <xpath expr="//sheet" position="inside">
+                    <field name="tenenet_is_card_owner" invisible="1"/>
+                    <field name="tenenet_is_employee_higher_up" invisible="1"/>
+                    <field name="tenenet_can_edit_self_employee_fields" invisible="1"/>
+                    <field name="tenenet_can_request_employee_update" invisible="1"/>
+                    <field name="tenenet_weekly_site_domain_ids" invisible="1"/>
+                </xpath>
+
                 <xpath expr="//div[@name='button_box']" position="inside">
+                    <button
+                        name="action_tenenet_open_employee_update_request_wizard"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-refresh"
+                        invisible="not tenenet_can_request_employee_update"
+                    >
+                        <div class="o_stat_info">
+                            <span class="o_stat_text">Aktualizovať</span>
+                        </div>
+                    </button>
                     <button
                         name="action_open_onboardings"
                         type="object"
@@ -125,6 +144,31 @@
                         <field name="tenenet_onboarding_count" widget="statinfo" string="Onboarding"/>
                     </button>
                 </xpath>
+
+                <xpath expr="//page[@name='work_information']//group[@name='note']" position="replace">
+                    <group string="Poznámka" name="note">
+                        <field
+                            name="additional_note"
+                            placeholder="Doplňujúca poznámka k práci zamestnanca."
+                            colspan="2"
+                            nolabel="1"
+                            readonly="not tenenet_can_edit_self_employee_fields"
+                        />
+                    </group>
+                </xpath>
+
+                <xpath expr="//page[@name='personal_information']" position="attributes">
+                    <attribute name="groups"/>
+                </xpath>
+
+                <xpath expr="//page[@name='payroll_information']" position="attributes">
+                    <attribute name="groups"/>
+                </xpath>
+
+                <xpath expr="//page[@name='hr_settings']" position="attributes">
+                    <attribute name="groups"/>
+                </xpath>
+
                 <xpath expr="//page[@name='work_information']" position="after">
                     <page string="Služby">
                         <field name="can_manage_services" invisible="1" />
@@ -173,30 +217,90 @@
                 </xpath>
 
                 <xpath expr="//page[@name='work_information']//field[@name='job_id']" position="after">
-                    <field name="organizational_unit_id" />
-                    <field name="additional_job_ids" widget="many2many_tags" string="Ďalšie pozície" />
+                    <field name="organizational_unit_id" readonly="not can_manage_services" />
+                    <field
+                        name="additional_job_ids"
+                        widget="many2many_tags"
+                        string="Ďalšie pozície"
+                        readonly="not can_manage_services"
+                    />
                 </xpath>
 
-                <xpath expr="//page[@name='work_information']//field[@name='job_title']" position="replace"/>
+                <xpath expr="//page[@name='work_information']//field[@name='job_id']" position="attributes">
+                    <attribute name="readonly">not can_manage_services</attribute>
+                </xpath>
+
+                <xpath expr="//page[@name='work_information']//field[@name='company_id']" position="attributes">
+                    <attribute name="readonly">not can_manage_services</attribute>
+                </xpath>
+
+                <xpath expr="//page[@name='work_information']//field[@name='department_id']" position="attributes">
+                    <attribute name="readonly">not can_manage_services</attribute>
+                </xpath>
+
+                <xpath expr="//page[@name='work_information']//field[@name='parent_id']" position="attributes">
+                    <attribute name="readonly">not can_manage_services</attribute>
+                </xpath>
+
+                <xpath expr="//page[@name='work_information']//field[@name='job_title']" position="attributes">
+                    <attribute name="readonly">not can_manage_services</attribute>
+                </xpath>
 
                 <xpath expr="//page[@name='work_information']//field[@name='address_id']" position="replace">
                     <field name="main_site_address_display" readonly="1"/>
                 </xpath>
 
                 <xpath expr="//page[@name='work_information']//field[@name='work_location_id']" position="replace">
-                    <field name="main_site_id" />
-                    <field name="secondary_site_ids" widget="many2many_tags" />
+                    <field name="main_site_id" string="Pracovisko" readonly="not can_manage_services" />
+                    <field name="secondary_site_ids" widget="many2many_tags" readonly="not can_manage_services" />
+                    <separator string="Týždenný rozvrh pracovísk"/>
+                    <field
+                        name="weekly_workplace_ids"
+                        nolabel="1"
+                        colspan="2"
+                        readonly="not tenenet_can_edit_self_employee_fields"
+                        context="{'default_employee_id': id}"
+                    >
+                        <list string="Týždenný rozvrh pracovísk" editable="bottom">
+                            <field name="weekday"/>
+                            <field name="time_from" widget="float_time"/>
+                            <field name="time_to" widget="float_time"/>
+                            <field
+                                name="site_id"
+                                domain="[('id', 'in', parent.tenenet_weekly_site_domain_ids), ('site_type', 'in', ['prevadzka', 'centrum'])]"
+                            />
+                        </list>
+                        <form string="Týždenný rozvrh pracovísk">
+                            <sheet>
+                                <group>
+                                    <field name="employee_id" invisible="1"/>
+                                    <field name="weekday"/>
+                                    <field name="time_from" widget="float_time"/>
+                                    <field name="time_to" widget="float_time"/>
+                                    <field
+                                        name="site_id"
+                                        domain="[('id', 'in', parent.tenenet_weekly_site_domain_ids), ('site_type', 'in', ['prevadzka', 'centrum'])]"
+                                    />
+                                </group>
+                            </sheet>
+                        </form>
+                    </field>
                 </xpath>
+
+                <xpath
+                    expr="//group[field[@name='monday_location_id'] and field[@name='tuesday_location_id'] and field[@name='wednesday_location_id'] and field[@name='thursday_location_id'] and field[@name='friday_location_id'] and field[@name='saturday_location_id'] and field[@name='sunday_location_id']]"
+                    position="replace"
+                />
 
                 <xpath expr="//notebook" position="inside">
                     <page string="TENENET">
                         <group>
                             <group string="Profil">
-                                <field name="work_ratio" string="Úväzok (%)" />
-                                <field name="experience_years_total" />
+                                <field name="work_ratio" string="Úväzok (%)" readonly="not can_manage_services" />
+                                <field name="experience_years_total" readonly="not can_manage_services" />
                             </group>
                             <group string="Mzdové nastavenie">
-                                <field name="monthly_gross_salary_target" string="Mesačný cieľ CCP" />
+                                <field name="monthly_gross_salary_target" string="Mesačný cieľ CCP" readonly="not can_manage_services" />
                                 <field name="monthly_gross_salary_target_hm" readonly="1" string="Mesačný cieľ HM (brutto)" />
                                 <field name="hourly_rate" readonly="1" string="Reziduálna hodinová sadzba CCP" />
                             </group>
@@ -278,12 +382,14 @@
                             string="Pridať majetok"
                             class="btn-primary"
                             context="{'default_employee_id': id}"
+                            invisible="not can_manage_services"
                         />
                         <button
                             name="action_send_unsigned_assets_for_signature"
                             type="object"
                             string="Odoslať majetok na podpis"
                             class="btn-secondary"
+                            invisible="not can_manage_services"
                         />
                         <separator string="Majetok"/>
                         <field
@@ -291,6 +397,7 @@
                             nolabel="1"
                             context="{'default_employee_id': id}"
                             colspan="2"
+                            readonly="not can_manage_services"
                         >
                             <list string="Firemný majetok" editable="bottom">
                                 <field name="asset_type_id"/>
@@ -329,6 +436,7 @@
                             nolabel="1"
                             context="{'default_employee_id': id}"
                             colspan="2"
+                            readonly="not can_manage_services"
                         >
                             <list string="Kľúče" editable="bottom">
                                 <field name="site_id" domain="[('site_type', 'in', ['prevadzka', 'centrum'])]"/>
@@ -376,6 +484,7 @@
                             widget="text"
                             placeholder="Predstavte skúsenosti, zameranie a oblasť práce zamestnanca."
                             class="o_tenenet_resume_text"
+                            readonly="not tenenet_can_edit_self_employee_fields"
                         />
                     </group>
                     <group string="Ročné hodnotenia">
@@ -497,6 +606,18 @@
                         </field>
                     </group>
                 </xpath>
+
+                <xpath expr="//field[@name='resume_line_ids']" position="attributes">
+                    <attribute name="readonly">not tenenet_can_edit_self_employee_fields</attribute>
+                </xpath>
+
+                <xpath expr="//field[@name='current_employee_skill_ids']" position="attributes">
+                    <attribute name="readonly">not can_manage_services</attribute>
+                </xpath>
+
+                <xpath expr="//field[@name='certification_ids']" position="attributes">
+                    <attribute name="readonly">not can_manage_services</attribute>
+                </xpath>
             </field>
         </record>
 
@@ -505,9 +626,63 @@
             <field name="model">hr.employee.public</field>
             <field name="inherit_id" ref="hr.hr_employee_public_view_form" />
             <field name="arch" type="xml">
+                <xpath expr="//sheet" position="inside">
+                    <field name="tenenet_can_open_private_employee_card" invisible="1"/>
+                </xpath>
+                <xpath expr="//div[@name='button_box']" position="inside">
+                    <button
+                        name="action_tenenet_open_private_employee_card"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-id-card-o"
+                        invisible="not tenenet_can_open_private_employee_card"
+                    >
+                        <div class="o_stat_info">
+                            <span class="o_stat_text">Celá karta</span>
+                        </div>
+                    </button>
+                </xpath>
+                <xpath expr="//div[hasclass('oe_title')]" position="after">
+                    <div class="mt-3" invisible="not tenenet_can_open_private_employee_card">
+                        <button
+                            name="action_tenenet_open_private_employee_card"
+                            type="object"
+                            string="Otvoriť celú kartu"
+                            class="btn-primary"
+                            icon="fa-id-card-o"
+                        />
+                    </div>
+                </xpath>
                 <xpath expr="//page[@name='work_information']//div[@id='o_work_employee_main']/group[1]" position="inside">
                     <field name="all_job_names" string="Pozície"/>
                     <field name="all_site_names" string="Miesta práce"/>
+                </xpath>
+                <xpath expr="//page[@name='work_information']//field[@name='address_id']" position="replace">
+                    <field name="main_site_address_display" readonly="1"/>
+                </xpath>
+                <xpath expr="//page[@name='work_information']//field[@name='work_location_id']" position="replace">
+                    <field name="main_site_id" string="Pracovisko" readonly="1"/>
+                    <field name="secondary_site_ids" widget="many2many_tags" readonly="1"/>
+                    <separator string="Týždenný rozvrh pracovísk"/>
+                    <field name="weekly_workplace_ids" nolabel="1" colspan="2" readonly="1">
+                        <list string="Týždenný rozvrh pracovísk" create="False" edit="False" delete="False">
+                            <field name="weekday"/>
+                            <field name="time_from" widget="float_time"/>
+                            <field name="time_to" widget="float_time"/>
+                            <field name="site_id"/>
+                        </list>
+                        <form string="Týždenný rozvrh pracovísk" create="False" edit="False" delete="False">
+                            <sheet>
+                                <group>
+                                    <field name="employee_id" invisible="1"/>
+                                    <field name="weekday" readonly="1"/>
+                                    <field name="time_from" widget="float_time" readonly="1"/>
+                                    <field name="time_to" widget="float_time" readonly="1"/>
+                                    <field name="site_id" readonly="1"/>
+                                </group>
+                            </sheet>
+                        </form>
+                    </field>
                 </xpath>
                 <xpath expr="//page[@name='work_information']" position="after">
                     <page string="Služby">
@@ -544,66 +719,62 @@
                         </field>
                     </page>
                 </xpath>
-                <xpath expr="//page[@name='resume']" position="inside">
-                    <group string="TENENET životopis">
-                        <group string="Bio">
-                            <field name="bio" nolabel="1" readonly="1" widget="text" class="o_tenenet_resume_text"/>
-                        </group>
-                        <group string="Ročné hodnotenia">
-                            <field name="evaluation_ids" nolabel="1">
-                                <kanban class="o_kanban_mobile">
-                                    <field name="year_display"/>
-                                    <field name="manager_name"/>
-                                    <field name="summary"/>
-                                    <templates>
-                                        <t t-name="card">
-                                            <div class="o_tenenet_eval_card">
-                                                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-                                                    <strong><field name="year_display"/></strong>
-                                                </div>
-                                                <div class="text-muted small mb-2">
-                                                    <field name="manager_name"/>
-                                                </div>
-                                                <div t-if="record.summary.raw_value" class="text-wrap">
-                                                    <field name="summary"/>
-                                                </div>
-                                                <div t-else="" class="text-muted">
-                                                    Hodnotenie ešte nie je zdieľané.
-                                                </div>
-                                            </div>
-                                        </t>
-                                    </templates>
-                                </kanban>
-                                <form string="Ročné hodnotenie">
-                                    <sheet>
-                                        <group>
-                                            <field name="year_display" readonly="1"/>
-                                            <field name="manager_name" readonly="1"/>
-                                        </group>
-                                        <separator string="Obsah hodnotenia"/>
-                                        <div class="o_tenenet_eval_form_stack">
-                                            <div class="o_tenenet_eval_form_block">
-                                                <label for="summary" string="Celkové zhodnotenie"/>
-                                                <field name="summary" nolabel="1" readonly="1"/>
-                                            </div>
-                                            <div class="o_tenenet_eval_form_block">
-                                                <label for="strengths" string="Silné stránky"/>
-                                                <field name="strengths" nolabel="1" readonly="1"/>
-                                            </div>
-                                            <div class="o_tenenet_eval_form_block">
-                                                <label for="goals" string="Ciele na ďalší rok"/>
-                                                <field name="goals" nolabel="1" readonly="1"/>
-                                            </div>
-                                            <div class="o_tenenet_eval_form_block">
-                                                <label for="recommendations" string="Odporúčania"/>
-                                                <field name="recommendations" nolabel="1" readonly="1"/>
-                                            </div>
-                                        </div>
-                                    </sheet>
-                                </form>
-                            </field>
-                        </group>
-                    </group>
+                <xpath expr="//page[@name='resume']" position="replace">
+                    <page name="resume" string="Resume">
+                        <div class="row">
+                            <div class="col-lg-7 d-flex flex-column">
+                                <group string="Bio">
+                                    <field name="bio" nolabel="1" readonly="1" widget="text" class="o_tenenet_resume_text"/>
+                                </group>
+                            </div>
+                            <div class="col-lg-5 px-0 ps-lg-5 pe-lg-0">
+                                <group string="Znalosti">
+                                    <field name="employee_id" invisible="1"/>
+                                    <field mode="list" nolabel="1" name="current_employee_skill_ids" widget="skills_one2many" readonly="1">
+                                        <list
+                                            no_open="1"
+                                            create="False"
+                                            edit="False"
+                                            delete="False"
+                                            decoration-muted="valid_to and valid_to &lt; context_today().strftime('%Y-%m-%d')"
+                                            decoration-danger="valid_to and valid_to &lt;= (context_today() + relativedelta(days=7)).strftime('%Y-%m-%d') and valid_to &gt; context_today().strftime('%Y-%m-%d')"
+                                            decoration-warning="valid_to and valid_to &lt;= (context_today() + relativedelta(months=3)).strftime('%Y-%m-%d') and valid_to &gt; (context_today() + relativedelta(days=7)).strftime('%Y-%m-%d')">
+                                            <field name="skill_type_id" optional="hidden"/>
+                                            <field name="skill_id"/>
+                                            <field name="skill_level_id"/>
+                                            <field name="level_progress" widget="progressbar"/>
+                                            <field name="valid_to" column_invisible="1"/>
+                                        </list>
+                                    </field>
+                                </group>
+                            </div>
+                        </div>
+                    </page>
+                </xpath>
+                <xpath expr="//page[@name='certification']" position="replace"/>
+            </field>
+        </record>
+
+        <record id="view_hr_employee_public_list_open_card_tenenet" model="ir.ui.view">
+            <field name="name">hr.employee.public.list.open.card.tenenet</field>
+            <field name="model">hr.employee.public</field>
+            <field name="inherit_id" ref="hr.hr_employee_public_view_tree" />
+            <field name="arch" type="xml">
+                <xpath expr="//list" position="attributes">
+                    <attribute name="action">action_tenenet_open_employee_card</attribute>
+                    <attribute name="type">object</attribute>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="view_hr_employee_public_kanban_open_card_tenenet" model="ir.ui.view">
+            <field name="name">hr.employee.public.kanban.open.card.tenenet</field>
+            <field name="model">hr.employee.public</field>
+            <field name="inherit_id" ref="hr.hr_employee_public_view_kanban" />
+            <field name="arch" type="xml">
+                <xpath expr="//kanban" position="attributes">
+                    <attribute name="action">action_tenenet_open_employee_card</attribute>
+                    <attribute name="type">object</attribute>
                 </xpath>
             </field>
         </record>

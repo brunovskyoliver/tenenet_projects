@@ -1,5 +1,5 @@
-from odoo import api, fields, models
-from odoo.exceptions import ValidationError
+from odoo import api, fields, models, _
+from odoo.exceptions import UserError, ValidationError
 
 
 class TenenetEmployeeEvaluation(models.Model):
@@ -91,6 +91,7 @@ class TenenetEmployeeEvaluation(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        self._tenenet_check_evaluation_write_access()
         normalized_vals_list = []
         for vals in vals_list:
             normalized_vals = dict(vals)
@@ -99,3 +100,16 @@ class TenenetEmployeeEvaluation(models.Model):
                 normalized_vals["manager_id"] = employee.parent_id.id or False
             normalized_vals_list.append(normalized_vals)
         return super().create(normalized_vals_list)
+
+    def write(self, vals):
+        self._tenenet_check_evaluation_write_access()
+        return super().write(vals)
+
+    def unlink(self):
+        self._tenenet_check_evaluation_write_access()
+        return super().unlink()
+
+    def _tenenet_check_evaluation_write_access(self):
+        if self.env.is_superuser() or self.env.user.has_group("hr.group_hr_manager"):
+            return
+        raise UserError(_("Ročné hodnotenia môže upravovať iba HR administrátor."))

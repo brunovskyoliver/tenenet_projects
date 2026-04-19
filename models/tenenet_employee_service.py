@@ -1,5 +1,5 @@
-from odoo import api, fields, models
-from odoo.exceptions import ValidationError
+from odoo import api, fields, models, _
+from odoo.exceptions import UserError, ValidationError
 
 
 class TenenetEmployeeService(models.Model):
@@ -70,11 +70,22 @@ class TenenetEmployeeService(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        self._tenenet_check_service_write_access()
         synced_vals_list = [self._prepare_service_sync_vals(vals) for vals in vals_list]
         return super().create(synced_vals_list)
 
     def write(self, vals):
+        self._tenenet_check_service_write_access()
         return super().write(self._prepare_service_sync_vals(vals))
+
+    def unlink(self):
+        self._tenenet_check_service_write_access()
+        return super().unlink()
+
+    def _tenenet_check_service_write_access(self):
+        if self.env.is_superuser() or self.env.user.has_group("hr.group_hr_manager"):
+            return
+        raise UserError(_("Služby zamestnanca môže upravovať iba HR administrátor."))
 
     @api.constrains("delivery_online", "delivery_in_person")
     def _check_delivery_modes(self):

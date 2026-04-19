@@ -31,6 +31,7 @@
                     <field
                         name="wage_program_override_id"
                         placeholder="Inak sa použijú aktívne priradenia"
+                        readonly="not can_manage_services"
                     />
                 </xpath>
                 <xpath expr="//field[@name='salary_guidance_html']" position="before">
@@ -46,7 +47,12 @@
                         <div class="text-muted mb-2">
                             Použi len pri atypických zmluvách alebo pri migrácii výnimiek zo spreadsheetu.
                         </div>
-                        <field name="wage_override_ids" nolabel="1" colspan="2">
+                        <field
+                            name="wage_override_ids"
+                            nolabel="1"
+                            colspan="2"
+                            readonly="not can_manage_services"
+                        >
                             <list editable="bottom" string="Výnimky a manuálne prepisy">
                                 <field name="active"/>
                                 <field name="scope_summary" string="Rozsah"/>

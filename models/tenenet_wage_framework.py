@@ -672,6 +672,7 @@ class HrEmployee(models.Model):
     salary_guidance_context_html = fields.Html(
         string="Kontext právneho mzdového usmernenia",
         compute="_compute_salary_guidance_context_html",
+        compute_sudo=True,
         sanitize=False,
     )
 
