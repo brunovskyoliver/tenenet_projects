@@ -5,6 +5,7 @@
             <field name="model">hr.employee</field>
             <field name="arch" type="xml">
                 <list string="Zamestnanci" default_order="main_site_id,tenenet_number,last_name,first_name,name">
+                    <field name="title_academic" string="Titul" optional="show" />
                     <field name="name" />
                     <field name="organizational_unit_id" optional="show" />
                     <field name="main_site_id" optional="show" />
@@ -21,6 +22,39 @@
                         decoration-danger="tenenet_availability_state == 'overbooked'"
                     />
                 </list>
+            </field>
+        </record>
+
+        <record id="view_hr_employee_tree_tenenet_title_before_name" model="ir.ui.view">
+            <field name="name">hr.employee.tree.tenenet.title.before.name</field>
+            <field name="model">hr.employee</field>
+            <field name="inherit_id" ref="hr.view_employee_tree"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='name']" position="before">
+                    <field name="title_academic" string="Title" optional="show"/>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="hr_employee_list_view_tenenet_title_before_name" model="ir.ui.view">
+            <field name="name">hr.employee.list.tenenet.title.before.name</field>
+            <field name="model">hr.employee</field>
+            <field name="inherit_id" ref="hr.hr_employee_list_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='name']" position="before">
+                    <field name="title_academic" string="Title" optional="show"/>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="hr_employee_list_activities_view_tenenet_title_before_name" model="ir.ui.view">
+            <field name="name">hr.employee.list.activities.tenenet.title.before.name</field>
+            <field name="model">hr.employee</field>
+            <field name="inherit_id" ref="hr.hr_employee_list_activites_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='name']" position="before">
+                    <field name="title_academic" string="Title" optional="show"/>
+                </xpath>
             </field>
         </record>
 

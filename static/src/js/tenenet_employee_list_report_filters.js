@@ -80,16 +80,24 @@ export class TenenetEmployeeListReportFilters extends AccountReportFilters {
     }
 
     get selectedAvailabilityLabel() {
-        const selectedItems = (this.controller.cachedFilterOptions.availability_filter_selection || []).filter(
-            (item) => item.selected
-        );
-        if (!selectedItems.length) {
-            return "Vyťaženosť";
+        const availabilityMode = this.controller.cachedFilterOptions.availability_mode;
+        const minimumFreeHours = this.minimumFreeHours;
+        if (availabilityMode === "free") {
+            return `Voľný (${minimumFreeHours} h+)`;
         }
-        if (selectedItems.length === 1) {
-            return selectedItems[0].name;
+        if (availabilityMode === "full") {
+            return "Plne alokovaný";
         }
-        return `${selectedItems.length} vybrané`;
+        return "Dostupnosť";
+    }
+
+    get minimumFreeHours() {
+        const value = this.controller.cachedFilterOptions.minimum_free_hours;
+        return Number.isFinite(Number(value)) ? Number(value) : 0;
+    }
+
+    get isFreeAvailabilityModeSelected() {
+        return this.controller.cachedFilterOptions.availability_mode === "free";
     }
 
     get selectedGroupingLabel() {
@@ -192,6 +200,22 @@ export class TenenetEmployeeListReportFilters extends AccountReportFilters {
     async updateRecordFilter(optionKey, resIds) {
         await this.controller.updateOption(optionKey, resIds);
         await this.applyFilters(optionKey, 0);
+    }
+
+    async selectAvailabilityMode(mode) {
+        const nextMode = this.controller.cachedFilterOptions.availability_mode === mode ? false : mode;
+        await this.controller.updateOption("availability_mode", nextMode);
+        if (nextMode !== "free") {
+            await this.controller.updateOption("minimum_free_hours", 0);
+        }
+        await this.applyFilters("availability_mode", 0);
+    }
+
+    async updateMinimumFreeHours(ev) {
+        const parsedValue = Number.parseFloat(ev.target.value);
+        const minimumFreeHours = Number.isFinite(parsedValue) && parsedValue > 0 ? parsedValue : 0;
+        await this.controller.updateOption("minimum_free_hours", minimumFreeHours);
+        await this.applyFilters("minimum_free_hours", 0);
     }
 
     async selectGroupingMode(mode) {

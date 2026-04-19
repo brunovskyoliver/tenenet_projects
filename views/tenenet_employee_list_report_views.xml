@@ -150,12 +150,23 @@
                     <field name="figure_type">string</field>
                 </record>
                 <record
+                    id="tenenet_employee_list_report_column_availability"
+                    model="account.report.column"
+                >
+                    <field name="sequence">74</field>
+                    <field name="name">Dostupnosť</field>
+                    <field name="expression_label">free_hours</field>
+                    <field name="figure_type">float</field>
+                </record>
+                <record
                     id="tenenet_employee_list_report_column_utilization_percentage"
                     model="account.report.column"
                 >
                     <field name="sequence">75</field>
                     <field name="name">Vyťaženosť</field>
-                    <field name="expression_label">utilization_percentage</field>
+                    <field
+                        name="expression_label"
+                    >utilization_percentage</field>
                     <field name="figure_type">percentage</field>
                 </record>
                 <record
@@ -169,6 +180,11 @@
                 </record>
             </field>
         </record>
+
+        <delete
+            id="tenenet_projects.tenenet_employee_list_report_column_free_hours"
+            model="account.report.column"
+        />
 
         <record
             id="action_tenenet_employee_list_report"

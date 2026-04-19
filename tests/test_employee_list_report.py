@@ -133,18 +133,6 @@ class TestTenenetEmployeeListReport(TransactionCase):
             timesheet.with_context(from_hr_leave_sync=True).write(hours)
         return timesheet
 
-    def _availability_selection(self, *selected_states):
-        available_states = [
-            ("free", "Voľný"),
-            ("partial", "Čiastočne alokovaný"),
-            ("full", "Plne alokovaný"),
-            ("overbooked", "Preťažený"),
-        ]
-        return [
-            {"id": state, "name": label, "selected": state in selected_states}
-            for state, label in available_states
-        ]
-
     def _get_lines(self, **options_data):
         options = self.report.get_options(options_data)
         return self.report._get_lines(options)
@@ -185,8 +173,17 @@ class TestTenenetEmployeeListReport(TransactionCase):
         self.assertEqual(columns["secondary_site_names"], "Trnava prevádzka")
         self.assertEqual(columns["project_names"], "Medzinárodný projekt, Report Project")
         self.assertEqual(columns["program_names"], "Report Program")
+        self.assertAlmostEqual(columns["free_hours"], 4.0, places=2)
         self.assertAlmostEqual(columns["utilization_percentage"], 0.0, places=2)
         self.assertAlmostEqual(columns["work_hours"], 8.0, places=2)
+
+    def test_report_options_include_availability_mode_and_minimum_free_hours(self):
+        options = self.report.get_options({})
+
+        self.assertIn("availability_mode", options)
+        self.assertFalse(options["availability_mode"])
+        self.assertIn("minimum_free_hours", options)
+        self.assertEqual(options["minimum_free_hours"], 0.0)
 
     def test_utilization_column_matches_selected_month(self):
         assignment = self.employee_partial.assignment_ids[:1]
@@ -285,24 +282,53 @@ class TestTenenetEmployeeListReport(TransactionCase):
             for line in self._employee_lines(language_skill_ids=[self.english.id])
         ]
 
-        self.assertEqual(line_names, [self.employee_partial.name])
+        self.assertIn(self.employee_partial.name, line_names)
+        self.assertNotIn(self.employee_full.name, line_names)
 
     def test_availability_filter_returns_only_matching_employees(self):
         line_names = [
             self._column_map(line)["employee_name"]
             for line in self._employee_lines(
-                availability_filter_selection=self._availability_selection("full")
+                availability_mode="full"
             )
         ]
 
         self.assertEqual(line_names, [self.employee_full.name])
+
+    def test_free_availability_filter_with_zero_threshold_returns_positive_free_capacity(self):
+        line_names = [
+            self._column_map(line)["employee_name"]
+            for line in self._employee_lines(
+                availability_mode="free",
+                minimum_free_hours=0,
+            )
+        ]
+
+        self.assertIn(self.employee_partial.name, line_names)
+        self.assertIn(self.employee_free.name, line_names)
+        self.assertIn(self.employee_without_job.name, line_names)
+        self.assertNotIn(self.employee_full.name, line_names)
+
+    def test_free_availability_filter_with_threshold_returns_only_matching_employees(self):
+        line_names = [
+            self._column_map(line)["employee_name"]
+            for line in self._employee_lines(
+                availability_mode="free",
+                minimum_free_hours=4,
+            )
+        ]
+
+        self.assertIn(self.employee_partial.name, line_names)
+        self.assertIn(self.employee_free.name, line_names)
+        self.assertNotIn(self.employee_without_job.name, line_names)
+        self.assertNotIn(self.employee_full.name, line_names)
 
     def test_search_and_filters_work_together(self):
         line_names = [
             self._column_map(line)["employee_name"]
             for line in self._employee_lines(
                 filter_search_bar="bea",
-                availability_filter_selection=self._availability_selection("full"),
+                availability_mode="full",
                 job_ids=[self.job_coordinator.id],
             )
         ]

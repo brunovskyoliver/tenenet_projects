@@ -15,12 +15,16 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
         ("full", "Plne alokovaný"),
         ("overbooked", "Preťažený"),
     ]
+    _AVAILABILITY_FILTER_MODES = [
+        ("free", "Voľný"),
+        ("full", "Plne alokovaný"),
+    ]
     _GROUPING_SELECTION = [
         ("none", "Bez zoskupenia"),
         ("profession", "Podľa profesie"),
         ("availability", "Podľa vyťaženosti"),
     ]
-    _FLOAT_COLUMNS = {"work_hours", "utilization_percentage"}
+    _FLOAT_COLUMNS = {"work_hours", "utilization_percentage", "free_hours"}
     _STRING_COLUMNS = {
         "employee_name",
         "tenenet_number",
@@ -67,7 +71,8 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
         selected_projects = self._get_selected_projects(previous_options)
         selected_programs = self._get_selected_programs(previous_options)
         selected_language_skills = self._get_selected_language_skills(previous_options, language_skill_type)
-        selected_availability_states = self._get_selected_availability_states(previous_options)
+        availability_mode = self._get_selected_availability_mode(previous_options)
+        minimum_free_hours = self._get_minimum_free_hours(previous_options)
         grouping_mode = self._get_grouping_mode(previous_options)
 
         options["job_ids"] = selected_jobs.ids
@@ -85,9 +90,11 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
             if language_skill_type
             else [["id", "=", 0]]
         )
-        options["availability_filter_selection"] = [
-            {"id": key, "name": label, "selected": key in selected_availability_states}
-            for key, label in self._AVAILABILITY_SELECTION
+        options["availability_mode"] = availability_mode
+        options["minimum_free_hours"] = minimum_free_hours
+        options["availability_mode_selection"] = [
+            {"id": key, "name": label, "selected": key == availability_mode}
+            for key, label in self._AVAILABILITY_FILTER_MODES
         ]
         options["grouping_mode"] = grouping_mode
         options["grouping_mode_selection"] = [
@@ -124,11 +131,8 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
         selected_project_ids = set(options.get("project_ids") or [])
         selected_program_ids = set(options.get("program_ids") or [])
         selected_language_skill_ids = set(options.get("language_skill_ids") or [])
-        selected_availability_states = {
-            item["id"]
-            for item in options.get("availability_filter_selection", [])
-            if item.get("selected")
-        }
+        availability_mode = options.get("availability_mode")
+        minimum_free_hours = self._get_minimum_free_hours(options)
 
         if selected_job_ids:
             employees = employees.filtered(lambda rec: rec.job_id.id in selected_job_ids)
@@ -166,9 +170,15 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
                     )
                 )
             )
-        if selected_availability_states:
+        if availability_mode == "free":
             employees = employees.filtered(
-                lambda rec: rec.tenenet_availability_state in selected_availability_states
+                lambda rec: rec.tenenet_availability_state in {"free", "partial"}
+                and self._get_employee_free_hours(rec) > 0.0
+                and self._get_employee_free_hours(rec) >= minimum_free_hours
+            )
+        elif availability_mode == "full":
+            employees = employees.filtered(
+                lambda rec: rec.tenenet_availability_state == "full"
             )
         if selected_language_skill_ids:
             employees = employees.filtered(
@@ -307,6 +317,8 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
         if label == "utilization_percentage":
             utilization = utilization_by_employee.get(employee.id)
             return utilization.utilization_percentage if utilization else 0.0
+        if label == "free_hours":
+            return self._get_employee_free_hours(employee)
         if label == "all_job_names":
             return employee.all_job_names or ""
         if label in self._STRING_COLUMNS:
@@ -408,16 +420,23 @@ class TenenetEmployeeListReportHandler(models.AbstractModel):
             domain.append(("id", "=", 0))
         return self.env["hr.skill"].search(domain)
 
-    def _get_selected_availability_states(self, previous_options):
-        selection_items = previous_options and previous_options.get("availability_filter_selection")
-        if not selection_items:
-            return set()
-        valid_states = {key for key, _label in self._AVAILABILITY_SELECTION}
-        return {
-            item.get("id")
-            for item in selection_items
-            if item.get("selected") and item.get("id") in valid_states
-        }
+    def _get_selected_availability_mode(self, previous_options):
+        availability_mode = previous_options and previous_options.get("availability_mode")
+        if isinstance(availability_mode, dict):
+            availability_mode = availability_mode.get("id")
+        valid_modes = {key for key, _label in self._AVAILABILITY_FILTER_MODES}
+        return availability_mode if availability_mode in valid_modes else False
+
+    def _get_minimum_free_hours(self, previous_options):
+        minimum_free_hours = previous_options and previous_options.get("minimum_free_hours", 0.0)
+        try:
+            return max(0.0, float(minimum_free_hours or 0.0))
+        except (TypeError, ValueError):
+            return 0.0
+
+    def _get_employee_free_hours(self, employee):
+        employee.ensure_one()
+        return (employee.work_hours or 0.0) * ((employee.tenenet_free_ratio or 0.0) / 100.0)
 
     def _get_grouping_mode(self, previous_options):
         grouping_mode = previous_options and previous_options.get("grouping_mode")

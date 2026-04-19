@@ -145,17 +145,32 @@
 
             <t t-set-slot="content">
                 <t
-                    t-foreach="controller.cachedFilterOptions.availability_filter_selection || []"
-                    t-as="availability"
-                    t-key="availability.id"
+                    t-foreach="controller.cachedFilterOptions.availability_mode_selection || []"
+                    t-as="availabilityMode"
+                    t-key="availabilityMode.id"
                 >
                     <DropdownItem
-                        class="{ 'selected': availability.selected }"
-                        onSelected="() => this.filterClicked({ optionKey: 'availability_filter_selection.' + availability_index + '.selected', reload: true })"
+                        class="{ 'selected': availabilityMode.selected }"
+                        onSelected="() => this.selectAvailabilityMode(availabilityMode.id)"
                         closingMode="'none'"
-                        t-out="availability.name"
+                        t-out="availabilityMode.name"
                     />
                 </t>
+                <div
+                    class="dropdown-item gap-2 align-items-center"
+                    t-if="isFreeAvailabilityModeSelected"
+                >
+                    <label for="tenenet_employee_list_report_minimum_free_hours">Min. voľné hodiny</label>
+                    <input
+                        id="tenenet_employee_list_report_minimum_free_hours"
+                        type="number"
+                        min="0"
+                        step="0.25"
+                        class="form-control"
+                        t-att-value="minimumFreeHours"
+                        t-on-change="updateMinimumFreeHours"
+                    />
+                </div>
             </t>
         </Dropdown>
     </t>
