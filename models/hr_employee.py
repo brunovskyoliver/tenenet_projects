@@ -244,6 +244,17 @@ class HrEmployee(models.Model):
         store=True,
         recursive=True,
     )
+    tenenet_project_manager_user_ids = fields.Many2many(
+        "res.users",
+        string="Projektoví manažéri",
+        relation="hr_employee_tenenet_project_manager_user_rel",
+        column1="employee_id",
+        column2="user_id",
+        compute="_compute_tenenet_project_manager_user_ids",
+        compute_sudo=True,
+        store=True,
+        help="Používatelia, ktorí sú projektovým manažérom aktívneho projektu zamestnanca.",
+    )
     can_manage_services = fields.Boolean(
         string="Môže spravovať služby",
         compute="_compute_can_manage_services",
@@ -254,6 +265,10 @@ class HrEmployee(models.Model):
     )
     tenenet_is_employee_higher_up = fields.Boolean(
         string="Nadriadený v hierarchii",
+        compute="_compute_tenenet_employee_access_flags",
+    )
+    tenenet_is_project_manager_viewer = fields.Boolean(
+        string="Projektový manažér tejto karty",
         compute="_compute_tenenet_employee_access_flags",
     )
     tenenet_can_edit_self_employee_fields = fields.Boolean(
@@ -660,6 +675,8 @@ class HrEmployee(models.Model):
                 continue
             if current_user in employee.service_manager_user_ids:
                 continue
+            if employee._tenenet_is_project_manager_employee_user(current_user):
+                continue
             return False
         return True
 
@@ -843,7 +860,10 @@ class HrEmployee(models.Model):
 
     @api.model
     def _tenenet_prepare_readonly_private_form_page(self, page):
-        page.set("invisible", "not (tenenet_is_card_owner or tenenet_is_employee_higher_up)")
+        page.set(
+            "invisible",
+            "not (tenenet_is_card_owner or tenenet_is_employee_higher_up or tenenet_is_project_manager_viewer)",
+        )
 
         for node in page.xpath(".//*[@groups]"):
             node.attrib.pop("groups", None)
@@ -1048,13 +1068,47 @@ class HrEmployee(models.Model):
                 manager_users |= rec.parent_id.service_manager_user_ids
             rec.service_manager_user_ids = manager_users
 
+    @api.depends(
+        "assignment_ids.is_current",
+        "assignment_ids.project_id.active",
+        "assignment_ids.project_id.project_manager_id",
+        "assignment_ids.project_id.project_manager_id.user_id",
+    )
+    def _compute_tenenet_project_manager_user_ids(self):
+        for rec in self:
+            current_assignments = rec.assignment_ids.filtered(
+                lambda assignment: assignment.is_current
+                and assignment.project_id.active
+                and assignment.project_id.project_manager_id.user_id
+            )
+            rec.tenenet_project_manager_user_ids = current_assignments.mapped(
+                "project_id.project_manager_id.user_id"
+            )
+
+    def _tenenet_is_project_manager_employee_user(self, user=None):
+        current_user = user or self.env.user
+        self.ensure_one()
+        return bool(
+            self.sudo().assignment_ids.filtered(
+                lambda assignment: assignment.is_current
+                and assignment.project_id.active
+                and assignment.project_id.project_manager_id.user_id == current_user
+            )
+        )
+
     @api.depends_context("uid")
     def _compute_can_manage_services(self):
         is_hr_manager = self._tenenet_is_hr_manager()
         for rec in self:
             rec.can_manage_services = bool(is_hr_manager)
 
-    @api.depends("user_id", "service_manager_user_ids")
+    @api.depends(
+        "user_id",
+        "service_manager_user_ids",
+        "assignment_ids.is_current",
+        "assignment_ids.project_id.active",
+        "assignment_ids.project_id.project_manager_id.user_id",
+    )
     @api.depends_context("uid")
     def _compute_tenenet_employee_access_flags(self):
         current_user = self.env.user
@@ -1062,8 +1116,10 @@ class HrEmployee(models.Model):
         for rec in self:
             is_owner = bool(rec.user_id and rec.user_id == current_user)
             is_higher_up = bool(rec.service_manager_user_ids.filtered(lambda user: user == current_user))
+            is_project_manager_viewer = rec._tenenet_is_project_manager_employee_user(current_user)
             rec.tenenet_is_card_owner = is_owner
             rec.tenenet_is_employee_higher_up = is_higher_up
+            rec.tenenet_is_project_manager_viewer = is_project_manager_viewer
             rec.tenenet_can_edit_self_employee_fields = bool(is_hr_manager or is_owner)
             rec.tenenet_can_request_employee_update = bool(is_hr_manager or is_owner)
 
@@ -1092,10 +1148,17 @@ class HrEmployee(models.Model):
             access_map[employee.id] = bool(
                 employee.user_id == current_user
                 or current_user in employee.service_manager_user_ids
+                or employee._tenenet_is_project_manager_employee_user(current_user)
             )
         return access_map
 
-    @api.depends("user_id", "service_manager_user_ids")
+    @api.depends(
+        "user_id",
+        "service_manager_user_ids",
+        "assignment_ids.is_current",
+        "assignment_ids.project_id.active",
+        "assignment_ids.project_id.project_manager_id.user_id",
+    )
     @api.depends_context("uid")
     def _compute_can_view_private_phone(self):
         access_map = self._get_private_phone_access_map()

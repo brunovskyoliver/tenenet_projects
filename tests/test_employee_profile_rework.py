@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from lxml import etree
 
 from odoo import Command, fields
@@ -224,6 +226,160 @@ class TestTenenetEmployeeProfileRework(TransactionCase):
         self.assertEqual(public_action["res_id"], self.employee.id)
         with self.assertRaises(UserError):
             public_outsider.action_tenenet_open_private_employee_card()
+
+    def test_project_manager_can_open_employee_cards_for_current_project_assignments(self):
+        admin_program = self.env["tenenet.program"].with_context(active_test=False).search([
+            ("code", "=", "ADMIN_TENENET"),
+        ], limit=1)
+        pm_user = self._create_user("profile.project.manager", [self.base_user_group.id])
+        pm_employee = self.env["hr.employee"].create({
+            "name": "Projektový manažér",
+            "user_id": pm_user.id,
+        })
+        project = self.env["tenenet.project"].create({
+            "name": "Projekt pre kartu PM",
+            "program_ids": [Command.set(admin_program.ids)],
+            "project_manager_id": pm_employee.id,
+        })
+        assignment = self.env["tenenet.project.assignment"].create({
+            "employee_id": self.employee.id,
+            "project_id": project.id,
+            "allocation_ratio": 50.0,
+            "wage_hm": 12.0,
+        })
+        asset_type = self.env["tenenet.employee.asset.type"].create({"name": "Notebook PM karta"})
+        asset = self.env["tenenet.employee.asset"].create({
+            "employee_id": self.employee.id,
+            "asset_type_id": asset_type.id,
+            "serial_number": "PM-CARD-001",
+        })
+        training = self.env["tenenet.employee.training"].create({
+            "employee_id": self.employee.id,
+            "name": "PM čítanie školenia",
+        })
+        evaluation = self.env["tenenet.employee.evaluation"].with_user(self.hr_manager_user).create({
+            "employee_id": self.employee.id,
+            "year": fields.Date.context_today(self.employee).year,
+            "summary": "Interné hodnotenie pre PM",
+            "visible_to_employee": False,
+        })
+        wage_override = self.env["tenenet.employee.wage.override"].with_user(self.hr_manager_user).create({
+            "employee_id": self.employee.id,
+            "job_id": self.job_primary.id,
+            "amount_override": 1250.0,
+        })
+
+        self.employee.invalidate_recordset(["tenenet_project_manager_user_ids"])
+        self.assertIn(pm_user, self.employee.tenenet_project_manager_user_ids)
+        self.env.cr.execute(
+            """
+            DELETE FROM hr_employee_tenenet_project_manager_user_rel
+             WHERE employee_id = %s AND user_id = %s
+            """,
+            [self.employee.id, pm_user.id],
+        )
+        self.employee.invalidate_recordset(["tenenet_project_manager_user_ids"])
+        self.assertNotIn(pm_user, self.employee.tenenet_project_manager_user_ids)
+        self.assertEqual(
+            self.env["hr.employee"].with_user(pm_user).search_count([("id", "=", self.employee.id)]),
+            1,
+        )
+
+        public_employee = self.env["hr.employee.public"].with_user(pm_user).browse(self.employee.id)
+        self.assertTrue(public_employee.tenenet_can_open_private_employee_card)
+        action = public_employee.action_tenenet_open_private_employee_card()
+        self.assertEqual(action["res_model"], "hr.employee")
+        self.assertEqual(action["res_id"], self.employee.id)
+
+        assignment_action = assignment.with_user(pm_user).action_open_employee_card_readonly()
+        self.assertEqual(assignment_action["res_model"], "hr.employee")
+        self.assertEqual(assignment_action["res_id"], self.employee.id)
+
+        pm_employee_card = self.env["hr.employee"].with_user(pm_user).browse(self.employee.id)
+        self.assertTrue(pm_employee_card.tenenet_is_project_manager_viewer)
+        values = pm_employee_card.read([
+            "name",
+            "private_phone",
+            "assignment_ids",
+            "asset_ids",
+            "training_ids",
+            "wage_override_ids",
+        ])[0]
+        self.assertEqual(values["assignment_ids"], assignment.ids)
+        self.assertEqual(values["asset_ids"], asset.ids)
+        self.assertEqual(values["training_ids"], training.ids)
+        self.assertEqual(values["wage_override_ids"], wage_override.ids)
+        self.assertEqual(evaluation.with_user(pm_user).read(["summary"])[0]["summary"], "Interné hodnotenie pre PM")
+
+        arch = pm_employee_card.get_view(self.env.ref("hr.view_employee_form").id, "form")["arch"]
+        root = etree.fromstring(arch.encode())
+        page_names = {
+            page.get("name")
+            for page in root.xpath("//page")
+            if page.get("name")
+        }
+        self.assertTrue({"personal_information", "payroll_information", "hr_settings"}.issubset(page_names))
+        private_email_field = root.xpath("//page[@name='personal_information']//field[@name='private_email']")[0]
+        self.assertEqual(private_email_field.get("readonly"), "1")
+
+        with self.assertRaises(UserError):
+            pm_employee_card.write({"bio": "PM nemôže upravovať kartu"})
+
+    def test_project_manager_employee_card_access_requires_current_assignment(self):
+        admin_program = self.env["tenenet.program"].with_context(active_test=False).search([
+            ("code", "=", "ADMIN_TENENET"),
+        ], limit=1)
+        pm_user = self._create_user("profile.project.manager.scope", [self.base_user_group.id])
+        pm_employee = self.env["hr.employee"].create({
+            "name": "PM rozsah karty",
+            "user_id": pm_user.id,
+        })
+        today = fields.Date.context_today(self.employee)
+        future_employee = self.env["hr.employee"].create({"name": "Budúci zamestnanec projektu"})
+        finished_employee = self.env["hr.employee"].create({"name": "Ukončený zamestnanec projektu"})
+        inactive_employee = self.env["hr.employee"].create({"name": "Neaktívny zamestnanec projektu"})
+        inactive_project_employee = self.env["hr.employee"].create({"name": "Zamestnanec neaktívneho projektu"})
+        unrelated_employee = self.env["hr.employee"].create({"name": "Cudzí zamestnanec projektu"})
+        project = self.env["tenenet.project"].create({
+            "name": "Projekt PM rozsah",
+            "program_ids": [Command.set(admin_program.ids)],
+            "project_manager_id": pm_employee.id,
+        })
+        inactive_project = self.env["tenenet.project"].create({
+            "name": "Neaktívny projekt PM rozsah",
+            "program_ids": [Command.set(admin_program.ids)],
+            "project_manager_id": pm_employee.id,
+            "active": False,
+        })
+        self.env["tenenet.project.assignment"].create({
+            "employee_id": future_employee.id,
+            "project_id": project.id,
+            "date_start": today + timedelta(days=30),
+        })
+        self.env["tenenet.project.assignment"].create({
+            "employee_id": finished_employee.id,
+            "project_id": project.id,
+            "date_end": today - timedelta(days=1),
+        })
+        self.env["tenenet.project.assignment"].create({
+            "employee_id": inactive_employee.id,
+            "project_id": project.id,
+            "active": False,
+        })
+        self.env["tenenet.project.assignment"].create({
+            "employee_id": inactive_project_employee.id,
+            "project_id": inactive_project.id,
+        })
+
+        employee_model = self.env["hr.employee"].with_user(pm_user)
+        for employee in (
+            future_employee,
+            finished_employee,
+            inactive_employee,
+            inactive_project_employee,
+            unrelated_employee,
+        ):
+            self.assertEqual(employee_model.search_count([("id", "=", employee.id)]), 0)
 
     def test_owner_and_higher_up_private_form_includes_readonly_private_tabs(self):
         expected_private_pages = {"personal_information", "payroll_information", "hr_settings"}

@@ -22,6 +22,17 @@
             <field name="perm_unlink" eval="0"/>
         </record>
 
+        <record id="rule_tenenet_employee_evaluation_project_manager_read" model="ir.rule">
+            <field name="name">Hodnotenie zamestnanca: projektový manažér číta zamestnancov svojich projektov</field>
+            <field name="model_id" ref="model_tenenet_employee_evaluation"/>
+            <field name="domain_force">[('employee_id.assignment_ids.is_current', '=', True), ('employee_id.assignment_ids.project_id.active', '=', True), ('employee_id.assignment_ids.project_id.project_manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
         <record id="rule_tenenet_employee_evaluation_hr_manager_all" model="ir.rule">
             <field name="name">Hodnotenie zamestnanca: HR manažér vidí a spravuje všetko</field>
             <field name="model_id" ref="model_tenenet_employee_evaluation"/>

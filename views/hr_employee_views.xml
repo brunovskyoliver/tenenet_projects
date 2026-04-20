@@ -117,6 +117,7 @@
                 <xpath expr="//sheet" position="inside">
                     <field name="tenenet_is_card_owner" invisible="1"/>
                     <field name="tenenet_is_employee_higher_up" invisible="1"/>
+                    <field name="tenenet_is_project_manager_viewer" invisible="1"/>
                     <field name="tenenet_can_edit_self_employee_fields" invisible="1"/>
                     <field name="tenenet_can_request_employee_update" invisible="1"/>
                     <field name="tenenet_weekly_site_domain_ids" invisible="1"/>

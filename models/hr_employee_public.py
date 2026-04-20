@@ -89,6 +89,7 @@ class HrEmployeePublic(models.Model):
             user.has_group("hr.group_hr_manager")
             or private_employee.user_id == user
             or private_employee.service_manager_user_ids.filtered(lambda manager: manager == user)
+            or private_employee._tenenet_is_project_manager_employee_user(user)
         )
 
     def _tenenet_private_employee_form_action(self):
@@ -111,6 +112,7 @@ class HrEmployeePublic(models.Model):
                 "active_id": private_employee.id,
                 "active_ids": [private_employee.id],
                 "active_model": "hr.employee",
+                "tenenet_private_card_access_employee_ids": [private_employee.id],
                 "chat_icon": True,
                 "form_view_initial_mode": "readonly",
             },

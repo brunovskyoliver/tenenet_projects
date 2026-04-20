@@ -1,8 +1,8 @@
 import logging
 from datetime import date
 
-from odoo import api, fields, models
-from odoo.exceptions import ValidationError
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -135,6 +135,10 @@ class TenenetProjectAssignment(models.Model):
         string="Aktuálne",
         compute="_compute_state",
         store=True,
+    )
+    tenenet_can_open_employee_card = fields.Boolean(
+        string="Môže otvoriť kartu zamestnanca",
+        compute="_compute_tenenet_can_open_employee_card",
     )
 
     CCP_MULTIPLIER = 1.362
@@ -356,6 +360,45 @@ class TenenetProjectAssignment(models.Model):
             years,
         )
         return matrix.filtered(lambda rec: rec.year == year)[:1].action_open_grid()
+
+    @api.depends("is_current", "project_id.active", "project_id.project_manager_id.user_id")
+    @api.depends_context("uid")
+    def _compute_tenenet_can_open_employee_card(self):
+        current_user = self.env.user
+        for assignment in self:
+            assignment.tenenet_can_open_employee_card = bool(
+                assignment.is_current
+                and assignment.project_id.active
+                and assignment.project_id.project_manager_id.user_id == current_user
+            )
+
+    def action_open_employee_card_readonly(self):
+        self.ensure_one()
+        if not self.tenenet_can_open_employee_card:
+            raise UserError(
+                _("Kartu zamestnanca môže otvoriť iba projektový manažér aktuálneho priradenia.")
+            )
+        private_form = self.env.ref("hr.view_employee_form", raise_if_not_found=False)
+        action = {
+            "type": "ir.actions.act_window",
+            "name": _("Karta zamestnanca"),
+            "res_model": "hr.employee",
+            "res_id": self.employee_id.id,
+            "view_mode": "form",
+            "views": [(private_form.id, "form")] if private_form else [(False, "form")],
+            "target": "current",
+            "context": {
+                "active_id": self.employee_id.id,
+                "active_ids": [self.employee_id.id],
+                "active_model": "hr.employee",
+                "tenenet_private_card_access_employee_ids": [self.employee_id.id],
+                "chat_icon": True,
+                "form_view_initial_mode": "readonly",
+            },
+        }
+        if private_form:
+            action["view_id"] = private_form.id
+        return action
 
     def action_open_remove_wizard(self):
         self.ensure_one()

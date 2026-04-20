@@ -293,6 +293,7 @@
                                           decoration-warning="state == 'planned'"
                                           decoration-muted="state == 'finished'">
                                         <field name="employee_id" optional="show"/>
+                                        <field name="tenenet_can_open_employee_card" column_invisible="1"/>
                                         <field name="program_id" optional="show"/>
                                         <field name="date_start" optional="show"/>
                                         <field name="date_end" optional="show"/>
@@ -310,6 +311,12 @@
                                                 string="Matica"
                                                 icon="fa-table"
                                                 class="btn-link"/>
+                                        <button name="action_open_employee_card_readonly"
+                                                type="object"
+                                                string="Karta"
+                                                icon="fa-id-card-o"
+                                                class="btn-link"
+                                                invisible="not tenenet_can_open_employee_card"/>
                                         <button name="action_open_remove_wizard"
                                                 type="object"
                                                 string="Odstrániť"
