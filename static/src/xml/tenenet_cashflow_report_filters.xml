@@ -1,9 +1,30 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <templates>
     <t t-name="tenenet_projects.TenenetCashflowReportFilters" t-inherit="account_reports.AccountReportFiltersCustomizable">
+        <xpath expr="//div[@id='filter_date']" position="before">
+            <div id="filter_project" class="filter_project">
+                <t t-call="tenenet_projects.TenenetCashflowReportFilterProject"/>
+            </div>
+        </xpath>
         <xpath expr="//div[@id='filter_date']/t[@t-call='account_reports.AccountReportFilterDate']" position="replace">
             <t t-call="tenenet_projects.TenenetCashflowReportFilterYear"/>
         </xpath>
+    </t>
+
+    <t t-name="tenenet_projects.TenenetCashflowReportFilterProject" owl="1">
+        <Dropdown menuClass="'account_report_filter project'">
+            <button class="btn btn-secondary">
+                <i class="fa fa-folder-open me-1"/>
+                <t t-out="currentProjectName"/>
+            </button>
+
+            <t t-set-slot="content">
+                <div class="dropdown-item gap-2 align-items-center">
+                    <label>Projekt</label>
+                    <MultiRecordSelector t-props="projectSelectorProps"/>
+                </div>
+            </t>
+        </Dropdown>
     </t>
 
     <t t-name="tenenet_projects.TenenetCashflowReportFilterYear" owl="1">

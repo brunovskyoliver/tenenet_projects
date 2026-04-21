@@ -6,6 +6,25 @@ const { DateTime } = luxon;
 export class TenenetCashflowReportFilters extends AccountReportFilters {
     static template = "tenenet_projects.TenenetCashflowReportFilters";
 
+    get currentProjectName() {
+        return this.controller.cachedFilterOptions.selected_project_name || "Všetky projekty";
+    }
+
+    get selectedProjectIds() {
+        return this.controller.cachedFilterOptions.project_ids || [];
+    }
+
+    get projectSelectorProps() {
+        return {
+            resModel: "tenenet.project",
+            resIds: this.selectedProjectIds,
+            domain: this.controller.cachedFilterOptions.available_project_domain || [["id", "=", 0]],
+            update: (resIds) => this.selectProject(resIds),
+            context: { active_test: false },
+            placeholder: "Vyber projekt...",
+        };
+    }
+
     get selectedYearValue() {
         const dateTo = this.controller.cachedFilterOptions.date?.date_to;
         const selectedYear = dateTo ? DateTime.fromISO(dateTo) : DateTime.now();
@@ -14,6 +33,12 @@ export class TenenetCashflowReportFilters extends AccountReportFilters {
 
     get yearFilterLabel() {
         return this.selectedYearValue.toFormat("yyyy");
+    }
+
+    async selectProject(resIds) {
+        const nextProjectIds = resIds.length ? [resIds[resIds.length - 1]] : [];
+        await this.controller.updateOption("project_ids", nextProjectIds);
+        await this.applyFilters("project_ids", 0);
     }
 
     async selectYearPeriod() {

@@ -18,6 +18,7 @@ export class TenenetAllocationReportFilters extends AccountReportFilters {
         return {
             resModel: "hr.employee",
             resIds: this.selectedEmployeeIds,
+            domain: this.controller.cachedFilterOptions.available_employee_domain || [["id", "=", 0]],
             update: (resIds) => this.selectEmployee(resIds),
             placeholder: "Vyber zamestnanca...",
         };

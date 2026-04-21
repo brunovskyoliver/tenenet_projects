@@ -35,23 +35,32 @@
                                 <field name="name"/>
                                 <field name="description"/>
                                 <field name="project_type"/>
-                                <field name="active"/>
-                                <field name="is_recurring_license_project"/>
+                                <field name="date_start"/>
+                                <field name="date_end"/>
+                                <field name="active"
+                                       groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"/>
+                                <field name="is_recurring_license_project"
+                                       groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"/>
                                 <field name="recurring_clone_anchor_date"
+                                       groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"
                                        invisible="not is_recurring_license_project"/>
                                 <field name="recurring_clone_interval_type"
+                                       groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"
                                        invisible="not is_recurring_license_project"/>
                                 <field name="recurring_next_clone_date"
+                                       groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"
                                        readonly="1"
                                        invisible="not is_recurring_license_project"/>
                                 <button name="action_test_recurring_clone"
                                         type="object"
                                         string="Test klonovania"
                                         class="btn btn-secondary"
+                                        groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"
                                         invisible="not id or not is_recurring_license_project"/>
-                                <field name="semaphore"/>
+                                <field name="semaphore"
+                                       groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"/>
                             </group>
-                            <group>
+                            <group groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager">
                                 <field name="primary_program_id" invisible="project_type == 'medzinarodny'" required="project_type != 'medzinarodny'"/>
                                 <field name="organizational_unit_id" readonly="1"/>
                                 <field name="organizational_unit_override_id"/>
@@ -66,19 +75,21 @@
                         <notebook>
                             <page string="Termíny">
                                 <group>
-                                    <field name="date_start"/>
-                                    <field name="date_end"/>
                                     <field name="duration" readonly="1"/>
                                 </group>
-                                <separator string="Míľniky"/>
-                                <div class="mb-2">
+                                <separator string="Míľniky"
+                                           groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"/>
+                                <div class="mb-2"
+                                     groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager">
                                     <button name="action_open_milestone_wizard"
                                             type="object"
                                             string="Pridať míľnik"
                                             class="btn btn-primary"
                                             invisible="not id or not can_manage_milestones"/>
                                 </div>
-                                <field name="milestone_ids" nolabel="1">
+                                <field name="milestone_ids"
+                                       nolabel="1"
+                                       groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager">
                                     <list string="Míľniky" create="0" delete="0" edit="0" no_open="1" default_order="date asc, sequence asc, id asc">
                                         <field name="date"/>
                                         <field name="name"/>
@@ -93,7 +104,8 @@
                                     </list>
                                 </field>
                             </page>
-                            <page string="Financie">
+                            <page string="Financie"
+                                  groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager">
                                 <group>
                                     <group>
                                         <field name="contract_number"/>
@@ -200,7 +212,8 @@
                                        nolabel="1"
                                        invisible="not id"/>
                             </page>
-                            <page string="Rozpočet">
+                            <page string="Rozpočet"
+                                  groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager">
                                 <group>
                                     <group>
                                         <field name="budget_pausal_total" readonly="1"/>
@@ -269,7 +282,8 @@
                                     </list>
                                 </field>
                             </page>
-                            <page string="Riadenie">
+                            <page string="Riadenie"
+                                  groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager">
                                 <group string="Zodpovedné osoby">
                                     <group>
                                         <field name="odborny_garant_id"/>
@@ -325,7 +339,8 @@
                                     </list>
                                 </field>
                             </page>
-                            <page string="Pôsobiská">
+                            <page string="Pôsobiská"
+                                  groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager">
                                 <div class="mb-2">
                                     <button name="action_open_site_wizard"
                                             type="object"
@@ -353,7 +368,8 @@
                                     </list>
                                 </field>
                             </page>
-                            <page string="Pravidlá">
+                            <page string="Pravidlá"
+                                  groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager">
                                 <group string="Mzdový strop pre priradenia zamestnanca">
                                     <group>
                                         <field name="default_max_monthly_wage_hm"/>
@@ -387,7 +403,8 @@
                                     </list>
                                 </field>
                             </page>
-                            <page string="Výdavky projektu">
+                            <page string="Výdavky projektu"
+                                  groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager">
                                 <field name="expense_ids" nolabel="1" readonly="1">
                                     <list string="Výdavky projektu" create="0" delete="0" edit="0">
                                         <field name="date"/>
@@ -402,7 +419,8 @@
                                     </list>
                                 </field>
                             </page>
-                            <page string="Kontakty">
+                            <page string="Kontakty"
+                                  groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager">
                                 <div class="mb-2">
                                     <button name="action_open_contact_wizard"
                                             type="object"
@@ -466,12 +484,15 @@
             <field name="arch" type="xml">
                     <search string="Projekty">
                         <field name="name"/>
+                        <field name="active_year_from"/>
                         <field name="ui_program_ids"/>
                         <field name="organizational_unit_id"/>
                         <field name="donor_id"/>
                     <filter string="Aktívne" name="active" domain="[('active', '=', True)]"/>
                     <filter string="Bez virtuálneho admin projektu" name="hide_internal" domain="[('is_tenenet_internal', '=', False)]"/>
+                    <filter string="Národné" name="national" domain="[('project_type', '=', 'narodny')]"/>
                     <filter string="Medzinárodné" name="international" domain="[('project_type', '=', 'medzinarodny')]"/>
+                    <filter string="Rok" name="group_year" context="{'group_by': 'active_year_from'}"/>
                     <filter string="Donor" name="group_donor" context="{'group_by': 'donor_id'}"/>
                 </search>
             </field>
@@ -490,6 +511,10 @@
                     <field name="currency_id"/>
                     <field name="date_start"/>
                     <field name="date_end"/>
+                    <field name="project_type"/>
+                    <field name="description_preview"/>
+                    <field name="yearly_plan_summary"/>
+                    <field name="can_view_dashboard_finance"/>
                     <templates>
                         <t t-name="card">
                             <div class="o_tenenet_project_kanban_header d-flex align-items-start justify-content-between gap-2 mb-2">
@@ -506,6 +531,12 @@
                                       class="o_tenenet_project_kanban_semaphore is-red flex-shrink-0"
                                       title="Červená"/>
                             </div>
+                            <div class="small fw-semibold mb-1">
+                                <field name="project_type"/>
+                            </div>
+                            <div t-if="record.description_preview.value" class="small text-muted mb-2">
+                                <t t-out="record.description_preview.value"/>
+                            </div>
                             <div class="small text-muted">
                                 <span>Garant: </span><field name="odborny_garant_id"/>
                             </div>
@@ -513,10 +544,15 @@
                                 <span>PM: </span><field name="project_manager_id"/>
                             </div>
                             <div class="d-flex justify-content-between small">
-                                <field name="budget_total" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                <span t-if="record.can_view_dashboard_finance.raw_value">
+                                    <field name="budget_total" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                </span>
                                 <span>
                                     <t t-out="record.date_start.value"/> – <t t-out="record.date_end.value"/>
                                 </span>
+                            </div>
+                            <div t-if="record.can_view_dashboard_finance.raw_value and record.yearly_plan_summary.value" class="small text-muted mt-2">
+                                <span>Plán: </span><t t-out="record.yearly_plan_summary.value"/>
                             </div>
                         </t>
                     </templates>
@@ -529,11 +565,25 @@
             <field name="res_model">tenenet.project</field>
             <field name="domain">[('is_tenenet_internal', '=', False)]</field>
             <field name="view_mode">kanban,list,form</field>
+            <field name="context">{'search_default_active': 1, 'search_default_hide_internal': 1, 'search_default_group_year': 1}</field>
             <field name="view_ids" eval="[
                 (5, 0, 0),
                 (0, 0, {'sequence': 1, 'view_mode': 'kanban', 'view_id': ref('view_tenenet_project_kanban')}),
                 (0, 0, {'sequence': 2, 'view_mode': 'list',   'view_id': ref('view_tenenet_project_list')}),
                 (0, 0, {'sequence': 3, 'view_mode': 'form',   'view_id': ref('view_tenenet_project_form')}),
+            ]"/>
+        </record>
+
+        <record id="action_tenenet_project_preview" model="ir.actions.act_window">
+            <field name="name">Projekty</field>
+            <field name="res_model">tenenet.project</field>
+            <field name="domain">[('is_tenenet_internal', '=', False)]</field>
+            <field name="view_mode">kanban,list</field>
+            <field name="context">{'search_default_active': 1, 'search_default_hide_internal': 1, 'search_default_group_year': 1}</field>
+            <field name="view_ids" eval="[
+                (5, 0, 0),
+                (0, 0, {'sequence': 1, 'view_mode': 'kanban', 'view_id': ref('view_tenenet_project_kanban')}),
+                (0, 0, {'sequence': 2, 'view_mode': 'list',   'view_id': ref('view_tenenet_project_list')}),
             ]"/>
         </record>
 
@@ -593,6 +643,22 @@
             <field name="model_id" ref="model_tenenet_project"/>
             <field name="state">code</field>
             <field name="code">action = model.action_open_garant_projects()</field>
+        </record>
+
+        <record id="action_tenenet_project_dashboard_server" model="ir.actions.server">
+            <field name="name">Projekty dashboard</field>
+            <field name="model_id" ref="model_tenenet_project"/>
+            <field name="state">code</field>
+            <field name="code">
+if (
+    env.user.has_group('tenenet_projects.group_tenenet_user')
+    or env.user.has_group('tenenet_projects.group_tenenet_garant_pm')
+    or env.user.has_group('tenenet_projects.group_tenenet_manager')
+):
+    action = env['ir.actions.actions']._for_xml_id('tenenet_projects.action_tenenet_project')
+else:
+    action = env['ir.actions.actions']._for_xml_id('tenenet_projects.action_tenenet_project_preview')
+            </field>
         </record>
     </data>
 </odoo>

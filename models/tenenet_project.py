@@ -353,6 +353,20 @@ class TenenetProject(models.Model):
         string="Cashflow planner",
         compute="_compute_cashflow_planner_state",
     )
+    description_preview = fields.Char(
+        string="Krátky popis",
+        compute="_compute_dashboard_summary_fields",
+        store=True,
+    )
+    yearly_plan_summary = fields.Char(
+        string="Plán po rokoch",
+        compute="_compute_dashboard_summary_fields",
+        store=True,
+    )
+    can_view_dashboard_finance = fields.Boolean(
+        string="Môže vidieť finančný náhľad projektu",
+        compute="_compute_can_view_dashboard_finance",
+    )
 
     @api.depends("date_start", "date_end")
     def _compute_active_year_range(self):
@@ -1333,8 +1347,82 @@ class TenenetProject(models.Model):
         for rec in self:
             rec.can_manage_milestones = bool(
                 is_manager
-                or (rec.odborny_garant_id.id and rec.odborny_garant_id.id in employee_ids)
+                or (rec.project_manager_id.id and rec.project_manager_id.id in employee_ids)
             )
+
+    @api.depends("description", "budget_line_ids.year", "budget_line_ids.amount")
+    def _compute_dashboard_summary_fields(self):
+        for rec in self:
+            description = " ".join((rec.description or "").split())
+            if len(description) > 140:
+                description = f"{description[:137].rstrip()}..."
+            rec.description_preview = description
+
+            yearly_totals = {}
+            for line in rec.budget_line_ids:
+                if not line.year:
+                    continue
+                yearly_totals.setdefault(line.year, 0.0)
+                yearly_totals[line.year] += line.amount or 0.0
+            ordered_years = sorted(yearly_totals.items())
+            rec.yearly_plan_summary = " • ".join(
+                f"{year}: {int(amount):,} EUR".replace(",", " ")
+                for year, amount in ordered_years[:4]
+                if amount
+            )
+
+    @api.depends_context("uid")
+    def _compute_can_view_dashboard_finance(self):
+        can_view = (
+            self.env.user.has_group("tenenet_projects.group_tenenet_manager")
+            or self.env.user.has_group("base.group_system")
+        )
+        for rec in self:
+            rec.can_view_dashboard_finance = can_view
+
+    def _get_current_user_employee_ids(self):
+        return self.env.user.employee_ids.ids
+
+    def _get_report_access_domain(self):
+        if (
+            self.env.user.has_group("tenenet_projects.group_tenenet_manager")
+            or self.env.user.has_group("base.group_system")
+        ):
+            return [("is_tenenet_internal", "=", False)]
+
+        employee_ids = self._get_current_user_employee_ids()
+        if not employee_ids:
+            return [("id", "=", 0)]
+
+        return [
+            ("is_tenenet_internal", "=", False),
+            "|",
+            "|",
+            ("odborny_garant_id", "in", employee_ids),
+            ("project_manager_id", "in", employee_ids),
+            ("assignment_ids.employee_id.service_manager_user_ids", "in", self.env.user.id),
+        ]
+
+    @api.model
+    def get_report_accessible_projects(self):
+        return self.search(self._get_report_access_domain(), order="name")
+
+    @api.model
+    def get_report_accessible_project_ids(self):
+        return self.get_report_accessible_projects().ids
+
+    @api.model
+    def get_report_accessible_employee_ids(self):
+        return self.get_report_accessible_projects().mapped("assignment_ids.employee_id").ids
+
+    def _can_current_user_edit_project(self):
+        self.ensure_one()
+        if (
+            self.env.user.has_group("tenenet_projects.group_tenenet_manager")
+            or self.env.user.has_group("base.group_system")
+        ):
+            return True
+        return bool(self.project_manager_id.user_id == self.env.user)
 
     def _sync_garant_pm_group(self, employees=None):
         group = self.env.ref("tenenet_projects.group_tenenet_garant_pm", raise_if_not_found=False)
@@ -1369,6 +1457,16 @@ class TenenetProject(models.Model):
                 user.sudo().write({"group_ids": [(3, group.id)]})
 
     def write(self, vals):
+        if not (
+            self.env.is_superuser()
+            or self.env.user.has_group("tenenet_projects.group_tenenet_manager")
+            or self.env.user.has_group("base.group_system")
+        ):
+            forbidden = self.filtered(lambda project: not project._can_current_user_edit_project())
+            if forbidden:
+                raise AccessError(
+                    _("Projekt môže upravovať iba projektový manažér alebo TENENET manažér.")
+                )
         old_graph_pairs = set()
         vals = dict(vals)
         if (
@@ -1442,11 +1540,12 @@ class TenenetProject(models.Model):
             "name": "Moje projekty (Garant/PM)",
             "type": "ir.actions.act_window",
             "res_model": "tenenet.project",
-            "view_mode": "kanban,list",
+            "view_mode": "kanban,list,form",
             "domain": domain,
             "views": [
                 (self.env.ref("tenenet_projects.view_tenenet_project_garant_kanban").id, "kanban"),
                 (False, "list"),
+                (False, "form"),
             ],
         }
 

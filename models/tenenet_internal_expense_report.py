@@ -282,9 +282,19 @@ class TenenetInternalExpenseReportBaseMixin:
     def _get_year_expenses(self, selected_year):
         year_start = date(selected_year, 1, 1)
         year_end = date(selected_year, 12, 31)
-        return self.env["tenenet.internal.expense"].search(
+        expenses = self.env["tenenet.internal.expense"].search(
             [("period", ">=", year_start), ("period", "<=", year_end)],
             order="employee_id, period",
+        )
+        if self._report_variant != "project":
+            return expenses
+
+        allowed_project_ids = set(self.env["tenenet.project"].get_report_accessible_project_ids())
+        return expenses.filtered(
+            lambda exp: (
+                (exp.source_project_id.id or (exp.source_assignment_id.project_id.id if exp.source_assignment_id else 0))
+                in allowed_project_ids
+            )
         )
 
     def _get_year_expenses_for_employee(self, employee, selected_year):

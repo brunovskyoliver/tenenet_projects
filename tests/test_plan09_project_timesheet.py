@@ -1,7 +1,7 @@
 from psycopg2 import IntegrityError
 
-from odoo import fields
-from odoo.exceptions import ValidationError
+from odoo import Command, fields
+from odoo.exceptions import AccessError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -34,6 +34,16 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
             "allocation_ratio": 50.0,
             "wage_hm": 12.0,
             "wage_ccp": 16.0,
+        })
+
+    def _create_user(self, login, group_ids):
+        return self.env["res.users"].with_context(no_reset_password=True).create({
+            "name": login,
+            "login": login,
+            "email": f"{login}@example.com",
+            "company_id": self.env.company.id,
+            "company_ids": [Command.set([self.env.company.id])],
+            "group_ids": [Command.set(group_ids)],
         })
 
     def _timesheet_vals(self, assignment=None, **overrides):
@@ -218,6 +228,30 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
         ts.write({"hours_pp": 20.0})
         cost.invalidate_recordset()
         self.assertAlmostEqual(cost.project_billed_gross, 200.0, places=2)
+
+    def test_plain_project_user_can_write_only_own_timesheets(self):
+        base_group = self.env.ref("base.group_user")
+        user_group = self.env.ref("tenenet_projects.group_tenenet_user")
+        user = self._create_user("timesheet_self_user", [base_group.id, user_group.id])
+        self.employee.user_id = user
+
+        own_timesheet = self.env["tenenet.project.timesheet"].create(self._timesheet_vals())
+        other_employee = self.env["hr.employee"].create({"name": "Cudzi zamestnanec"})
+        other_assignment = self.env["tenenet.project.assignment"].create({
+            "employee_id": other_employee.id,
+            "project_id": self.project.id,
+            "allocation_ratio": 20.0,
+            "wage_hm": 9.0,
+            "wage_ccp": 12.0,
+        })
+        other_timesheet = self.env["tenenet.project.timesheet"].create(
+            self._timesheet_vals(assignment=other_assignment, period="2026-02-01")
+        )
+
+        own_timesheet.with_user(user).write({"hours_pp": 70.0})
+        self.assertAlmostEqual(own_timesheet.hours_pp, 70.0)
+        with self.assertRaises(AccessError):
+            other_timesheet.with_user(user).write({"hours_pp": 10.0})
 
     def test_monthly_gross_target_creates_and_updates_residual_internal_expense(self):
         self.employee.write({"monthly_gross_salary_target": 900.0})

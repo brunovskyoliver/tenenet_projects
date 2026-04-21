@@ -22,9 +22,11 @@
                   groups="tenenet_projects.group_tenenet_manager"/>
 
         <menuitem id="menu_tenenet_root"
-                  name="TENENET"
+                  name="Projekty"
                   sequence="10"
-                  web_icon="tenenet_projects,static/description/icon.png"/>
+                  web_icon="tenenet_projects,static/description/icon.png"
+                  action="action_tenenet_project_dashboard_server"
+                  groups="base.group_user"/>
 
         <menuitem id="menu_tenenet_garant_projects"
                   name="Výkazy hodín"
@@ -47,23 +49,23 @@
                   groups="tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"/>
 
         <menuitem id="menu_tenenet_projects"
-                  name="Projekty"
+                  name="Agenda projektov"
                   parent="menu_tenenet_root"
                   sequence="1"
-                  groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"/>
+                  groups="base.group_user"/>
 
         <menuitem id="menu_tenenet_projects_list"
-                  name="Všetky projekty"
+                  name="Zoznam projektov"
                   parent="menu_tenenet_projects"
-                  action="action_tenenet_project"
+                  action="action_tenenet_project_dashboard_server"
                   sequence="1"
-                  groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"/>
+                  groups="base.group_user"/>
 
         <menuitem id="menu_tenenet_reporting"
                   name="Reporty"
-                  parent="menu_tenenet_root"
-                  sequence="15"
-                  groups="tenenet_projects.group_tenenet_manager"/>
+                  sequence="11"
+                  web_icon="tenenet_projects,static/description/icon.png"
+                  groups="tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"/>
 
         <menuitem id="menu_tenenet_utilization_report"
                   name="Vyťaženosť report podľa zamestnanca"
@@ -77,21 +79,21 @@
                   parent="menu_tenenet_reporting"
                   action="action_tenenet_utilization_project_report"
                   sequence="6"
-                  groups="tenenet_projects.group_tenenet_manager"/>
+                  groups="tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"/>
 
         <menuitem id="menu_tenenet_project_yearly_labor_report"
                   name="Ročný report projektu"
                   parent="menu_tenenet_reporting"
                   action="action_tenenet_project_yearly_labor_report"
                   sequence="10"
-                  groups="tenenet_projects.group_tenenet_manager"/>
+                  groups="tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"/>
 
         <menuitem id="menu_tenenet_allocation_report"
                   name="Rozúčtovanie"
                   parent="menu_tenenet_reporting"
                   action="action_tenenet_allocation_report"
                   sequence="15"
-                  groups="tenenet_projects.group_tenenet_manager"/>
+                  groups="tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"/>
 
         <menuitem id="menu_tenenet_pl_line"
                   name="P&amp;L podľa programu"
@@ -112,7 +114,7 @@
                   parent="menu_tenenet_reporting"
                   action="action_tenenet_cashflow_report"
                   sequence="22"
-                  groups="tenenet_projects.group_tenenet_manager"/>
+                  groups="tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"/>
 
         <menuitem id="menu_tenenet_internal_expense_report"
                   name="Interné náklady – ročný report podľa zamestnanca"
@@ -126,7 +128,7 @@
                   parent="menu_tenenet_reporting"
                   action="action_tenenet_internal_expense_project_report"
                   sequence="24"
-                  groups="tenenet_projects.group_tenenet_manager"/>
+                  groups="tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"/>
 
         <menuitem id="menu_tenenet_employee_list_report"
                   name="Zoznam zamestnancov"

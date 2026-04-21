@@ -204,6 +204,7 @@ class TenenetUtilizationReportBaseMixin:
 
     def _get_month_report_data(self, period):
         utilization_records = self.env["tenenet.utilization"].sudo()._refresh_for_period(period)
+        allowed_project_ids = self.env["tenenet.project"].get_report_accessible_project_ids()
         utilization_by_employee = {
             utilization.employee_id.id: utilization
             for utilization in utilization_records
@@ -213,6 +214,7 @@ class TenenetUtilizationReportBaseMixin:
             [
                 ("project_id.is_tenenet_internal", "=", False),
                 ("active", "=", True),
+                ("project_id", "in", allowed_project_ids or [0]),
             ],
             order="employee_id, project_id, date_start, id",
         )
@@ -220,6 +222,7 @@ class TenenetUtilizationReportBaseMixin:
             [
                 ("period", "=", period),
                 ("project_id.is_tenenet_internal", "=", False),
+                ("project_id", "in", allowed_project_ids or [0]),
             ]
         )
         timesheets_by_assignment = {

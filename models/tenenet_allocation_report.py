@@ -22,7 +22,10 @@ class TenenetAllocationReportHandler(models.AbstractModel):
             "TenenetAllocationReportFilters"
         )
 
-        selected_employee = self._get_selected_employee(previous_options)
+        available_employee_ids = self.env["tenenet.project"].get_report_accessible_employee_ids()
+        options["available_employee_domain"] = [("id", "in", available_employee_ids or [0])]
+
+        selected_employee = self._get_selected_employee(previous_options, available_employee_ids=available_employee_ids)
         options["employee_ids"] = [selected_employee.id] if selected_employee else []
         options["selected_employee_name"] = selected_employee.display_name if selected_employee else "Zamestnanec"
 
@@ -319,19 +322,27 @@ class TenenetAllocationReportHandler(models.AbstractModel):
             ))
         return lines
 
-    def _get_selected_employee(self, options):
+    def _get_selected_employee(self, options, available_employee_ids=None):
+        allowed_employee_ids = available_employee_ids or self.env["tenenet.project"].get_report_accessible_employee_ids()
         employee_ids = (options or {}).get("employee_ids") or []
         employee_id = employee_ids[:1]
         if employee_id:
-            return self.env["hr.employee"].browse(employee_id[0]).exists()
-        return self._get_default_employee()
+            employee = self.env["hr.employee"].browse(employee_id[0]).exists()
+            if employee and employee.id in allowed_employee_ids:
+                return employee
+        return self._get_default_employee(allowed_employee_ids=allowed_employee_ids)
 
-    def _get_default_employee(self):
+    def _get_default_employee(self, allowed_employee_ids=None):
+        employee_ids = allowed_employee_ids or self.env["tenenet.project"].get_report_accessible_employee_ids()
         Timesheet = self.env["tenenet.project.timesheet"]
-        first_ts = Timesheet.search([], order="employee_id, period", limit=1)
+        first_ts = Timesheet.search(
+            [("employee_id", "in", employee_ids or [0])],
+            order="employee_id, period",
+            limit=1,
+        )
         if first_ts:
             return first_ts.employee_id
-        return self.env["hr.employee"].search([], order="name", limit=1)
+        return self.env["hr.employee"].browse((employee_ids or [False])[:1]).exists()
 
     def _get_selected_year(self, options):
         date_to = options.get("date", {}).get("date_to") or fields.Date.context_today(self)
@@ -351,12 +362,14 @@ class TenenetAllocationReportHandler(models.AbstractModel):
     def _get_employee_year_timesheets(self, employee, year):
         year_start = date(year, 1, 1)
         year_end = date(year, 12, 31)
+        allowed_project_ids = self.env["tenenet.project"].get_report_accessible_project_ids()
         return self.env["tenenet.project.timesheet"].search(
             [
                 ("employee_id", "=", employee.id),
                 ("period", ">=", year_start),
                 ("period", "<=", year_end),
                 ("project_id.is_tenenet_internal", "=", False),
+                ("project_id", "in", allowed_project_ids or [0]),
             ],
             order="project_id, period",
         )
@@ -364,10 +377,12 @@ class TenenetAllocationReportHandler(models.AbstractModel):
     def _get_project_timesheets_for_employee(self, employee, project, year):
         year_start = date(year, 1, 1)
         year_end = date(year, 12, 31)
+        allowed_project_ids = self.env["tenenet.project"].get_report_accessible_project_ids()
         return self.env["tenenet.project.timesheet"].search(
             [
                 ("employee_id", "=", employee.id),
                 ("project_id", "=", project.id),
+                ("project_id", "in", allowed_project_ids or [0]),
                 ("period", ">=", year_start),
                 ("period", "<=", year_end),
             ],

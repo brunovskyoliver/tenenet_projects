@@ -34,11 +34,16 @@ class TenenetCashflowReportHandler(models.AbstractModel):
         custom_display_config.setdefault("components", {})["AccountReportFilters"] = (
             "TenenetCashflowReportFilters"
         )
+        available_projects = self.env["tenenet.project"].get_report_accessible_projects()
+        options["available_project_domain"] = [("id", "in", available_projects.ids or [0])]
+        selected_project = self._get_selected_project(previous_options, available_projects=available_projects)
+        options["project_ids"] = [selected_project.id] if selected_project else []
+        options["selected_project_name"] = selected_project.display_name if selected_project else "Všetky projekty"
         self._set_year_options(options, self._get_selected_year(options))
 
     def _dynamic_lines_generator(self, report, options, all_column_groups_expression_totals, warnings=None):
         selected_year = self._get_selected_year(options)
-        editable_rows = self._get_effective_editable_rows(selected_year)
+        editable_rows = self._get_effective_editable_rows(selected_year, options)
         self.env["tenenet.cashflow.global.override"].sync_year_rows(selected_year, editable_rows)
 
         income_rows = [row for row in editable_rows if row["row_type"] == "income"]
@@ -107,8 +112,8 @@ class TenenetCashflowReportHandler(models.AbstractModel):
         )))
         return lines
 
-    def _get_effective_editable_rows(self, selected_year):
-        forecast_rows = self._get_forecast_editable_rows(selected_year)
+    def _get_effective_editable_rows(self, selected_year, options):
+        forecast_rows = self._get_forecast_editable_rows(selected_year, options)
         forecast_by_key = {row["row_key"]: row for row in forecast_rows}
         override_rows = self.env["tenenet.cashflow.global.override"].get_year_row_data(selected_year)
         effective_rows = []
@@ -132,10 +137,14 @@ class TenenetCashflowReportHandler(models.AbstractModel):
             key=lambda row: (row["sequence"], (row.get("program") or "").lower(), row["row_label"].lower()),
         )
 
-    def _get_forecast_editable_rows(self, selected_year):
-        income_rows = self._get_income_rows(selected_year)
-        salary_row = self._make_salary_row(self._get_salary_by_month(selected_year))
-        expense_rows = self._get_project_expense_rows(selected_year)
+    def _get_forecast_editable_rows(self, selected_year, options):
+        selected_project_ids = self._get_selected_project_ids_from_options(options)
+        income_rows = [
+            row for row in self._get_income_rows(selected_year)
+            if row.get("project_id") in set(selected_project_ids or [])
+        ]
+        salary_row = self._make_salary_row(self._get_salary_by_month(selected_year, selected_project_ids))
+        expense_rows = self._get_project_expense_rows(selected_year, options)
         rows = income_rows + [salary_row] + expense_rows
         return [
             row for row in rows
@@ -157,7 +166,7 @@ class TenenetCashflowReportHandler(models.AbstractModel):
             "values": defaultdict(float, values),
         }
 
-    def _get_salary_by_month(self, selected_year):
+    def _get_salary_by_month(self, selected_year, selected_project_ids):
         year_start = date(selected_year, 1, 1)
         year_end = date(selected_year, 12, 31)
         result = defaultdict(float)
@@ -165,6 +174,7 @@ class TenenetCashflowReportHandler(models.AbstractModel):
         timesheets = self.env["tenenet.project.timesheet"].with_context(active_test=False).search([
             ("period", ">=", year_start),
             ("period", "<=", year_end),
+            ("project_id", "in", selected_project_ids or [0]),
         ])
         for timesheet in timesheets:
             result[timesheet.period.month] -= timesheet.total_labor_cost or 0.0
@@ -175,18 +185,23 @@ class TenenetCashflowReportHandler(models.AbstractModel):
             ("category", "in", ["leave", "residual_wage"]),
         ])
         for expense in internal_expenses:
+            project = expense.source_project_id or (expense.source_assignment_id.project_id if expense.source_assignment_id else False)
+            if not project or project.id not in (selected_project_ids or []):
+                continue
             result[expense.period.month] -= expense.cost_ccp or 0.0
 
         return result
 
-    def _get_project_expense_rows(self, selected_year):
+    def _get_project_expense_rows(self, selected_year, options):
         year_start = date(selected_year, 1, 1)
         year_end = date(selected_year, 12, 31)
+        selected_project_ids = self._get_selected_project_ids_from_options(options)
         project_buckets = {}
 
         direct_expenses = self.env["tenenet.project.expense"].search([
             ("date", ">=", year_start),
             ("date", "<=", year_end),
+            ("project_id", "in", selected_project_ids or [0]),
         ])
         for expense in direct_expenses:
             bucket = project_buckets.setdefault(
@@ -205,7 +220,7 @@ class TenenetCashflowReportHandler(models.AbstractModel):
         ])
         for expense in internal_expenses:
             project = expense.source_project_id or expense.source_assignment_id.project_id
-            if not project:
+            if not project or project.id not in (selected_project_ids or []):
                 continue
             bucket = project_buckets.setdefault(
                 project.id,
@@ -223,6 +238,22 @@ class TenenetCashflowReportHandler(models.AbstractModel):
             rows.append(self._make_project_expense_row(bucket["project"], bucket["values"]))
 
         return sorted(rows, key=lambda row: ((row["program"] or "").lower(), row["row_label"].lower()))
+
+    def _get_selected_project(self, options, available_projects=None):
+        allowed_projects = available_projects or self.env["tenenet.project"].get_report_accessible_projects()
+        project_ids = (options or {}).get("project_ids") or []
+        project_id = project_ids[:1]
+        if project_id:
+            project = self.env["tenenet.project"].with_context(active_test=False).browse(project_id[0]).exists()
+            if project and project in allowed_projects:
+                return project
+        return False
+
+    def _get_selected_project_ids_from_options(self, options):
+        selected_ids = ((options or {}).get("project_ids") or [])[:1]
+        if selected_ids:
+            return selected_ids
+        return self.env["tenenet.project"].get_report_accessible_project_ids()
 
     def _make_project_expense_row(self, project, values):
         return {

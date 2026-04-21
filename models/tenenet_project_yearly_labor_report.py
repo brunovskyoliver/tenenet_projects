@@ -36,7 +36,10 @@ class TenenetProjectYearlyLaborReportHandler(models.AbstractModel):
             "TenenetProjectYearlyLaborReportFilters"
         )
 
-        selected_project = self._get_selected_project_from_options(previous_options)
+        available_projects = self.env["tenenet.project"].get_report_accessible_projects()
+        options["available_project_domain"] = [("id", "in", available_projects.ids or [0])]
+
+        selected_project = self._get_selected_project_from_options(previous_options, available_projects=available_projects)
         options["project_ids"] = [selected_project.id] if selected_project else []
         options["selected_project_name"] = selected_project.display_name if selected_project else "Projekt"
 
@@ -132,19 +135,27 @@ class TenenetProjectYearlyLaborReportHandler(models.AbstractModel):
             "progress": progress,
         }
 
-    def _get_selected_project_from_options(self, options):
+    def _get_selected_project_from_options(self, options, available_projects=None):
+        allowed_projects = available_projects or self.env["tenenet.project"].get_report_accessible_projects()
         project_ids = (options or {}).get("project_ids") or []
         project_id = project_ids[:1]
         if project_id:
-            return self.env["tenenet.project"].with_context(active_test=False).browse(project_id[0]).exists()
-        return self._get_default_project()
+            project = self.env["tenenet.project"].with_context(active_test=False).browse(project_id[0]).exists()
+            if project and project in allowed_projects:
+                return project
+        return self._get_default_project(allowed_projects=allowed_projects)
 
-    def _get_default_project(self):
+    def _get_default_project(self, available_projects=None):
+        allowed_projects = available_projects or self.env["tenenet.project"].get_report_accessible_projects()
         Timesheet = self.env["tenenet.project.timesheet"].with_context(active_test=False)
-        first_timesheet = Timesheet.search([], order="project_id, employee_id, period", limit=1)
-        if first_timesheet:
+        first_timesheet = Timesheet.search(
+            [("project_id", "in", allowed_projects.ids or [0])],
+            order="project_id, employee_id, period",
+            limit=1,
+        )
+        if first_timesheet and first_timesheet.project_id in allowed_projects:
             return first_timesheet.project_id
-        return self.env["tenenet.project"].with_context(active_test=False).search([], order="name", limit=1)
+        return allowed_projects[:1]
 
     def _get_selected_year(self, options):
         date_to = options.get("date", {}).get("date_to") or fields.Date.context_today(self)

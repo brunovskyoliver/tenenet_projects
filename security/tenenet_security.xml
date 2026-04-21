@@ -500,6 +500,17 @@
             <field name="perm_unlink" eval="1"/>
         </record>
 
+        <record id="rule_tenenet_project_base_user_read_all" model="ir.rule">
+            <field name="name">TENENET projekty: interný používateľ číta projekty</field>
+            <field name="model_id" ref="model_tenenet_project"/>
+            <field name="domain_force">[('is_tenenet_internal', '=', False)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
         <record id="rule_tenenet_project_user_read_all" model="ir.rule">
             <field name="name">TENENET projekty: používateľ číta projekty</field>
             <field name="model_id" ref="model_tenenet_project"/>
@@ -511,12 +522,23 @@
             <field name="perm_unlink" eval="0"/>
         </record>
 
-        <record id="rule_tenenet_project_garant_pm_assigned" model="ir.rule">
-            <field name="name">TENENET projekty: garant/PM spravuje svoje projekty</field>
+        <record id="rule_tenenet_project_garant_pm_read_all" model="ir.rule">
+            <field name="name">TENENET projekty: garant/PM číta všetky projekty</field>
             <field name="model_id" ref="model_tenenet_project"/>
-            <field name="domain_force">[('is_tenenet_internal', '=', False), '|', ('odborny_garant_id.user_id', '=', user.id), ('project_manager_id.user_id', '=', user.id)]</field>
+            <field name="domain_force">[('is_tenenet_internal', '=', False)]</field>
             <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_garant_pm'))]"/>
             <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_project_garant_pm_pm_write" model="ir.rule">
+            <field name="name">TENENET projekty: PM upravuje svoje projekty</field>
+            <field name="model_id" ref="model_tenenet_project"/>
+            <field name="domain_force">[('is_tenenet_internal', '=', False), ('project_manager_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_garant_pm'))]"/>
+            <field name="perm_read" eval="0"/>
             <field name="perm_write" eval="1"/>
             <field name="perm_create" eval="0"/>
             <field name="perm_unlink" eval="0"/>
@@ -555,10 +577,21 @@
             <field name="perm_unlink" eval="1"/>
         </record>
 
-        <record id="rule_tenenet_project_timesheet_garant_pm_assigned" model="ir.rule">
-            <field name="name">TENENET timesheety: garant/PM len svoje projekty</field>
+        <record id="rule_tenenet_project_timesheet_user_own" model="ir.rule">
+            <field name="name">TENENET timesheety: používateľ len svoje</field>
             <field name="model_id" ref="model_tenenet_project_timesheet"/>
-            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), '|', ('project_id.odborny_garant_id.user_id', '=', user.id), ('project_id.project_manager_id.user_id', '=', user.id)]</field>
+            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), ('employee_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_project_timesheet_garant_pm_assigned" model="ir.rule">
+            <field name="name">TENENET timesheety: garant a nadriadení svojich projektov</field>
+            <field name="model_id" ref="model_tenenet_project_timesheet"/>
+            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), '|', '|', '|', ('employee_id.user_id', '=', user.id), ('project_id.odborny_garant_id.user_id', '=', user.id), ('project_id.project_manager_id.user_id', '=', user.id), ('employee_id.service_manager_user_ids', 'in', user.id)]</field>
             <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_garant_pm'))]"/>
             <field name="perm_read" eval="1"/>
             <field name="perm_write" eval="1"/>
@@ -577,10 +610,21 @@
             <field name="perm_unlink" eval="1"/>
         </record>
 
-        <record id="rule_tenenet_project_timesheet_line_garant_pm_assigned" model="ir.rule">
-            <field name="name">TENENET timesheet riadky: garant/PM len svoje projekty</field>
+        <record id="rule_tenenet_project_timesheet_line_user_own" model="ir.rule">
+            <field name="name">TENENET timesheet riadky: používateľ len svoje</field>
             <field name="model_id" ref="model_tenenet_project_timesheet_line"/>
-            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), '|', ('project_id.odborny_garant_id.user_id', '=', user.id), ('project_id.project_manager_id.user_id', '=', user.id)]</field>
+            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), ('employee_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_project_timesheet_line_garant_pm_assigned" model="ir.rule">
+            <field name="name">TENENET timesheet riadky: garant a nadriadení svojich projektov</field>
+            <field name="model_id" ref="model_tenenet_project_timesheet_line"/>
+            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), '|', '|', '|', ('employee_id.user_id', '=', user.id), ('project_id.odborny_garant_id.user_id', '=', user.id), ('project_id.project_manager_id.user_id', '=', user.id), ('employee_id.service_manager_user_ids', 'in', user.id)]</field>
             <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_garant_pm'))]"/>
             <field name="perm_read" eval="1"/>
             <field name="perm_write" eval="1"/>
@@ -599,10 +643,21 @@
             <field name="perm_unlink" eval="1"/>
         </record>
 
-        <record id="rule_tenenet_project_timesheet_matrix_garant_pm_assigned" model="ir.rule">
-            <field name="name">TENENET matice: garant/PM len svoje projekty</field>
+        <record id="rule_tenenet_project_timesheet_matrix_user_own" model="ir.rule">
+            <field name="name">TENENET matice: používateľ len svoje</field>
             <field name="model_id" ref="model_tenenet_project_timesheet_matrix"/>
-            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), '|', ('project_id.odborny_garant_id.user_id', '=', user.id), ('project_id.project_manager_id.user_id', '=', user.id)]</field>
+            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), ('employee_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_project_timesheet_matrix_garant_pm_assigned" model="ir.rule">
+            <field name="name">TENENET matice: garant a nadriadení svojich projektov</field>
+            <field name="model_id" ref="model_tenenet_project_timesheet_matrix"/>
+            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), '|', '|', '|', ('employee_id.user_id', '=', user.id), ('project_id.odborny_garant_id.user_id', '=', user.id), ('project_id.project_manager_id.user_id', '=', user.id), ('employee_id.service_manager_user_ids', 'in', user.id)]</field>
             <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_garant_pm'))]"/>
             <field name="perm_read" eval="1"/>
             <field name="perm_write" eval="1"/>
@@ -621,10 +676,21 @@
             <field name="perm_unlink" eval="1"/>
         </record>
 
-        <record id="rule_tenenet_project_timesheet_matrix_line_garant_pm_assigned" model="ir.rule">
-            <field name="name">TENENET matice riadky: garant/PM len svoje projekty</field>
+        <record id="rule_tenenet_project_timesheet_matrix_line_user_own" model="ir.rule">
+            <field name="name">TENENET matice riadky: používateľ len svoje</field>
             <field name="model_id" ref="model_tenenet_project_timesheet_matrix_line"/>
-            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), '|', ('project_id.odborny_garant_id.user_id', '=', user.id), ('project_id.project_manager_id.user_id', '=', user.id)]</field>
+            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), ('employee_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_project_timesheet_matrix_line_garant_pm_assigned" model="ir.rule">
+            <field name="name">TENENET matice riadky: garant a nadriadení svojich projektov</field>
+            <field name="model_id" ref="model_tenenet_project_timesheet_matrix_line"/>
+            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), '|', '|', '|', ('employee_id.user_id', '=', user.id), ('project_id.odborny_garant_id.user_id', '=', user.id), ('project_id.project_manager_id.user_id', '=', user.id), ('employee_id.service_manager_user_ids', 'in', user.id)]</field>
             <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_garant_pm'))]"/>
             <field name="perm_read" eval="1"/>
             <field name="perm_write" eval="1"/>
@@ -643,10 +709,21 @@
             <field name="perm_unlink" eval="1"/>
         </record>
 
-        <record id="rule_tenenet_project_timesheet_matrix_entry_garant_pm_assigned" model="ir.rule">
-            <field name="name">TENENET matice bunky: garant/PM len svoje projekty</field>
+        <record id="rule_tenenet_project_timesheet_matrix_entry_user_own" model="ir.rule">
+            <field name="name">TENENET matice bunky: používateľ len svoje</field>
             <field name="model_id" ref="model_tenenet_project_timesheet_matrix_entry"/>
-            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), '|', ('project_id.odborny_garant_id.user_id', '=', user.id), ('project_id.project_manager_id.user_id', '=', user.id)]</field>
+            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), ('employee_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
+        <record id="rule_tenenet_project_timesheet_matrix_entry_garant_pm_assigned" model="ir.rule">
+            <field name="name">TENENET matice bunky: garant a nadriadení svojich projektov</field>
+            <field name="model_id" ref="model_tenenet_project_timesheet_matrix_entry"/>
+            <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), '|', '|', '|', ('employee_id.user_id', '=', user.id), ('project_id.odborny_garant_id.user_id', '=', user.id), ('project_id.project_manager_id.user_id', '=', user.id), ('employee_id.service_manager_user_ids', 'in', user.id)]</field>
             <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_garant_pm'))]"/>
             <field name="perm_read" eval="1"/>
             <field name="perm_write" eval="1"/>

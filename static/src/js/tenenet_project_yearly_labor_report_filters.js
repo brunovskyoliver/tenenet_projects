@@ -18,6 +18,7 @@ export class TenenetProjectYearlyLaborReportFilters extends AccountReportFilters
         return {
             resModel: "tenenet.project",
             resIds: this.selectedProjectIds,
+            domain: this.controller.cachedFilterOptions.available_project_domain || [["id", "=", 0]],
             update: (resIds) => this.selectProject(resIds),
             context: { active_test: false },
             placeholder: "Vyber projekt...",

@@ -90,7 +90,7 @@ class TestTenenetPlan02Project(TransactionCase):
         with self.assertRaises(AccessError):
             project.with_user(normal_user).write({"description": "Blocked"})
 
-    def test_garant_pm_uses_hidden_role_and_only_assigned_projects(self):
+    def test_project_pm_hidden_role_can_edit_only_pm_projects(self):
         base_group = self.env.ref("base.group_user")
         user_group = self.env.ref("tenenet_projects.group_tenenet_user")
         garant_group = self.env.ref("tenenet_projects.group_tenenet_garant_pm")
@@ -118,7 +118,7 @@ class TestTenenetPlan02Project(TransactionCase):
         )
         self.assertEqual(
             self.env["tenenet.project"].with_user(pm_user).search_count([("id", "=", other_project.id)]),
-            0,
+            1,
         )
 
         assigned_project.with_user(pm_user).write({"description": "Allowed"})
@@ -128,6 +128,30 @@ class TestTenenetPlan02Project(TransactionCase):
         assigned_project.write({"project_manager_id": False})
         pm_user.invalidate_recordset(["group_ids"])
         self.assertNotIn(garant_group, pm_user.group_ids)
+
+    def test_odborny_garant_is_readonly_even_on_own_project(self):
+        base_group = self.env.ref("base.group_user")
+        user_group = self.env.ref("tenenet_projects.group_tenenet_user")
+        garant_group = self.env.ref("tenenet_projects.group_tenenet_garant_pm")
+        garant_user = self._create_user("project_garant_readonly", [base_group.id, user_group.id])
+        garant_employee = self.env["hr.employee"].create({
+            "name": "Garant readonly",
+            "user_id": garant_user.id,
+        })
+        project = self.env["tenenet.project"].create({
+            "name": "Projekt garant readonly",
+            "program_ids": [(4, self.program.id)],
+            "odborny_garant_id": garant_employee.id,
+        })
+
+        garant_user.invalidate_recordset(["group_ids"])
+        self.assertIn(garant_group, garant_user.group_ids)
+        self.assertEqual(
+            self.env["tenenet.project"].with_user(garant_user).search_count([("id", "=", project.id)]),
+            1,
+        )
+        with self.assertRaises(AccessError):
+            project.with_user(garant_user).write({"description": "Blocked for garant"})
 
     def test_manager_role_survives_project_appointment(self):
         base_group = self.env.ref("base.group_user")
@@ -242,6 +266,10 @@ class TestTenenetPlan02Project(TransactionCase):
 
         action = self.env.ref("tenenet_projects.action_tenenet_project").read()[0]
         self.assertEqual(action["domain"], "[('is_tenenet_internal', '=', False)]")
+        self.assertEqual(
+            action["context"],
+            "{'search_default_active': 1, 'search_default_hide_internal': 1, 'search_default_group_year': 1}",
+        )
         program_action = self.env.ref("tenenet_projects.action_tenenet_program").read()[0]
         self.assertEqual(
             program_action["domain"],
