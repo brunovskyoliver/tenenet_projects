@@ -14,7 +14,7 @@ class HrEmployeePublic(models.Model):
         related="employee_id.main_site_address_display",
         readonly=True,
     )
-    bio = fields.Text(related="employee_id.bio", readonly=True)
+    bio = fields.Html(related="employee_id.bio", readonly=True, sanitize=True)
     all_site_names = fields.Char(related="employee_id.all_site_names", readonly=True)
     all_job_names = fields.Char(related="employee_id.all_job_names", readonly=True)
     secondary_site_ids = fields.Many2many(

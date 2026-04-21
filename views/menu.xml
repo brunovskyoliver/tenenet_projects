@@ -24,7 +24,7 @@
         <menuitem id="menu_tenenet_root"
                   name="Projekty"
                   sequence="10"
-                  web_icon="tenenet_projects,static/description/icon.png"
+                  web_icon="tenenet_projects,static/description/projects.svg"
                   action="action_tenenet_project_dashboard_server"
                   groups="base.group_user"/>
 
@@ -64,7 +64,7 @@
         <menuitem id="menu_tenenet_reporting"
                   name="Reporty"
                   sequence="11"
-                  web_icon="tenenet_projects,static/description/icon.png"
+                  web_icon="tenenet_projects,static/description/reports.svg"
                   groups="tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"/>
 
         <menuitem id="menu_tenenet_utilization_report"

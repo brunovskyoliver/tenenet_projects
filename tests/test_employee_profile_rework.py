@@ -318,7 +318,13 @@ class TestTenenetEmployeeProfileRework(TransactionCase):
             for page in root.xpath("//page")
             if page.get("name")
         }
-        self.assertTrue({"personal_information", "payroll_information", "hr_settings"}.issubset(page_names))
+        self.assertIn("personal_information", page_names)
+        payroll_page = root.xpath("//page[@name='payroll_information']")
+        settings_page = root.xpath("//page[@name='hr_settings']")
+        self.assertTrue(payroll_page)
+        self.assertTrue(settings_page)
+        self.assertEqual(payroll_page[0].get("invisible"), "1")
+        self.assertEqual(settings_page[0].get("invisible"), "1")
         private_email_field = root.xpath("//page[@name='personal_information']//field[@name='private_email']")[0]
         self.assertEqual(private_email_field.get("readonly"), "1")
 
@@ -382,7 +388,7 @@ class TestTenenetEmployeeProfileRework(TransactionCase):
             self.assertEqual(employee_model.search_count([("id", "=", employee.id)]), 0)
 
     def test_owner_and_higher_up_private_form_includes_readonly_private_tabs(self):
-        expected_private_pages = {"personal_information", "payroll_information", "hr_settings"}
+        expected_private_pages = {"personal_information"}
 
         for user in (self.employee_user, self.manager_user):
             employee = self.env["hr.employee"].with_user(user).browse(self.employee.id)
@@ -394,22 +400,60 @@ class TestTenenetEmployeeProfileRework(TransactionCase):
                 if page.get("name")
             }
             self.assertTrue(expected_private_pages.issubset(page_names))
+            payroll_page = root.xpath("//page[@name='payroll_information']")
+            settings_page = root.xpath("//page[@name='hr_settings']")
+            self.assertTrue(payroll_page)
+            self.assertTrue(settings_page)
+            self.assertEqual(payroll_page[0].get("invisible"), "1")
+            self.assertEqual(settings_page[0].get("invisible"), "1")
 
             private_email_field = root.xpath("//page[@name='personal_information']//field[@name='private_email']")[0]
             self.assertEqual(private_email_field.get("readonly"), "1")
 
-            settings_fields = root.xpath("//page[@name='hr_settings']//field")
-            self.assertTrue(settings_fields)
-            self.assertTrue(all(field.get("readonly") == "1" for field in settings_fields))
-
             self.assertFalse(root.xpath("//page[@name='personal_information']//button"))
-            self.assertFalse(root.xpath("//page[@name='payroll_information']//button"))
-            self.assertFalse(root.xpath("//page[@name='hr_settings']//button"))
             self.assertTrue(root.xpath("//button[@name='action_tenenet_open_employee_update_request_wizard']"))
             self.assertTrue(root.xpath("//field[@name='current_employee_skill_ids'][@readonly='not can_manage_services']"))
             self.assertTrue(root.xpath("//field[@name='job_title'][@readonly='not can_manage_services']"))
             self.assertTrue(root.xpath("//field[@name='organizational_unit_id'][@readonly='not can_manage_services']"))
             self.assertTrue(root.xpath("//field[@name='additional_job_ids'][@readonly='not can_manage_services']"))
+
+    def test_work_ratio_autosets_calendar_and_tenenet_responsibles(self):
+        source_calendar = self.env.company.resource_calendar_id or self.env.ref("resource.resource_calendar_std")
+        self.assertTrue(source_calendar)
+
+        self.employee.write({"work_ratio": 50.0})
+        self.employee.invalidate_recordset([
+            "resource_calendar_id",
+            "tenenet_responsible_user_ids",
+            "hr_responsible_id",
+            "expense_manager_id",
+            "leave_manager_id",
+        ])
+
+        self.assertAlmostEqual(self.employee.resource_calendar_id.hours_per_day, round((source_calendar.hours_per_day or 8.0) * 0.5, 2), places=2)
+        self.assertIn(self.manager_user, self.employee.tenenet_responsible_user_ids)
+        self.assertIn(self.hr_manager_user, self.employee.tenenet_responsible_user_ids)
+        self.assertEqual(self.employee.hr_responsible_id, self.manager_user)
+        self.assertEqual(self.employee.expense_manager_id, self.manager_user)
+        self.assertEqual(self.employee.leave_manager_id, self.manager_user)
+
+    def test_hr_card_admin_groups_sync_real_hr_timeoff_and_expense_admin_rights(self):
+        hr_admin_group = self.env.ref("tenenet_projects.group_tenenet_hr_admin")
+        hr_project_admin_group = self.env.ref("tenenet_projects.group_tenenet_hr_project_admin")
+        hr_manager_group = self.env.ref("hr.group_hr_manager")
+        holidays_manager_group = self.env.ref("hr_holidays.group_hr_holidays_manager")
+        expense_manager_group = self.env.ref("hr_expense.group_hr_expense_manager")
+
+        app_admin_user = self._create_user("profile.hr.card.admin", [self.base_user_group.id])
+        app_admin_user.write({"group_ids": [Command.link(hr_admin_group.id)]})
+        self.assertIn(hr_manager_group, app_admin_user.group_ids)
+        self.assertIn(holidays_manager_group, app_admin_user.group_ids)
+        self.assertIn(expense_manager_group, app_admin_user.group_ids)
+
+        app_admin_user.write({"group_ids": [Command.unlink(hr_admin_group.id), Command.link(hr_project_admin_group.id)]})
+        self.assertNotIn(hr_manager_group, app_admin_user.group_ids)
+        self.assertNotIn(holidays_manager_group, app_admin_user.group_ids)
+        self.assertNotIn(expense_manager_group, app_admin_user.group_ids)
 
     def test_public_form_uses_tenenet_workplaces_and_public_resume_only(self):
         public_employee = self.env["hr.employee.public"].with_user(self.outsider_user).browse(self.employee.id)

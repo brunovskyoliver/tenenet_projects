@@ -118,6 +118,7 @@
                     <field name="tenenet_is_card_owner" invisible="1"/>
                     <field name="tenenet_is_employee_higher_up" invisible="1"/>
                     <field name="tenenet_is_project_manager_viewer" invisible="1"/>
+                    <field name="tenenet_is_hr_card_admin_viewer" invisible="1"/>
                     <field name="tenenet_can_edit_self_employee_fields" invisible="1"/>
                     <field name="tenenet_can_request_employee_update" invisible="1"/>
                     <field name="tenenet_weekly_site_domain_ids" invisible="1"/>
@@ -163,11 +164,11 @@
                 </xpath>
 
                 <xpath expr="//page[@name='payroll_information']" position="attributes">
-                    <attribute name="groups"/>
+                    <attribute name="invisible">1</attribute>
                 </xpath>
 
                 <xpath expr="//page[@name='hr_settings']" position="attributes">
-                    <attribute name="groups"/>
+                    <attribute name="invisible">1</attribute>
                 </xpath>
 
                 <xpath expr="//page[@name='work_information']" position="after">
@@ -296,6 +297,17 @@
                 <xpath expr="//notebook" position="inside">
                     <page string="TENENET">
                         <group>
+                            <group string="HR karta">
+                                <field name="tenenet_hr_card_role" readonly="1"/>
+                                <field name="tenenet_hr_card_access_note" readonly="1"/>
+                                <field
+                                    name="tenenet_responsible_user_ids"
+                                    widget="many2many_tags"
+                                    readonly="1"
+                                    string="Schvaľovatelia"
+                                    options="{'no_create': True, 'no_open': True}"
+                                />
+                            </group>
                             <group string="Profil">
                                 <field name="work_ratio" string="Úväzok (%)" readonly="not can_manage_services" />
                                 <field name="experience_years_total" readonly="not can_manage_services" />
@@ -474,97 +486,102 @@
                     />
                 </xpath>
 
-                <xpath
-                    expr="//page[@name='resume']//div[@id='o_employee_left']"
-                    position="inside"
-                >
-                    <group string="Bio">
+                <xpath expr="//page[@name='resume']//div[@id='o_hr_skills_resume_container']" position="before">
+                    <div class="o_tenenet_resume_fullwidth">
+                        <div class="o_form_label">Bio</div>
                         <field
                             name="bio"
                             nolabel="1"
-                            widget="text"
-                            placeholder="Predstavte skúsenosti, zameranie a oblasť práce zamestnanca."
-                            class="o_tenenet_resume_text"
+                            widget="html"
+                            options="{'style-inline': True}"
+                            class="o_tenenet_resume_html"
                             readonly="not tenenet_can_edit_self_employee_fields"
                         />
-                    </group>
-                    <group string="Ročné hodnotenia">
-                        <field
-                            name="evaluation_ids"
-                            nolabel="1"
-                            context="{'default_employee_id': id}"
-                        >
-                            <kanban class="o_kanban_mobile">
-                                <field name="year_display"/>
-                                <field name="manager_name"/>
-                                <field name="visible_to_employee"/>
-                                <field name="summary"/>
-                                <templates>
-                                    <t t-name="card">
-                                        <div class="o_tenenet_eval_card">
-                                            <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-                                                <strong><field name="year_display"/></strong>
-                                                <span t-if="record.visible_to_employee.raw_value" class="badge text-bg-success">
-                                                    Zdieľané
-                                                </span>
-                                                <span t-else="" class="badge text-bg-secondary">
-                                                    Interné
-                                                </span>
+                    </div>
+                </xpath>
+
+                <xpath expr="//page[@name='resume']//div[@id='o_hr_skills_resume_container']" position="after">
+                    <div class="o_tenenet_resume_fullwidth">
+                        <group string="Ročné hodnotenia">
+                            <field
+                                name="evaluation_ids"
+                                nolabel="1"
+                                context="{'default_employee_id': id}"
+                            >
+                                <kanban class="o_kanban_mobile">
+                                    <field name="year_display"/>
+                                    <field name="manager_name"/>
+                                    <field name="visible_to_employee"/>
+                                    <field name="summary"/>
+                                    <templates>
+                                        <t t-name="card">
+                                            <div class="o_tenenet_eval_card">
+                                                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                                    <strong><field name="year_display"/></strong>
+                                                    <span t-if="record.visible_to_employee.raw_value" class="badge text-bg-success">
+                                                        Zdieľané
+                                                    </span>
+                                                    <span t-else="" class="badge text-bg-secondary">
+                                                        Interné
+                                                    </span>
+                                                </div>
+                                                <div class="text-muted small mb-2">
+                                                    <field name="manager_name"/>
+                                                </div>
+                                                <div t-if="record.summary.raw_value" class="text-wrap">
+                                                    <field name="summary"/>
+                                                </div>
+                                                <div t-else="" class="text-muted">
+                                                    Bez celkového zhodnotenia.
+                                                </div>
                                             </div>
-                                            <div class="text-muted small mb-2">
-                                                <field name="manager_name"/>
-                                            </div>
-                                            <div t-if="record.summary.raw_value" class="text-wrap">
-                                                <field name="summary"/>
-                                            </div>
-                                            <div t-else="" class="text-muted">
-                                                Bez celkového zhodnotenia.
-                                            </div>
-                                        </div>
-                                    </t>
-                                </templates>
-                            </kanban>
-                            <form string="Ročné hodnotenie">
-                                <sheet>
-                                        <group>
+                                        </t>
+                                    </templates>
+                                </kanban>
+                                <form string="Ročné hodnotenie">
+                                    <sheet>
                                             <group>
-                                                <field name="employee_id" invisible="1"/>
-                                                <field name="year_display"/>
-                                                <field name="manager_id"/>
-                                                <field name="author_user_id" readonly="1"/>
+                                                <group>
+                                                    <field name="employee_id" invisible="1"/>
+                                                    <field name="year_display"/>
+                                                    <field name="manager_id"/>
+                                                    <field name="author_user_id" readonly="1"/>
+                                                </group>
+                                                <group>
+                                                    <field name="visible_to_employee"/>
+                                                    <field name="active"/>
+                                                </group>
                                             </group>
-                                            <group>
-                                                <field name="visible_to_employee"/>
-                                                <field name="active"/>
-                                            </group>
-                                        </group>
-                                        <separator string="Obsah hodnotenia"/>
-                                        <div class="o_tenenet_eval_form_stack">
-                                            <div class="o_tenenet_eval_form_block">
-                                                <label for="summary" string="Celkové zhodnotenie"/>
-                                                <field name="summary" nolabel="1"/>
+                                            <separator string="Obsah hodnotenia"/>
+                                            <div class="o_tenenet_eval_form_stack">
+                                                <div class="o_tenenet_eval_form_block">
+                                                    <label for="summary" string="Celkové zhodnotenie"/>
+                                                    <field name="summary" nolabel="1"/>
+                                                </div>
+                                                <div class="o_tenenet_eval_form_block">
+                                                    <label for="strengths" string="Silné stránky"/>
+                                                    <field name="strengths" nolabel="1"/>
+                                                </div>
+                                                <div class="o_tenenet_eval_form_block">
+                                                    <label for="goals" string="Ciele na ďalší rok"/>
+                                                    <field name="goals" nolabel="1"/>
+                                                </div>
+                                                <div class="o_tenenet_eval_form_block">
+                                                    <label for="recommendations" string="Odporúčania"/>
+                                                    <field name="recommendations" nolabel="1"/>
+                                                </div>
                                             </div>
-                                            <div class="o_tenenet_eval_form_block">
-                                                <label for="strengths" string="Silné stránky"/>
-                                                <field name="strengths" nolabel="1"/>
-                                            </div>
-                                            <div class="o_tenenet_eval_form_block">
-                                                <label for="goals" string="Ciele na ďalší rok"/>
-                                                <field name="goals" nolabel="1"/>
-                                            </div>
-                                            <div class="o_tenenet_eval_form_block">
-                                                <label for="recommendations" string="Odporúčania"/>
-                                                <field name="recommendations" nolabel="1"/>
-                                            </div>
-                                        </div>
-                                    </sheet>
-                                </form>
-                        </field>
-                    </group>
-                    <group string="TENENET školenia">
+                                        </sheet>
+                                    </form>
+                            </field>
+                        </group>
+                    </div>
+                    <div class="o_tenenet_resume_fullwidth o_tenenet_training_fullwidth">
+                        <div class="o_form_label">TENENET školenia</div>
                         <field
                             name="training_ids"
                             nolabel="1"
+                            class="o_tenenet_training_field"
                             context="{'default_employee_id': id}"
                         >
                             <list string="Školenia">
@@ -605,7 +622,7 @@
                                 />
                             </form>
                         </field>
-                    </group>
+                    </div>
                 </xpath>
 
                 <xpath expr="//field[@name='resume_line_ids']" position="attributes">
@@ -722,13 +739,12 @@
                 </xpath>
                 <xpath expr="//page[@name='resume']" position="replace">
                     <page name="resume" string="Resume">
+                        <div class="o_tenenet_resume_fullwidth">
+                            <div class="o_form_label">Bio</div>
+                            <field name="bio" nolabel="1" readonly="1" widget="html" options="{'style-inline': True}" class="o_tenenet_resume_html o_tenenet_resume_html_readonly"/>
+                        </div>
                         <div class="row">
-                            <div class="col-lg-7 d-flex flex-column">
-                                <group string="Bio">
-                                    <field name="bio" nolabel="1" readonly="1" widget="text" class="o_tenenet_resume_text"/>
-                                </group>
-                            </div>
-                            <div class="col-lg-5 px-0 ps-lg-5 pe-lg-0">
+                            <div class="col-12">
                                 <group string="Znalosti">
                                     <field name="employee_id" invisible="1"/>
                                     <field mode="list" nolabel="1" name="current_employee_skill_ids" widget="skills_one2many" readonly="1">

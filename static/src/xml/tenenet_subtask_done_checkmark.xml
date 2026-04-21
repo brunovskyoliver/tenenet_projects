@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates xml:space="preserve">
+    <t t-name="tenenet_projects.TenenetSubtaskDoneCheckMark" t-inherit="web.BooleanToggleField" t-inherit-mode="primary">
+        <xpath expr="//CheckBox" position="replace">
+            <a title="Označiť ako hotové"
+               t-on-click.stop="onChange"
+               t-attf-class="o_tenenet_subtask_done_button ps-0 fa fa-lg fa-check-circle{{!reached.isReached ? '-o' : ' done_button_enabled'}}"/>
+        </xpath>
+    </t>
+</templates>

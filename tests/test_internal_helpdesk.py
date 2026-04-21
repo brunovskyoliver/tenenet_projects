@@ -10,6 +10,7 @@ class TestTenenetInternalHelpdesk(TransactionCase):
         self.company = self.env.company
         self.base_user_group = self.env.ref("base.group_user")
         self.helpdesk_user_group = self.env.ref("helpdesk.group_helpdesk_user")
+        self.helpdesk_manager_group = self.env.ref("helpdesk.group_helpdesk_manager")
         self.tenenet_helpdesk_user_group = self.env.ref("tenenet_projects.group_tenenet_helpdesk_user")
         self.tenenet_helpdesk_editor_group = self.env.ref("tenenet_projects.group_tenenet_helpdesk_editor")
         self.tenenet_helpdesk_manager_group = self.env.ref("tenenet_projects.group_tenenet_helpdesk_manager")
@@ -61,6 +62,10 @@ class TestTenenetInternalHelpdesk(TransactionCase):
             "user_id": self.helpdesk_manager_user.id,
             "company_id": self.company.id,
         })
+        self.extra_employee = self.env["hr.employee"].create({
+            "name": "Extra Employee",
+            "company_id": self.company.id,
+        })
 
         self.internal_team = self.env["helpdesk.team"].create({
             "name": "Interné TENENET",
@@ -106,6 +111,42 @@ class TestTenenetInternalHelpdesk(TransactionCase):
         }
         vals.update(extra_vals)
         return self.env["helpdesk.ticket"].with_user(user).create(vals)
+
+    def _create_subtask(self, ticket, user, **extra_vals):
+        vals = {
+            "ticket_id": ticket.id,
+            "name": "Čiastková úloha",
+            "employee_id": self.manager_employee.id,
+        }
+        vals.update(extra_vals)
+        return self.env["tenenet.helpdesk.subtask"].with_user(user).create(vals)
+
+    def test_tenenet_helpdesk_role_syncs_real_helpdesk_role(self):
+        user = self._create_user("internal_helpdesk_sync", [])
+
+        user.write({"group_ids": [Command.link(self.tenenet_helpdesk_user_group.id)]})
+        self.assertIn(self.helpdesk_user_group, user.group_ids)
+        self.assertNotIn(self.helpdesk_manager_group, user.group_ids)
+
+        user.write({
+            "group_ids": [
+                Command.unlink(self.tenenet_helpdesk_user_group.id),
+                Command.link(self.tenenet_helpdesk_manager_group.id),
+            ],
+        })
+        self.assertIn(self.helpdesk_manager_group, user.group_ids)
+
+        user.write({
+            "group_ids": [
+                Command.unlink(self.tenenet_helpdesk_manager_group.id),
+                Command.link(self.tenenet_helpdesk_editor_group.id),
+            ],
+        })
+        self.assertIn(self.helpdesk_user_group, user.group_ids)
+        self.assertNotIn(self.helpdesk_manager_group, user.group_ids)
+
+        user.write({"group_ids": [Command.unlink(self.tenenet_helpdesk_editor_group.id)]})
+        self.assertNotIn(self.helpdesk_user_group, user.group_ids)
 
     def test_internal_ticket_defaults_requester_and_assignee_to_creator(self):
         ticket = self._create_ticket(self.requester_user)
@@ -269,3 +310,110 @@ class TestTenenetInternalHelpdesk(TransactionCase):
         self.assertEqual(ticket.kanban_state, "normal")
         self.assertEqual(ticket.tenenet_control_confirmed_by_user_id, self.manager_user)
         self.assertTrue(ticket.tenenet_control_confirmed_at)
+
+    def test_subtask_owner_create_adds_active_assignee(self):
+        ticket = self._create_ticket(self.requester_user)
+        subtask = self._create_subtask(ticket, self.requester_user)
+
+        self.assertEqual(subtask.ticket_id, ticket)
+        self.assertIn(subtask, ticket.tenenet_subtask_ids)
+        self.assertEqual(subtask.employee_id, self.manager_employee)
+        self.assertIn(self.manager_user, ticket.tenenet_active_assigned_user_ids)
+        self.assertEqual(ticket.tenenet_open_subtask_count, 1)
+        self.assertEqual(ticket.tenenet_done_subtask_count, 0)
+
+    def test_done_subtask_is_removed_from_active_assignees(self):
+        ticket = self._create_ticket(self.requester_user)
+        subtask = self._create_subtask(ticket, self.requester_user)
+
+        subtask.with_user(self.manager_user).write({"is_done": True})
+
+        self.assertNotIn(self.manager_user, ticket.tenenet_active_assigned_user_ids)
+        self.assertEqual(ticket.tenenet_open_subtask_count, 0)
+        self.assertEqual(ticket.tenenet_done_subtask_count, 1)
+        self.assertEqual(subtask.done_by_user_id, self.manager_user)
+        self.assertTrue(subtask.done_date)
+
+    def test_subtask_assignee_can_change_only_done_checkbox(self):
+        ticket = self._create_ticket(self.requester_user)
+        subtask = self._create_subtask(ticket, self.requester_user)
+
+        subtask.with_user(self.manager_user).write({"is_done": True})
+        self.assertTrue(subtask.is_done)
+
+        with self.assertRaises(AccessError):
+            subtask.with_user(self.manager_user).write({"name": "Denied"})
+        with self.assertRaises(AccessError):
+            subtask.with_user(self.manager_user).write({"description": "<p>Denied</p>"})
+        with self.assertRaises(AccessError):
+            subtask.with_user(self.manager_user).write({"employee_id": self.grand_manager_employee.id})
+        with self.assertRaises(AccessError):
+            subtask.with_user(self.manager_user).write({"date_deadline": "2026-04-30"})
+        with self.assertRaises(AccessError):
+            subtask.with_user(self.manager_user).write({"priority": "2"})
+        with self.assertRaises(AccessError):
+            subtask.with_user(self.manager_user).unlink()
+
+    def test_subtask_owner_can_edit_content_and_delete(self):
+        ticket = self._create_ticket(self.requester_user)
+        subtask = self._create_subtask(ticket, self.requester_user)
+
+        subtask.with_user(self.requester_user).write({
+            "name": "Owner edit",
+            "description": "<p>Owner note</p>",
+            "date_deadline": "2026-04-30",
+            "employee_id": self.extra_employee.id,
+            "priority": "2",
+        })
+
+        self.assertEqual(subtask.name, "Owner edit")
+        self.assertEqual(subtask.employee_id, self.extra_employee)
+        self.assertEqual(subtask.priority, "2")
+        subtask.with_user(self.requester_user).unlink()
+        self.assertFalse(subtask.exists())
+
+    def test_subtask_helpdesk_manager_can_manage_all_fields(self):
+        ticket = self._create_ticket(self.requester_user)
+        subtask = self._create_subtask(ticket, self.requester_user)
+
+        subtask.with_user(self.helpdesk_manager_user).write({
+            "name": "Manager edit",
+            "is_done": True,
+        })
+
+        self.assertEqual(subtask.name, "Manager edit")
+        self.assertTrue(subtask.is_done)
+        subtask.with_user(self.helpdesk_manager_user).unlink()
+        self.assertFalse(subtask.exists())
+
+    def test_subtask_outsider_cannot_create_write_or_delete(self):
+        ticket = self._create_ticket(self.requester_user)
+        subtask = self._create_subtask(ticket, self.requester_user)
+
+        with self.assertRaises(AccessError):
+            self._create_subtask(ticket, self.outsider_user)
+        with self.assertRaises(AccessError):
+            subtask.with_user(self.outsider_user).write({"is_done": True})
+        with self.assertRaises(AccessError):
+            subtask.with_user(self.outsider_user).unlink()
+
+    def test_subtask_owner_can_assign_any_active_company_employee(self):
+        ticket = self._create_ticket(self.requester_user)
+
+        subtask = self._create_subtask(ticket, self.requester_user, employee_id=self.extra_employee.id)
+
+        self.assertEqual(subtask.employee_id, self.extra_employee)
+        self.assertNotIn(self.extra_employee.user_id, ticket.tenenet_active_assigned_user_ids)
+
+    def test_subtask_leaving_done_clears_done_metadata(self):
+        ticket = self._create_ticket(self.requester_user)
+        subtask = self._create_subtask(ticket, self.requester_user)
+
+        subtask.with_user(self.manager_user).write({"is_done": True})
+        self.assertTrue(subtask.done_by_user_id)
+        self.assertTrue(subtask.done_date)
+
+        subtask.with_user(self.manager_user).write({"is_done": False})
+
+        self.assertFalse(subtask.done_by_user_id)
+        self.assertFalse(subtask.done_date)

@@ -192,9 +192,85 @@
         font-weight: 600;
     }
 
-    .o_tenenet_resume_text textarea,
-    .o_tenenet_resume_text .o_input {
-        min-height: 110px;
+    .o_tenenet_resume_fullwidth {
+        display: block;
+        width: 100%;
+        margin-bottom: 20px;
+    }
+
+    .o_tenenet_resume_fullwidth > .o_form_label {
+        display: block;
+        margin-bottom: 8px;
+    }
+
+    .o_tenenet_resume_fullwidth > .o_field_widget,
+    .o_tenenet_resume_fullwidth .o_field_html,
+    .o_tenenet_resume_fullwidth .o_tenenet_resume_html,
+    .o_tenenet_resume_html {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .o_tenenet_resume_html .odoo-editor-editable,
+    .o_tenenet_resume_html .note-editable,
+    .o_tenenet_resume_html .o_input,
+    .o_tenenet_resume_html iframe {
+        min-height: 280px;
+        width: 100%;
+    }
+
+    .o_tenenet_resume_html_readonly .o_field_html,
+    .o_tenenet_resume_html_readonly .o_readonly_modifier,
+    .o_tenenet_resume_html_readonly {
+        width: 100%;
+    }
+
+    .o_tenenet_resume_html_readonly img,
+    .o_tenenet_resume_html img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 14px;
+    }
+
+    .o_tenenet_resume_html_readonly p,
+    .o_tenenet_resume_html p {
+        margin-bottom: 0.75rem;
+    }
+
+    .o_tenenet_training_fullwidth,
+    .o_tenenet_training_field,
+    .o_tenenet_training_field .o_field_x2many,
+    .o_tenenet_training_field .o_list_view,
+    .o_tenenet_training_field .o_list_renderer,
+    .o_tenenet_training_field .table-responsive {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .o_tenenet_training_field .o_list_table {
+        table-layout: auto !important;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .o_tenenet_training_field .o_list_table thead th {
+        white-space: nowrap;
+    }
+
+    .o_tenenet_training_field .o_list_table tbody tr {
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .o_tenenet_training_field .o_list_table tbody tr td,
+    .o_tenenet_training_field .o_list_table thead th {
+        padding-top: 0.85rem;
+        padding-bottom: 0.85rem;
+    }
+
+    .o_tenenet_training_field .o_x2m_control_panel {
+        margin-top: 0;
     }
 
     .o_tenenet_eval_form_stack {

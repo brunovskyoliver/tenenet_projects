@@ -1456,6 +1456,10 @@ class TenenetProject(models.Model):
             elif not still_qualifies and in_group:
                 user.sudo().write({"group_ids": [(3, group.id)]})
 
+    def _sync_hr_project_admin_group(self, employees=None):
+        affected = employees or self.mapped("project_manager_id")
+        affected.mapped("user_id")._tenenet_sync_hr_project_admin_group_membership()
+
     def write(self, vals):
         if not (
             self.env.is_superuser()
@@ -1504,6 +1508,8 @@ class TenenetProject(models.Model):
             self.mapped("assignment_ids.timesheet_ids")._check_wage_cap()
         if "odborny_garant_id" in vals or "project_manager_id" in vals or "active" in vals:
             self._sync_garant_pm_group(previous_role_employees | self.mapped("odborny_garant_id") | self.mapped("project_manager_id"))
+        if "project_manager_id" in vals or "active" in vals:
+            self._sync_hr_project_admin_group(previous_role_employees | self.mapped("project_manager_id"))
         if {"is_recurring_license_project", "recurring_clone_anchor_date", "recurring_base_name"} & set(vals):
             self._ensure_recurring_metadata()
         if "finance_graph_year" in vals:
@@ -1512,6 +1518,12 @@ class TenenetProject(models.Model):
                 for record in self
                 if record.id and record.finance_graph_year
             })
+        return result
+
+    def unlink(self):
+        previous_project_managers = self.mapped("project_manager_id")
+        result = super().unlink()
+        previous_project_managers.mapped("user_id")._tenenet_sync_hr_project_admin_group_membership()
         return result
 
     def _cleanup_assignment_sites_after_project_unlink(self, previous_site_ids):
@@ -1875,6 +1887,7 @@ class TenenetProject(models.Model):
         records = super().create(vals_list)
         records._ensure_recurring_metadata()
         records._sync_garant_pm_group()
+        records._sync_hr_project_admin_group()
         records._sync_finance_monthly_comparison_pairs({
             (record.id, record.finance_graph_year or fields.Date.context_today(self).year)
             for record in records

@@ -27,6 +27,21 @@ class HelpdeskTicket(models.Model):
         string="Aktívne pridelení",
         export_string_translation=False,
     )
+    tenenet_subtask_ids = fields.One2many(
+        "tenenet.helpdesk.subtask",
+        "ticket_id",
+        string="Čiastkové úlohy",
+    )
+    tenenet_open_subtask_count = fields.Integer(
+        compute="_compute_tenenet_subtask_counts",
+        string="Otvorené čiastkové úlohy",
+        export_string_translation=False,
+    )
+    tenenet_done_subtask_count = fields.Integer(
+        compute="_compute_tenenet_subtask_counts",
+        string="Dokončené čiastkové úlohy",
+        export_string_translation=False,
+    )
     tenenet_followup_user_id = fields.Many2one(
         "res.users",
         string="Follow-up používateľ",
@@ -187,6 +202,9 @@ class HelpdeskTicket(models.Model):
         "kanban_state",
         "tenenet_followup_user_id",
         "tenenet_control_user_id",
+        "tenenet_subtask_ids",
+        "tenenet_subtask_ids.user_id",
+        "tenenet_subtask_ids.is_done",
     )
     def _compute_tenenet_active_assigned_user_ids(self):
         for ticket in self:
@@ -196,7 +214,17 @@ class HelpdeskTicket(models.Model):
                     active_users |= ticket.tenenet_followup_user_id
                 elif ticket.kanban_state == "done":
                     active_users |= ticket.tenenet_control_user_id
+                active_users |= ticket.tenenet_subtask_ids.filtered(
+                    lambda subtask: not subtask.is_done
+                ).mapped("user_id")
             ticket.tenenet_active_assigned_user_ids = [Command.set(active_users.filtered("id").ids)]
+
+    @api.depends("tenenet_subtask_ids", "tenenet_subtask_ids.is_done")
+    def _compute_tenenet_subtask_counts(self):
+        for ticket in self:
+            done_subtasks = ticket.tenenet_subtask_ids.filtered("is_done")
+            ticket.tenenet_done_subtask_count = len(done_subtasks)
+            ticket.tenenet_open_subtask_count = len(ticket.tenenet_subtask_ids - done_subtasks)
 
     @api.depends(
         "team_id",

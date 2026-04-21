@@ -77,7 +77,7 @@ class HrEmployee(models.Model):
         compute="_compute_all_job_names",
         store=True,
     )
-    bio = fields.Text(string="Bio")
+    bio = fields.Html(string="Bio", sanitize=True)
     evaluation_ids = fields.One2many(
         "tenenet.employee.evaluation",
         "employee_id",
@@ -271,6 +271,10 @@ class HrEmployee(models.Model):
         string="Projektový manažér tejto karty",
         compute="_compute_tenenet_employee_access_flags",
     )
+    tenenet_is_hr_card_admin_viewer = fields.Boolean(
+        string="HR karta admin náhľad",
+        compute="_compute_tenenet_employee_access_flags",
+    )
     tenenet_can_edit_self_employee_fields = fields.Boolean(
         string="Môže upraviť vlastné údaje",
         compute="_compute_tenenet_employee_access_flags",
@@ -278,6 +282,28 @@ class HrEmployee(models.Model):
     tenenet_can_request_employee_update = fields.Boolean(
         string="Môže požiadať o aktualizáciu",
         compute="_compute_tenenet_employee_access_flags",
+    )
+    tenenet_hr_card_role = fields.Selection(
+        [
+            ("super_admin", "Super admin"),
+            ("admin", "Admin"),
+            ("project_admin", "Admin projektový"),
+            ("none", "Bez role"),
+        ],
+        string="HR rola",
+        compute="_compute_tenenet_hr_card_role_fields",
+        compute_sudo=True,
+    )
+    tenenet_hr_card_access_note = fields.Char(
+        string="Rozsah práv HR karty",
+        compute="_compute_tenenet_hr_card_role_fields",
+        compute_sudo=True,
+    )
+    tenenet_responsible_user_ids = fields.Many2many(
+        "res.users",
+        string="TENENET schvaľovatelia",
+        compute="_compute_tenenet_responsible_user_ids",
+        compute_sudo=True,
     )
     tenenet_allocation_ratio_total = fields.Float(
         string="Projektový úväzok spolu (%)",
@@ -561,12 +587,212 @@ class HrEmployee(models.Model):
             synced_vals = self._prepare_identity_sync_vals(vals)
             synced_vals = self._prepare_position_sync_vals(synced_vals)
             synced_vals = self._prepare_private_phone_sync_vals(synced_vals)
+            synced_vals = self._prepare_tenenet_resource_calendar_vals(synced_vals)
+            synced_vals = self._prepare_tenenet_responsible_sync_vals(synced_vals)
             synced_vals_list.append(synced_vals)
-        return super().create(synced_vals_list)
+        records = super().create(synced_vals_list)
+        records.mapped("user_id")._tenenet_sync_hr_project_admin_group_membership()
+        return records
+
+    @api.model
+    def _tenenet_get_hr_card_admin_users(self, company=None):
+        groups = self.env.user._tenenet_get_hr_card_groups()
+        group_ids = [
+            group.id
+            for group in (
+                groups.get("super_admin"),
+                groups.get("admin"),
+                groups.get("project_admin"),
+                self.env.ref("base.group_system", raise_if_not_found=False),
+                self.env.ref("hr.group_hr_manager", raise_if_not_found=False),
+            )
+            if group
+        ]
+        domain = [("share", "=", False)]
+        if company:
+            domain.append(("company_ids", "in", company.id))
+        if group_ids:
+            domain.append(("group_ids", "in", group_ids))
+        users = self.env["res.users"].sudo().search(domain)
+        return users.sorted(key=lambda user: (-user._tenenet_get_hr_card_role_level(), (user.name or "").lower(), user.id))
+
+    def _tenenet_get_responsible_user_candidates(self, parent=None, company=None):
+        self.ensure_one()
+        company = company or self.company_id
+        parent = parent if parent is not None else self.parent_id
+        users = self.env["res.users"]
+        if parent and parent.user_id and (not company or company in parent.user_id.company_ids):
+            users |= parent.user_id
+        users |= self._tenenet_get_hr_card_admin_users(company=company)
+        return users.sorted(
+            key=lambda user: (
+                user != parent.user_id,
+                -user._tenenet_get_hr_card_role_level(),
+                (user.name or "").lower(),
+                user.id,
+            )
+        )
+
+    @api.model
+    def _tenenet_pick_primary_responsible_user(self, candidates, preferred_user=None):
+        preferred_user = preferred_user if preferred_user in candidates else self.env["res.users"]
+        return preferred_user[:1] or candidates[:1]
+
+    @api.model
+    def _tenenet_get_calendar_source(self, company=None):
+        company = company or self.env.company
+        return (
+            company.resource_calendar_id
+            or self.env.ref("resource.resource_calendar_std", raise_if_not_found=False)
+            or self.env["resource.calendar"]
+        )
+
+    @api.model
+    def _tenenet_get_calendar_target_hours_per_day(self, vals, record=None):
+        ratio = vals.get("work_ratio", record.work_ratio if record else 100.0) or 0.0
+        company = (
+            self.env["res.company"].browse(vals["company_id"])
+            if vals.get("company_id")
+            else (record.company_id if record else self.env.company)
+        )
+        source_calendar = self._tenenet_get_calendar_source(company)
+        source_hours = source_calendar.hours_per_day or 8.0
+        if ratio <= 0.0 or ratio >= 100.0:
+            return source_calendar, source_hours
+        return source_calendar, round(source_hours * ratio / 100.0, 2)
+
+    @api.model
+    def _tenenet_find_or_create_scaled_calendar(self, source_calendar, target_hours_per_day, company=None):
+        company = company or self.env.company
+        if not source_calendar:
+            return self.env["resource.calendar"]
+        source_hours = source_calendar.hours_per_day or 8.0
+        if target_hours_per_day <= 0.0 or target_hours_per_day >= source_hours:
+            return source_calendar
+
+        Calendar = self.env["resource.calendar"].sudo()
+        calendar_name = f"{source_calendar.name} ({target_hours_per_day:g}h TENENET)"
+        existing = Calendar.search([
+            ("company_id", "=", company.id),
+            ("hours_per_day", "=", target_hours_per_day),
+            ("name", "=", calendar_name),
+        ], limit=1)
+        if existing:
+            return existing
+
+        factor = target_hours_per_day / source_hours if source_hours else 1.0
+        attendance_commands = []
+        for attendance in source_calendar.attendance_ids.sorted(
+            key=lambda rec: (rec.week_type or "", rec.dayofweek or "", rec.hour_from or 0.0, rec.id)
+        ):
+            duration = max(0.0, (attendance.hour_to or 0.0) - (attendance.hour_from or 0.0))
+            attendance_commands.append(fields.Command.create({
+                "name": attendance.name,
+                "dayofweek": attendance.dayofweek,
+                "hour_from": attendance.hour_from,
+                "hour_to": round((attendance.hour_from or 0.0) + duration * factor, 4),
+                "week_type": attendance.week_type,
+                "date_from": attendance.date_from,
+                "date_to": attendance.date_to,
+                "day_period": attendance.day_period,
+                "work_entry_type_id": attendance.work_entry_type_id.id,
+                "sequence": attendance.sequence,
+            }))
+
+        calendar = Calendar.create({
+            "name": calendar_name,
+            "company_id": company.id,
+            "tz": source_calendar.tz,
+            "two_weeks_calendar": source_calendar.two_weeks_calendar,
+            "hours_per_day": target_hours_per_day,
+            "attendance_ids": attendance_commands,
+        })
+
+        leave_model = self.env["resource.calendar.leaves"].sudo()
+        for leave in leave_model.search([
+            ("calendar_id", "=", source_calendar.id),
+            ("resource_id", "=", False),
+        ]):
+            leave_vals = leave.copy_data()[0]
+            leave_vals.update({
+                "calendar_id": calendar.id,
+                "resource_id": False,
+            })
+            leave_model.create(leave_vals)
+        return calendar
+
+    @api.model
+    def _prepare_tenenet_resource_calendar_vals(self, vals, record=None):
+        synced_vals = dict(vals)
+        if record and not {"work_ratio", "company_id"} & set(vals):
+            return synced_vals
+        if not record and "resource_calendar_id" in synced_vals and "work_ratio" not in synced_vals:
+            return synced_vals
+
+        company = (
+            self.env["res.company"].browse(synced_vals["company_id"])
+            if synced_vals.get("company_id")
+            else (record.company_id if record else self.env.company)
+        )
+        source_calendar, target_hours_per_day = self._tenenet_get_calendar_target_hours_per_day(
+            synced_vals, record=record
+        )
+        target_calendar = self._tenenet_find_or_create_scaled_calendar(
+            source_calendar,
+            target_hours_per_day,
+            company=company,
+        )
+        if target_calendar:
+            synced_vals["resource_calendar_id"] = target_calendar.id
+        return synced_vals
+
+    @api.model
+    def _prepare_tenenet_responsible_sync_vals(self, vals, record=None):
+        synced_vals = dict(vals)
+        if record:
+            parent = self.env["hr.employee"].browse(synced_vals["parent_id"]) if synced_vals.get("parent_id") else record.parent_id
+            company = self.env["res.company"].browse(synced_vals["company_id"]) if synced_vals.get("company_id") else record.company_id
+            candidates = record._tenenet_get_responsible_user_candidates(parent=parent, company=company)
+        else:
+            parent = self.env["hr.employee"].browse(synced_vals["parent_id"]) if synced_vals.get("parent_id") else self.env["hr.employee"]
+            company = self.env["res.company"].browse(synced_vals["company_id"]) if synced_vals.get("company_id") else self.env.company
+            candidates = self.env["res.users"]
+            if parent and parent.user_id and (not company or company in parent.user_id.company_ids):
+                candidates |= parent.user_id
+            candidates |= self._tenenet_get_hr_card_admin_users(company=company)
+            candidates = candidates.sorted(
+                key=lambda user: (
+                    user != parent.user_id,
+                    -user._tenenet_get_hr_card_role_level(),
+                    (user.name or "").lower(),
+                    user.id,
+                )
+            )
+
+        for field_name in ("hr_responsible_id", "expense_manager_id", "leave_manager_id"):
+            preferred_user = self.env["res.users"]
+            if synced_vals.get(field_name):
+                preferred_user = self.env["res.users"].browse(synced_vals[field_name])
+            elif record and record[field_name]:
+                preferred_user = record[field_name]
+            selected_user = self._tenenet_pick_primary_responsible_user(
+                candidates,
+                preferred_user=preferred_user,
+            )
+            synced_vals[field_name] = selected_user.id or False
+        return synced_vals
 
     @api.model
     def _tenenet_is_hr_manager(self):
-        return self.env.is_superuser() or self.env.user.has_group("hr.group_hr_manager")
+        return self.env.is_superuser() or self.env.user._tenenet_get_hr_card_role_level() >= 2
+
+    @api.model
+    def _tenenet_can_view_all_employee_cards(self):
+        return self.env.is_superuser() or self.env.user._tenenet_get_hr_card_role_level() >= 1
+
+    @api.model
+    def _tenenet_can_edit_all_employee_cards(self):
+        return self.env.is_superuser() or self.env.user._tenenet_get_hr_card_role_level() >= 2
 
     @api.model
     def _tenenet_self_editable_employee_fields(self):
@@ -617,8 +843,17 @@ class HrEmployee(models.Model):
         return self._tenenet_fields_get_with_group_bypass(allfields=allfields, attributes=attributes)
 
     def _tenenet_check_employee_write_access(self, vals):
-        if self._tenenet_is_hr_manager():
+        current_user = self.env.user
+        current_user_level = current_user._tenenet_get_hr_card_role_level()
+        if self._tenenet_can_edit_all_employee_cards():
+            if current_user_level < 3:
+                for employee in self:
+                    target_level = employee.user_id._tenenet_get_hr_card_role_level() if employee.user_id else 0
+                    if target_level >= 3:
+                        raise UserError(_("Admin nemôže upravovať HR kartu používateľa so rolou Super admin."))
             return
+        if current_user_level >= 1:
+            raise UserError(_("Admin projektový môže HR karty iba čítať."))
         requested_fields = set(vals)
         if not requested_fields:
             return
@@ -637,6 +872,7 @@ class HrEmployee(models.Model):
             raise UserError(_("Nemáte oprávnenie upravovať túto kartu zamestnanca."))
 
     def write(self, vals):
+        previous_users = self.mapped("user_id") if "user_id" in vals else self.env["res.users"]
         if not self.env.context.get("tenenet_self_write_sudo"):
             self._tenenet_check_employee_write_access(vals)
             if (
@@ -649,22 +885,30 @@ class HrEmployee(models.Model):
             vals = self._prepare_identity_sync_vals(vals, self)
             vals = self._prepare_position_sync_vals(vals, self)
             vals = self._prepare_private_phone_sync_vals(vals, self)
+            vals = self._prepare_tenenet_resource_calendar_vals(vals, self)
+            vals = self._prepare_tenenet_responsible_sync_vals(vals, self)
             result = super().write(vals)
             if "monthly_gross_salary_target" in vals:
                 self.tenenet_cost_ids._sync_internal_residual_expense()
+            if "user_id" in vals:
+                (previous_users | self.mapped("user_id"))._tenenet_sync_hr_project_admin_group_membership()
             return result
 
         for record in self:
             record_vals = record._prepare_identity_sync_vals(vals, record)
             record_vals = record._prepare_position_sync_vals(record_vals, record)
             record_vals = record._prepare_private_phone_sync_vals(record_vals, record)
+            record_vals = record._prepare_tenenet_resource_calendar_vals(record_vals, record)
+            record_vals = record._prepare_tenenet_responsible_sync_vals(record_vals, record)
             super(HrEmployee, record).write(record_vals)
             if "monthly_gross_salary_target" in vals:
                 record.tenenet_cost_ids._sync_internal_residual_expense()
+        if "user_id" in vals:
+            (previous_users | self.mapped("user_id"))._tenenet_sync_hr_project_admin_group_membership()
         return True
 
     def _tenenet_can_read_private_card_fields(self):
-        if self._tenenet_is_hr_manager():
+        if self._tenenet_can_view_all_employee_cards():
             return True
         current_user = self.env.user
         employees = self._tenenet_private_card_access_records()
@@ -847,7 +1091,7 @@ class HrEmployee(models.Model):
 
     @api.model
     def _tenenet_private_form_page_names(self):
-        return ("personal_information", "payroll_information", "hr_settings")
+        return ("personal_information",)
 
     @api.model
     def _tenenet_should_expand_private_form_view(self, view_type):
@@ -860,27 +1104,29 @@ class HrEmployee(models.Model):
 
     @api.model
     def _tenenet_prepare_readonly_private_form_page(self, page):
+        readonly_mode = not self._tenenet_can_edit_all_employee_cards()
         page.set(
             "invisible",
-            "not (tenenet_is_card_owner or tenenet_is_employee_higher_up or tenenet_is_project_manager_viewer)",
+            "not (tenenet_is_card_owner or tenenet_is_employee_higher_up or tenenet_is_project_manager_viewer or tenenet_is_hr_card_admin_viewer)",
         )
 
         for node in page.xpath(".//*[@groups]"):
             node.attrib.pop("groups", None)
 
-        for button in page.xpath(".//button | .//a[@type]"):
-            parent = button.getparent()
-            if parent is not None:
-                parent.remove(button)
+        if readonly_mode:
+            for button in page.xpath(".//button | .//a[@type]"):
+                parent = button.getparent()
+                if parent is not None:
+                    parent.remove(button)
 
-        for arch_node in page.xpath(".//list | .//form | .//kanban"):
-            arch_node.attrib.pop("editable", None)
-            arch_node.set("create", "False")
-            arch_node.set("edit", "False")
-            arch_node.set("delete", "False")
+            for arch_node in page.xpath(".//list | .//form | .//kanban"):
+                arch_node.attrib.pop("editable", None)
+                arch_node.set("create", "False")
+                arch_node.set("edit", "False")
+                arch_node.set("delete", "False")
 
-        for field_node in page.xpath(".//field"):
-            field_node.set("readonly", "1")
+            for field_node in page.xpath(".//field"):
+                field_node.set("readonly", "1")
 
         return page
 
@@ -1098,12 +1344,13 @@ class HrEmployee(models.Model):
 
     @api.depends_context("uid")
     def _compute_can_manage_services(self):
-        is_hr_manager = self._tenenet_is_hr_manager()
+        is_hr_manager = self._tenenet_can_edit_all_employee_cards()
         for rec in self:
             rec.can_manage_services = bool(is_hr_manager)
 
     @api.depends(
         "user_id",
+        "user_id.group_ids",
         "service_manager_user_ids",
         "assignment_ids.is_current",
         "assignment_ids.project_id.active",
@@ -1112,16 +1359,76 @@ class HrEmployee(models.Model):
     @api.depends_context("uid")
     def _compute_tenenet_employee_access_flags(self):
         current_user = self.env.user
-        is_hr_manager = self._tenenet_is_hr_manager()
+        can_edit_all_cards = self._tenenet_can_edit_all_employee_cards()
+        can_view_all_cards = self._tenenet_can_view_all_employee_cards()
         for rec in self:
             is_owner = bool(rec.user_id and rec.user_id == current_user)
             is_higher_up = bool(rec.service_manager_user_ids.filtered(lambda user: user == current_user))
             is_project_manager_viewer = rec._tenenet_is_project_manager_employee_user(current_user)
+            is_hr_card_admin_viewer = bool(can_view_all_cards)
             rec.tenenet_is_card_owner = is_owner
             rec.tenenet_is_employee_higher_up = is_higher_up
             rec.tenenet_is_project_manager_viewer = is_project_manager_viewer
-            rec.tenenet_can_edit_self_employee_fields = bool(is_hr_manager or is_owner)
-            rec.tenenet_can_request_employee_update = bool(is_hr_manager or is_owner)
+            rec.tenenet_is_hr_card_admin_viewer = is_hr_card_admin_viewer
+            rec.tenenet_can_edit_self_employee_fields = bool(
+                can_edit_all_cards or (is_owner and not is_hr_card_admin_viewer)
+            )
+            rec.tenenet_can_request_employee_update = bool(
+                can_edit_all_cards or (is_owner and not is_hr_card_admin_viewer)
+            )
+
+    @api.depends("user_id", "user_id.group_ids")
+    def _compute_tenenet_hr_card_role_fields(self):
+        for rec in self:
+            user = rec.user_id
+            if not user:
+                rec.tenenet_hr_card_role = "none"
+                rec.tenenet_hr_card_access_note = "Bez osobitnej HR roly."
+                continue
+            role_code = user._tenenet_get_hr_card_role_code() or "none"
+            rec.tenenet_hr_card_role = role_code
+            rec.tenenet_hr_card_access_note = {
+                "super_admin": "Vidí a upravuje všetky HR karty.",
+                "admin": "Vidí a upravuje všetky HR karty okrem Super admin používateľov.",
+                "project_admin": "Vidí všetky HR karty, ale needituje nič.",
+                "none": "Bez osobitnej HR roly.",
+            }[role_code]
+
+    def _compute_tenenet_responsible_user_ids(self):
+        for rec in self:
+            rec.tenenet_responsible_user_ids = rec._tenenet_get_responsible_user_candidates()
+
+    @api.depends("parent_id", "parent_id.user_id", "company_id")
+    def _compute_expense_manager(self):
+        for employee in self:
+            parent_user = employee.parent_id.user_id
+            previous_parent_user = employee._origin.parent_id.user_id
+            preferred_user = (
+                employee.expense_manager_id
+                if employee.expense_manager_id and employee.expense_manager_id != previous_parent_user
+                else parent_user
+            )
+            candidates = employee._tenenet_get_responsible_user_candidates()
+            employee.expense_manager_id = self._tenenet_pick_primary_responsible_user(
+                candidates,
+                preferred_user=preferred_user,
+            )
+
+    @api.depends("parent_id", "parent_id.user_id", "company_id")
+    def _compute_leave_manager(self):
+        for employee in self:
+            parent_user = employee.parent_id.user_id
+            previous_parent_user = employee._origin.parent_id.user_id
+            preferred_user = (
+                employee.leave_manager_id
+                if employee.leave_manager_id and employee.leave_manager_id != previous_parent_user
+                else parent_user
+            )
+            candidates = employee._tenenet_get_responsible_user_candidates()
+            employee.leave_manager_id = self._tenenet_pick_primary_responsible_user(
+                candidates,
+                preferred_user=preferred_user,
+            )
 
     def action_tenenet_open_employee_update_request_wizard(self):
         self.ensure_one()
@@ -1140,7 +1447,7 @@ class HrEmployee(models.Model):
 
     def _get_private_phone_access_map(self, user=None):
         current_user = user or self.env.user
-        if current_user.has_group("hr.group_hr_manager") or current_user.has_group("base.group_system"):
+        if current_user._tenenet_get_hr_card_role_level() >= 1 or current_user.has_group("base.group_system"):
             return {employee.id: True for employee in self}
 
         access_map = {}

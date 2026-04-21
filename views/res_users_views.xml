@@ -11,9 +11,9 @@
                             <field
                                 name="bio"
                                 nolabel="1"
-                                widget="text"
-                                placeholder="Predstavte stručne svoje skúsenosti, zameranie a oblasť práce."
-                                class="o_tenenet_resume_text"
+                                widget="html"
+                                options="{'style-inline': True}"
+                                class="o_tenenet_resume_html"
                             />
                         </group>
                     </page>
