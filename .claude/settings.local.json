@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -1 /Users/oliver/odoo-dev/addons/tenenet_projects/models/*.py)",
+      "Bash(find /Users/oliver/odoo-dev/enterprise/odoo/addons/hr_holidays -type f -name *views.xml)",
+      "Bash(find /Users/oliver/odoo-dev/odoo/addons/hr_holidays -type f -name *views.xml)",
+      "Bash(find /Users/oliver/odoo-dev/addons -type f -name *.py)",
+      "Bash(xargs -I {} find {} -name *.xml -exec grep -l \"public.*holiday\\\\|global.*leave\" {})",
+      "Bash(2)",
+      "Bash(find /Users/oliver/odoo-dev -type f \\\\\\(-name *.xml -o -name *.js \\\\\\))"
+    ]
+  }
+}
