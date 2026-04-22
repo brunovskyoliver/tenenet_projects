@@ -81,6 +81,19 @@ class TenenetProjectAssignment(models.Model):
         compute="_compute_effective_work_ratio",
         help="Skutočný úväzok na projekte po zohľadnení celkového úväzku zamestnanca.",
     )
+    ratio_month_ids = fields.One2many(
+        "tenenet.project.assignment.ratio.month",
+        "assignment_id",
+        string="Mesačný alokačný plán",
+    )
+    has_explicit_ratio_plan = fields.Boolean(
+        string="Má mesačný alokačný plán",
+        compute="_compute_has_explicit_ratio_plan",
+    )
+    ratio_planner_state = fields.Json(
+        string="Alokačný planner",
+        compute="_compute_ratio_planner_state",
+    )
     wage_hm = fields.Float(
         string="Hodinová mzda HM (brutto)",
         digits=(10, 4),
@@ -143,10 +156,24 @@ class TenenetProjectAssignment(models.Model):
 
     CCP_MULTIPLIER = 1.362
 
-    @api.depends("employee_id.work_ratio", "allocation_ratio")
+    @api.depends("employee_id.work_ratio", "allocation_ratio", "ratio_month_ids.allocation_ratio", "ratio_month_ids.period")
     def _compute_effective_work_ratio(self):
+        current_period = fields.Date.context_today(self).replace(day=1)
         for rec in self:
-            rec.effective_work_ratio = rec.allocation_ratio or 0.0
+            rec.effective_work_ratio = rec._get_effective_allocation_ratio(current_period) if rec.id else (rec.allocation_ratio or 0.0)
+
+    @api.depends("ratio_month_ids")
+    def _compute_has_explicit_ratio_plan(self):
+        for rec in self:
+            rec.has_explicit_ratio_plan = bool(rec.ratio_month_ids)
+
+    def _compute_ratio_planner_state(self):
+        current_year = fields.Date.context_today(self).year
+        for rec in self:
+            rec.ratio_planner_state = {
+                "assignment_id": rec.id or False,
+                "current_year": current_year,
+            }
 
     @api.depends("wage_hm", "max_monthly_wage_hm")
     def _compute_ccp_fields(self):
@@ -159,10 +186,11 @@ class TenenetProjectAssignment(models.Model):
         for rec in self:
             rec.timesheet_count = len(rec.timesheet_ids)
 
-    @api.depends("employee_id.name", "project_id.name", "program_id.name", "allocation_ratio")
+    @api.depends("employee_id.name", "project_id.name", "program_id.name", "allocation_ratio", "effective_work_ratio")
     def _compute_name(self):
         for rec in self:
-            ratio = f"{rec.allocation_ratio:.0f} %" if rec.allocation_ratio else "0 %"
+            display_ratio = rec.effective_work_ratio if rec.id else rec.allocation_ratio
+            ratio = f"{display_ratio:.0f} %" if display_ratio else "0 %"
             fallback_program = rec.project_id._get_effective_reporting_program()
             program = rec.program_id.display_name or fallback_program.display_name or "-"
             rec.name = f"{rec.employee_id.name or '-'} / {rec.project_id.name or '-'} / {program} / {ratio}"
@@ -252,6 +280,20 @@ class TenenetProjectAssignment(models.Model):
             return False
         return True
 
+    def _get_effective_allocation_ratio(self, period):
+        self.ensure_one()
+        if not period:
+            return self.allocation_ratio or 0.0
+        normalized_period = _month_start(fields.Date.to_date(period))
+        explicit = self.ratio_month_ids.filtered(lambda line: line.period == normalized_period)[:1]
+        if explicit:
+            return explicit.allocation_ratio or 0.0
+        return self.allocation_ratio or 0.0
+
+    def _get_effective_work_ratio_for_period(self, period):
+        self.ensure_one()
+        return self._get_effective_allocation_ratio(period)
+
     def _get_fixed_salary_share(self, period):
         self.ensure_one()
         if not self._is_active_in_period(period):
@@ -259,7 +301,7 @@ class TenenetProjectAssignment(models.Model):
         target_ccp = self.employee_id._get_effective_monthly_gross_salary_target(period) or 0.0
         if target_ccp <= 0.0:
             return 0.0
-        return target_ccp * ((self.allocation_ratio or 0.0) / 100.0)
+        return target_ccp * (self._get_effective_allocation_ratio(period) / 100.0)
 
     def _get_fixed_salary_share_hm(self, period):
         self.ensure_one()
@@ -268,7 +310,88 @@ class TenenetProjectAssignment(models.Model):
         target_hm = self.employee_id._get_effective_monthly_gross_salary_target_hm(period) or 0.0
         if target_hm <= 0.0:
             return 0.0
-        return target_hm * ((self.allocation_ratio or 0.0) / 100.0)
+        return target_hm * (self._get_effective_allocation_ratio(period) / 100.0)
+
+    def _get_ratio_plan_years(self):
+        self.ensure_one()
+        years = set(self.ratio_month_ids.mapped("year"))
+        years |= set(self._get_expected_years())
+        years.add(fields.Date.context_today(self).year)
+        return sorted(year for year in years if year)
+
+    def get_ratio_planner_data(self, year=None):
+        self.ensure_one()
+        selected_year = int(year or fields.Date.context_today(self).year)
+        fallback_ratio = self.allocation_ratio or 0.0
+        explicit_by_month = {
+            line.month: line.allocation_ratio or 0.0
+            for line in self.ratio_month_ids.filtered(lambda item: item.year == selected_year)
+        }
+        months = {}
+        explicit_months = []
+        for month in range(1, 13):
+            is_explicit = month in explicit_by_month
+            months[str(month)] = explicit_by_month[month] if is_explicit else fallback_ratio
+            if is_explicit:
+                explicit_months.append(month)
+        return {
+            "assignment_id": self.id,
+            "project_id": self.project_id.id,
+            "employee_id": self.employee_id.id,
+            "year": selected_year,
+            "available_years": self._get_ratio_plan_years(),
+            "label": self.display_name,
+            "project_name": self.project_id.display_name or "",
+            "employee_name": self.employee_id.display_name or "",
+            "fallback_ratio": fallback_ratio,
+            "months": months,
+            "explicit_months": explicit_months,
+        }
+
+    def set_month_ratios(self, year, month_ratios):
+        self.ensure_one()
+        if not isinstance(month_ratios, dict):
+            raise ValidationError("Mesačný alokačný plán musí byť zadaný ako mapa mesiacov.")
+        selected_year = int(year or fields.Date.context_today(self).year)
+        RatioMonth = self.env["tenenet.project.assignment.ratio.month"]
+        touched_periods = set()
+        for month_key, ratio in month_ratios.items():
+            month = int(month_key)
+            if month < 1 or month > 12:
+                raise ValidationError("Mesiace alokačného plánu musia byť v rozsahu 1 až 12.")
+            ratio_value = round(float(ratio or 0.0), 2)
+            if ratio_value < 0.0 or ratio_value > 100.0:
+                raise ValidationError("Mesačný úväzok musí byť v rozsahu 0 až 100 %.")
+            period = date(selected_year, month, 1)
+            touched_periods.add(period)
+            existing = self.ratio_month_ids.filtered(lambda line: line.period == period)[:1]
+            if existing:
+                existing.allocation_ratio = ratio_value
+            else:
+                RatioMonth.create({
+                    "assignment_id": self.id,
+                    "period": period,
+                    "allocation_ratio": ratio_value,
+                })
+        self._after_ratio_plan_changed(touched_periods)
+        return True
+
+    def clear_month_ratios(self, year, months):
+        self.ensure_one()
+        selected_year = int(year or fields.Date.context_today(self).year)
+        normalized_months = {int(month) for month in months}
+        periods = {date(selected_year, month, 1) for month in normalized_months}
+        self.ratio_month_ids.filtered(lambda line: line.period in periods).unlink()
+        self._after_ratio_plan_changed(periods)
+        return True
+
+    def _after_ratio_plan_changed(self, periods=None):
+        if not self:
+            return
+        periods = {fields.Date.to_date(period).replace(day=1) for period in (periods or []) if period}
+        self._check_capacity_for_periods(periods)
+        Cost = self.env["tenenet.employee.tenenet.cost"].sudo()
+        Cost._sync_for_assignments_periods(self, periods=periods or None)
 
     def _get_hours_salary_share(self, period):
         self.ensure_one()
@@ -489,6 +612,42 @@ class TenenetProjectAssignment(models.Model):
             self.date_end or self.project_id.date_end,
         )
 
+    def _get_capacity_check_periods(self, assignments):
+        periods = {fields.Date.context_today(self).replace(day=1)}
+        for assignment in assignments:
+            periods.update(assignment.ratio_month_ids.mapped("period"))
+            expected = assignment._get_expected_periods()
+            if expected:
+                periods.update(expected)
+        return {period for period in periods if period}
+
+    def _check_capacity_for_periods(self, extra_periods=None):
+        extra_periods = {fields.Date.to_date(period).replace(day=1) for period in (extra_periods or []) if period}
+        for rec in self:
+            if not rec.active or not rec.employee_id:
+                continue
+            start, end = rec._get_effective_date_range()
+            overlapping_assignments = self.with_context(active_test=False).search([
+                ("employee_id", "=", rec.employee_id.id),
+                ("active", "=", True),
+            ])
+            overlapping_assignments = overlapping_assignments.filtered(
+                lambda assignment: _ranges_overlap(start, end, *assignment._get_effective_date_range())
+            )
+            periods = rec._get_capacity_check_periods(overlapping_assignments) | extra_periods
+            max_ratio = rec.employee_id.work_ratio or 0.0
+            for period in periods:
+                active_assignments = overlapping_assignments.filtered(lambda assignment: assignment._is_active_in_period(period))
+                total_ratio = sum(
+                    assignment._get_effective_allocation_ratio(period)
+                    for assignment in active_assignments
+                )
+                if total_ratio > max_ratio:
+                    raise ValidationError(
+                        "Súčet projektových úväzkov v mesiaci %s nesmie prekročiť úväzok zamestnanca (%s %%)."
+                        % (period.strftime("%m/%Y"), f"{max_ratio:.2f}")
+                    )
+
     @api.constrains(
         "active",
         "employee_id",
@@ -528,6 +687,7 @@ class TenenetProjectAssignment(models.Model):
                     "Súčet projektových úväzkov nesmie prekročiť úväzok zamestnanca (%s %%)."
                     % (f"{max_ratio:.2f}")
                 )
+            rec._check_capacity_for_periods()
             invalid_sites = rec.site_ids - rec.project_id.site_ids
             if invalid_sites:
                 raise ValidationError(

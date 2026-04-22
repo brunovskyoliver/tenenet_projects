@@ -240,6 +240,36 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
         self.assertAlmostEqual(cost.project_billed_ccp, expected_target_ccp * 0.5, places=2)
         self.assertAlmostEqual(cost.tenenet_residual_ccp, expected_target_ccp * 0.5, places=2)
 
+    def test_fixed_ratio_project_uses_monthly_assignment_ratio(self):
+        self.employee.write({"monthly_gross_salary_target": 2000.0, "work_ratio": 200.0})
+        self.project.write({"salary_funding_mode": "fixed_ratio"})
+        self.assignment.set_month_ratios(2026, {"8": 25.0})
+        expected_target_ccp = self.employee._get_effective_monthly_gross_salary_target("2026-08-01")
+
+        cost = self.env["tenenet.employee.tenenet.cost"]._sync_for_employee_period(
+            self.employee.id,
+            "2026-08-01",
+        )
+
+        self.assertAlmostEqual(cost.fixed_ratio_covered_ccp, expected_target_ccp * 0.25, places=2)
+        self.assertAlmostEqual(cost.tenenet_residual_ccp, expected_target_ccp * 0.75, places=2)
+
+    def test_fixed_ratio_residual_updates_when_monthly_ratio_changes(self):
+        self.employee.write({"monthly_gross_salary_target": 2000.0, "work_ratio": 200.0})
+        self.project.write({"salary_funding_mode": "fixed_ratio"})
+        expected_target_ccp = self.employee._get_effective_monthly_gross_salary_target("2026-08-01")
+        self.assignment.set_month_ratios(2026, {"8": 25.0})
+        cost = self.env["tenenet.employee.tenenet.cost"]._sync_for_employee_period(
+            self.employee.id,
+            "2026-08-01",
+        )
+
+        self.assignment.set_month_ratios(2026, {"8": 75.0})
+        cost.invalidate_recordset()
+
+        self.assertAlmostEqual(cost.fixed_ratio_covered_ccp, expected_target_ccp * 0.75, places=2)
+        self.assertAlmostEqual(cost.tenenet_residual_ccp, expected_target_ccp * 0.25, places=2)
+
     def test_fixed_ratio_overallocation_scales_to_monthly_target(self):
         self.employee.write({"monthly_gross_salary_target": 1000.0, "work_ratio": 200.0})
         self.project.write({"salary_funding_mode": "fixed_ratio"})

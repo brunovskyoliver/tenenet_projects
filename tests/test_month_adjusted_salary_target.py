@@ -85,6 +85,16 @@ class TestMonthAdjustedSalaryTarget(TransactionCase):
         self.assertAlmostEqual(cost.fixed_ratio_covered_ccp, 1050.0, places=2)
         self.assertAlmostEqual(cost.tenenet_residual_ccp, 1050.0, places=2)
 
+    def test_fixed_ratio_uses_period_specific_monthly_ratio(self):
+        self.project.write({"salary_funding_mode": "fixed_ratio"})
+        self.assignment.set_month_ratios(2030, {"1": 25.0, "2": 75.0})
+
+        jan_target = self.employee._get_effective_monthly_gross_salary_target("2030-01-01")
+        feb_target = self.employee._get_effective_monthly_gross_salary_target("2030-02-01")
+
+        self.assertAlmostEqual(self.assignment._get_fixed_salary_share("2030-01-01"), jan_target * 0.25, places=2)
+        self.assertAlmostEqual(self.assignment._get_fixed_salary_share("2030-02-01"), feb_target * 0.75, places=2)
+
     def test_hourly_rate_uses_effective_period_target(self):
         self._create_public_holiday("2030-01-01", name="Deň vzniku Slovenskej republiky")
         self._create_public_holiday("2030-01-03", name="Zjavenie Pána")

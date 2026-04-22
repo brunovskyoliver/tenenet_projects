@@ -14,8 +14,17 @@ class TestTenenetPlan08ProjectAssignment(TransactionCase):
             "work_ratio": 100.0,
         })
         self.employee2 = self.env["hr.employee"].create({"name": "Zamestnanec 2 Priradenie"})
-        self.project = self.env["tenenet.project"].create({"name": "Testovací projekt"})
-        self.project2 = self.env["tenenet.project"].create({"name": "Testovací projekt 2"})
+        self.admin_program = self.env["tenenet.program"].search([("code", "=", "ADMIN_TENENET")], limit=1)
+        self.project = self.env["tenenet.project"].create({
+            "name": "Testovací projekt",
+            "program_ids": [Command.set(self.admin_program.ids)],
+            "reporting_program_id": self.admin_program.id,
+        })
+        self.project2 = self.env["tenenet.project"].create({
+            "name": "Testovací projekt 2",
+            "program_ids": [Command.set(self.admin_program.ids)],
+            "reporting_program_id": self.admin_program.id,
+        })
         self.company = self.env.company
         base_user_group = self.env.ref("base.group_user")
         tenenet_user_group = self.env.ref("tenenet_projects.group_tenenet_user")
@@ -88,6 +97,94 @@ class TestTenenetPlan08ProjectAssignment(TransactionCase):
 
         self.assertIn('name="settlement_only"', project_arch)
         self.assertIn('name="settlement_only"', assignment_arch)
+
+    def test_assignment_form_contains_ratio_planner(self):
+        assignment_arch = self.env["tenenet.project.assignment"].get_view(
+            view_id=self.env.ref("tenenet_projects.view_tenenet_project_assignment_form").id,
+            view_type="form",
+        )["arch"]
+
+        self.assertIn('name="ratio_planner_state"', assignment_arch)
+        self.assertIn('widget="tenenet_assignment_ratio_planner"', assignment_arch)
+
+    def test_monthly_ratio_overrides_scalar_fallback(self):
+        assignment = self.env["tenenet.project.assignment"].create(self._assignment_vals(allocation_ratio=50.0))
+        ratio_month = self.env["tenenet.project.assignment.ratio.month"].create({
+            "assignment_id": assignment.id,
+            "period": "2026-01-15",
+            "allocation_ratio": 25.0,
+        })
+
+        self.assertEqual(ratio_month.period.isoformat(), "2026-01-01")
+        self.assertAlmostEqual(assignment._get_effective_allocation_ratio("2026-01-01"), 25.0)
+        self.assertAlmostEqual(assignment._get_effective_allocation_ratio("2026-02-01"), 50.0)
+
+    def test_monthly_ratio_allows_explicit_zero(self):
+        assignment = self.env["tenenet.project.assignment"].create(self._assignment_vals(allocation_ratio=50.0))
+
+        assignment.set_month_ratios(2026, {"1": 0.0})
+
+        self.assertAlmostEqual(assignment._get_effective_allocation_ratio("2026-01-01"), 0.0)
+        self.assertAlmostEqual(assignment._get_effective_allocation_ratio("2026-02-01"), 50.0)
+
+    def test_duplicate_monthly_ratio_rejected(self):
+        assignment = self.env["tenenet.project.assignment"].create(self._assignment_vals(allocation_ratio=50.0))
+        self.env["tenenet.project.assignment.ratio.month"].create({
+            "assignment_id": assignment.id,
+            "period": "2026-01-01",
+            "allocation_ratio": 25.0,
+        })
+
+        with self.cr.savepoint():
+            with self.assertRaises(IntegrityError):
+                self.env["tenenet.project.assignment.ratio.month"].create({
+                    "assignment_id": assignment.id,
+                    "period": "2026-01-20",
+                    "allocation_ratio": 30.0,
+                })
+
+    def test_monthly_ratio_capacity_rejects_overallocated_month(self):
+        self.env["tenenet.project.assignment"].create(self._assignment_vals(allocation_ratio=60.0))
+        second = self.env["tenenet.project.assignment"].create(
+            self._assignment_vals(project_id=self.project2.id, allocation_ratio=40.0)
+        )
+
+        with self.assertRaises(ValidationError):
+            second.set_month_ratios(2026, {"1": 50.0})
+
+    def test_non_overlapping_monthly_ratios_can_exceed_across_time(self):
+        first = self.env["tenenet.project.assignment"].create(
+            self._assignment_vals(
+                allocation_ratio=100.0,
+                date_start="2026-01-01",
+                date_end="2026-06-30",
+            )
+        )
+        second = self.env["tenenet.project.assignment"].create(
+            self._assignment_vals(
+                project_id=self.project2.id,
+                allocation_ratio=100.0,
+                date_start="2026-07-01",
+                date_end="2026-12-31",
+            )
+        )
+        first.set_month_ratios(2026, {"1": 100.0})
+        second.set_month_ratios(2026, {"7": 100.0})
+
+        self.assertAlmostEqual(first._get_effective_allocation_ratio("2026-01-01"), 100.0)
+        self.assertAlmostEqual(second._get_effective_allocation_ratio("2026-07-01"), 100.0)
+
+    def test_ratio_planner_payload_contains_expected_keys(self):
+        assignment = self.env["tenenet.project.assignment"].create(self._assignment_vals(allocation_ratio=50.0))
+        assignment.set_month_ratios(2026, {"1": 25.0})
+
+        data = assignment.get_ratio_planner_data(2026)
+
+        self.assertEqual(data["fallback_ratio"], 50.0)
+        self.assertEqual(data["months"]["1"], 25.0)
+        self.assertEqual(data["months"]["2"], 50.0)
+        self.assertIn(1, data["explicit_months"])
+        self.assertIn(2026, data["available_years"])
 
     def test_non_overlapping_same_project_periods_are_allowed(self):
         a1 = self.env["tenenet.project.assignment"].create(

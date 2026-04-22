@@ -42,6 +42,7 @@ from . import tenenet_operating_cost_pool
 from . import tenenet_operating_cost_allocation
 from . import tenenet_pl_reporting_support
 from . import tenenet_pl_program_override
+from . import tenenet_project_assignment_ratio_month
 from . import tenenet_project_assignment
 from . import tenenet_project_assignment_wizard
 from . import tenenet_project_assignment_remove_wizard

@@ -139,6 +139,17 @@
                                     </list>
                                 </field>
                             </page>
+                            <page string="Alokačný plán">
+                                <group>
+                                    <field name="has_explicit_ratio_plan" readonly="1" />
+                                </group>
+                                <field
+                                    name="ratio_planner_state"
+                                    widget="tenenet_assignment_ratio_planner"
+                                    nolabel="1"
+                                    readonly="1"
+                                />
+                            </page>
                         </notebook>
                     </sheet>
                 </form>

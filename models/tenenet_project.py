@@ -1117,7 +1117,7 @@ class TenenetProject(models.Model):
             if shifted_cashflow_amounts:
                 cloned_receipt.set_cashflow_month_amounts(cloned_receipt.year, shifted_cashflow_amounts)
         for assignment in source_project.assignment_ids.filtered(lambda rec: rec.active):
-            Assignment.create({
+            cloned_assignment = Assignment.create({
                 "employee_id": assignment.employee_id.id,
                 "project_id": new_project.id,
                 "program_id": assignment.program_id.id or False,
@@ -1130,6 +1130,14 @@ class TenenetProject(models.Model):
                 "max_monthly_wage_hm": assignment.max_monthly_wage_hm,
                 "active": assignment.active,
             })
+            for ratio_month in assignment.ratio_month_ids:
+                cloned_period = self._shift_date_by_recurrence(ratio_month.period)
+                if cloned_period:
+                    self.env["tenenet.project.assignment.ratio.month"].create({
+                        "assignment_id": cloned_assignment.id,
+                        "period": cloned_period,
+                        "allocation_ratio": ratio_month.allocation_ratio,
+                    })
 
     def _run_recurring_clone(self, force=False):
         self.ensure_one()
@@ -1309,13 +1317,14 @@ class TenenetProject(models.Model):
 
     def _get_current_program_allocation_rows(self):
         self.ensure_one()
+        current_period = fields.Date.context_today(self).replace(day=1)
         assignments = self.assignment_ids.filtered(
             lambda rec: rec.active and rec.program_id and rec.program_id.code != self.ADMIN_TENENET_PROGRAM_CODE
         )
         totals = {}
         total_ratio = 0.0
         for assignment in assignments:
-            ratio = assignment.effective_work_ratio or assignment.allocation_ratio or 0.0
+            ratio = assignment._get_effective_work_ratio_for_period(current_period)
             bucket = totals.setdefault(
                 assignment.program_id.id,
                 {
@@ -1337,6 +1346,8 @@ class TenenetProject(models.Model):
         "assignment_ids.active",
         "assignment_ids.program_id",
         "assignment_ids.allocation_ratio",
+        "assignment_ids.ratio_month_ids.allocation_ratio",
+        "assignment_ids.ratio_month_ids.period",
         "assignment_ids.effective_work_ratio",
     )
     def _compute_allocation_summary_html(self):

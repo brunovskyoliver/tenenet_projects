@@ -1721,6 +1721,8 @@ class HrEmployee(models.Model):
         "work_ratio",
         "assignment_ids.active",
         "assignment_ids.allocation_ratio",
+        "assignment_ids.ratio_month_ids.allocation_ratio",
+        "assignment_ids.ratio_month_ids.period",
         "assignment_ids.date_start",
         "assignment_ids.date_end",
         "assignment_ids.is_current",
@@ -1728,10 +1730,14 @@ class HrEmployee(models.Model):
         "assignment_ids.project_id.date_end",
     )
     def _compute_tenenet_assignment_availability(self):
+        current_period = fields.Date.context_today(self).replace(day=1)
         for rec in self:
             active_assignments = rec.assignment_ids.filtered(lambda assignment: assignment.is_current)
             capacity_ratio = rec.work_ratio or 0.0
-            total_ratio = sum(active_assignments.mapped("allocation_ratio"))
+            total_ratio = sum(
+                assignment._get_effective_work_ratio_for_period(current_period)
+                for assignment in active_assignments
+            )
             rec.tenenet_allocation_ratio_total = total_ratio
             rec.tenenet_actual_work_ratio = total_ratio
             rec.tenenet_active_assignment_count = len(active_assignments)

@@ -440,7 +440,8 @@ class TenenetUtilizationReportBaseMixin:
         }
 
     def _get_assignment_metrics(self, employee, assignment, timesheet, utilization=None):
-        allocation_ratio = assignment.allocation_ratio or 0.0
+        period = timesheet.period if timesheet else (utilization.period if utilization else fields.Date.context_today(self))
+        allocation_ratio = assignment._get_effective_allocation_ratio(period)
         capacity_hours = self._get_assignment_capacity_hours(employee, allocation_ratio, utilization=utilization)
         values = {
             "manager_name": employee.parent_id.name or "",

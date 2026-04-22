@@ -155,6 +155,8 @@ class TenenetEmployeeTenenetCost(models.Model):
         "employee_id.monthly_gross_salary_target",
         "employee_id.assignment_ids.project_id.salary_funding_mode",
         "employee_id.assignment_ids.allocation_ratio",
+        "employee_id.assignment_ids.ratio_month_ids.allocation_ratio",
+        "employee_id.assignment_ids.ratio_month_ids.period",
         "employee_id.assignment_ids.date_start",
         "employee_id.assignment_ids.date_end",
         "employee_id.assignment_ids.active",

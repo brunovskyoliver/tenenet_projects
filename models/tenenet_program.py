@@ -137,6 +137,7 @@ class TenenetProgram(models.Model):
                 raise ValidationError("Aktívny program musí mať nastavenú organizačnú zložku.")
 
     def _get_program_assignment_totals(self):
+        current_period = fields.Date.context_today(self).replace(day=1)
         assignments = self.env["tenenet.project.assignment"].with_context(active_test=False).search([
             ("active", "=", True),
             ("project_id.active", "=", True),
@@ -150,7 +151,7 @@ class TenenetProgram(models.Model):
             for program in self
         }
         for assignment in assignments:
-            ratio = assignment.effective_work_ratio or assignment.allocation_ratio or 0.0
+            ratio = assignment._get_effective_work_ratio_for_period(current_period)
             bucket = totals.setdefault(
                 assignment.program_id.id,
                 {"fte": 0.0, "employees": set()},
@@ -164,6 +165,8 @@ class TenenetProgram(models.Model):
         "project_ids.assignment_ids.active",
         "project_ids.assignment_ids.program_id",
         "project_ids.assignment_ids.allocation_ratio",
+        "project_ids.assignment_ids.ratio_month_ids.allocation_ratio",
+        "project_ids.assignment_ids.ratio_month_ids.period",
         "project_ids.assignment_ids.effective_work_ratio",
         "project_ids.assignment_ids.employee_id",
         "project_ids.active",
@@ -204,6 +207,8 @@ class TenenetProgram(models.Model):
         "project_ids.assignment_ids.active",
         "project_ids.assignment_ids.program_id",
         "project_ids.assignment_ids.allocation_ratio",
+        "project_ids.assignment_ids.ratio_month_ids.allocation_ratio",
+        "project_ids.assignment_ids.ratio_month_ids.period",
         "project_ids.assignment_ids.effective_work_ratio",
         "project_ids.active",
     )
@@ -237,6 +242,8 @@ class TenenetProgram(models.Model):
         "project_ids.assignment_ids.state",
         "project_ids.assignment_ids.program_id",
         "project_ids.assignment_ids.allocation_ratio",
+        "project_ids.assignment_ids.ratio_month_ids.allocation_ratio",
+        "project_ids.assignment_ids.ratio_month_ids.period",
         "project_ids.assignment_ids.effective_work_ratio",
         "project_ids.assignment_ids.employee_id",
         "project_ids.assignment_ids.timesheet_ids.period",
@@ -275,7 +282,7 @@ class TenenetProgram(models.Model):
             )
             program.dashboard_previous_month_wage_total = sum(previous_month_timesheets.mapped("total_labor_cost"))
             program.dashboard_active_fte = sum(
-                (assignment.effective_work_ratio or assignment.allocation_ratio or 0.0) / 100.0
+                assignment._get_effective_work_ratio_for_period(today) / 100.0
                 for assignment in assignments
             )
             program.dashboard_html = program._build_dashboard_html(projects, assignments, previous_month_timesheets, prev_month)
@@ -306,7 +313,7 @@ class TenenetProgram(models.Model):
                     f"<span>{amount:,.2f} {currency.symbol or ''}</span></li>".replace(",", " ")
                 )
             active_fte = sum(
-                (assignment.effective_work_ratio or assignment.allocation_ratio or 0.0) / 100.0
+                assignment._get_effective_work_ratio_for_period(prev_month) / 100.0
                 for assignment in project_assignments
             )
             previous_month_wage_total = sum(
