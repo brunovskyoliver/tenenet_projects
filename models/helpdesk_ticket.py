@@ -37,7 +37,7 @@ class HelpdeskTicket(models.Model):
         "helpdesk_ticket_tenenet_mass_assigned_employee_rel",
         "ticket_id",
         "employee_id",
-        string="Hromadne pridelení zamestnanci",
+        string="Priradený",
         copy=False,
     )
     tenenet_mass_assigned_user_ids = fields.Many2many(
@@ -45,7 +45,7 @@ class HelpdeskTicket(models.Model):
         "helpdesk_ticket_tenenet_mass_assigned_user_rel",
         "ticket_id",
         "user_id",
-        string="Hromadne pridelení používatelia",
+        string="Priradení používatelia",
         compute="_compute_tenenet_mass_assigned_user_ids",
         store=True,
         copy=False,
@@ -70,6 +70,11 @@ class HelpdeskTicket(models.Model):
     tenenet_control_user_id = fields.Many2one(
         "res.users",
         string="Kontroluje",
+        tracking=True,
+        copy=False,
+    )
+    tenenet_date_deadline = fields.Date(
+        string="Termín",
         tracking=True,
         copy=False,
     )
@@ -372,6 +377,13 @@ class HelpdeskTicket(models.Model):
         requester = self.env["res.users"].browse(requester_id)
         vals.setdefault("tenenet_requested_by_user_id", requester.id)
         vals.setdefault("user_id", requester.id)
+        if "tenenet_mass_assigned_employee_ids" not in vals:
+            assignee = self.env["res.users"].browse(vals.get("user_id")) or requester
+            employees = assignee.employee_ids.filtered(
+                lambda employee: not team.company_id or not employee.company_id or employee.company_id == team.company_id
+            )
+            if employees:
+                vals["tenenet_mass_assigned_employee_ids"] = [Command.set(employees.ids)]
         if (
             not self.env.is_superuser()
             and not self.env.context.get("allow_tenenet_internal_system_create")

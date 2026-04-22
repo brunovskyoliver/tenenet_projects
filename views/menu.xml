@@ -1,11 +1,9 @@
 <odoo>
     <data>
-        <menuitem id="menu_tenenet_employees_root"
-                  name="Zamestnanci"
-                  sequence="4"
-                  web_icon="tenenet_projects,static/description/employees.svg"
-                  action="action_tenenet_employees"
-                  groups="tenenet_projects.group_tenenet_manager"/>
+        <record id="menu_tenenet_employees_root" model="ir.ui.menu">
+            <field name="name">Zamestnanci</field>
+            <field name="active" eval="False"/>
+        </record>
 
         <menuitem id="menu_tenenet_clients_root"
                   name="Klienti"

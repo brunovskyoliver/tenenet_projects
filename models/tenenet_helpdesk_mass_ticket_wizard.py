@@ -141,24 +141,26 @@ class TenenetHelpdeskMassTicketWizard(models.TransientModel):
         self._check_target()
 
         current_user = self.env.user
-        ticket = self.env["helpdesk.ticket"].sudo().with_context(
-            allow_tenenet_internal_system_create=True,
-        ).create({
+        ticket_vals = {
             "name": self.name,
             "description": self.description,
             "team_id": self.team_id.id,
             "tenenet_requested_by_user_id": current_user.id,
             "user_id": current_user.id,
-            "company_id": self.team_id.company_id.id or self.env.company.id,
-        })
-        self.env["tenenet.helpdesk.subtask"].sudo().create({
-            "ticket_id": ticket.id,
-            "name": self.name,
-            "description": self.description,
-            "employee_ids": [Command.set(self.employee_ids.ids)],
+            "tenenet_mass_assigned_employee_ids": [Command.set(self.employee_ids.ids)],
+            "tenenet_date_deadline": self.date_deadline,
             "priority": self.priority,
-            "date_deadline": self.date_deadline,
-        })
+            "company_id": self.team_id.company_id.id or self.env.company.id,
+        }
+        if self.date_deadline and "date_deadline" in self.env["helpdesk.ticket"]._fields:
+            ticket_vals["date_deadline"] = self.date_deadline
+
+        ticket = self.env["helpdesk.ticket"].sudo().with_context(
+            allow_tenenet_internal_system_create=True,
+        ).create(ticket_vals)
+        partner_ids = ticket.tenenet_mass_assigned_user_ids.mapped("partner_id").ids
+        if partner_ids:
+            ticket.message_subscribe(partner_ids=partner_ids)
 
         return {
             "type": "ir.actions.act_window",

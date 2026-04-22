@@ -4,9 +4,9 @@
             <field name="name">hr.employee.tenenet.list</field>
             <field name="model">hr.employee</field>
             <field name="arch" type="xml">
-                <list string="Zamestnanci" default_order="main_site_id,tenenet_number,last_name,first_name,name">
+                <list string="Zamestnanci" default_order="main_site_id,tenenet_number,last_name,first_name,tenenet_list_name">
                     <field name="title_academic" string="Titul" optional="show" />
-                    <field name="name" />
+                    <field name="tenenet_list_name" />
                     <field name="organizational_unit_id" optional="show" />
                     <field name="main_site_id" optional="show" />
                     <field name="all_job_names" string="Pozície" optional="show" />
@@ -63,7 +63,7 @@
             <field name="model">hr.employee</field>
             <field name="arch" type="xml">
                 <search string="Zamestnanci">
-                    <field name="name" />
+                    <field name="tenenet_list_name" />
                     <field name="organizational_unit_id" />
                     <field name="job_id" />
                     <field name="main_site_id" />
@@ -806,5 +806,20 @@
                 ref="view_hr_employee_tenenet_search"
             />
         </record>
+
+        <record id="hr.open_view_employee_list_my" model="ir.actions.act_window">
+            <field name="view_mode">kanban,list,form,activity,graph,pivot</field>
+            <field name="view_id" eval="False" />
+            <field name="search_view_id" ref="hr.view_employee_filter" />
+        </record>
+
+        <record id="hr.act_hr_employee_tree_view" model="ir.actions.act_window.view">
+            <field name="sequence" eval="15" />
+            <field name="view_mode">list</field>
+            <field name="view_id" ref="view_hr_employee_tenenet_list" />
+        </record>
+
+        <function model="hr.employee" name="_remove_tenenet_employee_search_override" />
+        <function model="hr.employee" name="_sync_tenenet_display_names" />
     </data>
 </odoo>

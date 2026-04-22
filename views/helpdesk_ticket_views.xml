@@ -32,6 +32,7 @@
                     <field name="tenenet_is_helpdesk_manager" invisible="1"/>
                     <field name="tenenet_assignment_domain_user_ids" invisible="1"/>
                     <field name="tenenet_active_assigned_user_ids" invisible="1"/>
+                    <field name="tenenet_mass_assigned_user_ids" invisible="1"/>
                     <field name="tenenet_open_subtask_count" invisible="1"/>
                     <field name="tenenet_done_subtask_count" invisible="1"/>
                     <field name="tenenet_can_confirm_followup" invisible="1"/>
@@ -81,6 +82,7 @@
                 </field>
                 <field name="user_id" position="attributes">
                     <attribute name="domain">[('id', 'in', tenenet_assignment_domain_user_ids)]</attribute>
+                    <attribute name="invisible">tenenet_is_internal_team</attribute>
                 </field>
                 <field name="description" position="after">
                     <div class="o_horizontal_separator mt-3 mb-2 text-uppercase fw-bolder small"
@@ -203,13 +205,15 @@
                 </notebook>
                 <field name="domain_user_ids" position="after">
                     <field
-                        name="tenenet_active_assigned_user_ids"
-                        widget="many2many_tags"
-                        optional="show"
-                        readonly="1"
+                        name="tenenet_mass_assigned_employee_ids"
+                        string="Priradený"
+                        widget="many2many_avatar_employee"
+                        context="{'active_test': True}"
+                        domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]"
                         invisible="not tenenet_is_internal_team"
                     />
                     <field name="tenenet_requested_by_user_id" readonly="1" invisible="not tenenet_is_internal_team"/>
+                    <field name="tenenet_date_deadline" invisible="not tenenet_is_internal_team"/>
                     <field
                         name="tenenet_followup_user_id"
                         widget="many2one_avatar_user"
@@ -240,9 +244,13 @@
                     <field name="legend_blocked" column_invisible="True"/>
                     <field name="legend_done" column_invisible="True"/>
                     <field name="tenenet_active_assigned_user_ids" column_invisible="True"/>
+                    <field name="tenenet_mass_assigned_user_ids" column_invisible="True"/>
+                </field>
+                <field name="user_id" position="attributes">
+                    <attribute name="optional">hide</attribute>
                 </field>
                 <field name="user_id" position="after">
-                    <field name="tenenet_active_assigned_user_ids" optional="hide" widget="many2many_tags"/>
+                    <field name="tenenet_mass_assigned_employee_ids" string="Priradený" optional="show" widget="many2many_avatar_employee"/>
                     <field name="tenenet_requested_by_user_id" optional="hide"/>
                     <field name="tenenet_followup_user_id" optional="hide" widget="many2one_avatar_user"/>
                     <field name="tenenet_control_user_id" optional="hide" widget="many2one_avatar_user"/>
@@ -261,6 +269,8 @@
                     <field name="legend_done"/>
                     <field name="tenenet_is_internal_team"/>
                     <field name="tenenet_active_assigned_user_ids"/>
+                    <field name="tenenet_mass_assigned_employee_ids"/>
+                    <field name="tenenet_mass_assigned_user_ids"/>
                     <field name="tenenet_requested_by_user_id"/>
                     <field name="tenenet_followup_user_id"/>
                     <field name="tenenet_control_user_id"/>
@@ -280,8 +290,8 @@
                         <div class="text-muted small">
                             Vytvoril: <field name="tenenet_requested_by_user_id"/>
                         </div>
-                        <div class="text-muted small" t-if="record.tenenet_active_assigned_user_ids.raw_value.length">
-                            Aktívne pridelení: <field name="tenenet_active_assigned_user_ids" widget="many2many_tags"/>
+                        <div class="text-muted small" t-if="record.tenenet_mass_assigned_employee_ids.raw_value.length">
+                            Priradení: <field name="tenenet_mass_assigned_employee_ids" widget="many2many_tags"/>
                         </div>
                         <div
                             class="text-muted small"

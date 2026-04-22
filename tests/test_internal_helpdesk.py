@@ -160,6 +160,7 @@ class TestTenenetInternalHelpdesk(TransactionCase):
 
         self.assertEqual(ticket.tenenet_requested_by_user_id, self.requester_user)
         self.assertEqual(ticket.user_id, self.requester_user)
+        self.assertEqual(ticket.tenenet_mass_assigned_employee_ids, self.requester_employee)
 
     def test_internal_ticket_create_requires_tenenet_helpdesk_role(self):
         with self.assertRaises(AccessError):
@@ -464,8 +465,16 @@ class TestTenenetInternalHelpdesk(TransactionCase):
         self.assertEqual(ticket.name, "Hromadný test")
         self.assertEqual(ticket.team_id, self.internal_team)
         self.assertEqual(ticket.tenenet_requested_by_user_id, self.helpdesk_manager_user)
-        self.assertEqual(len(ticket.tenenet_subtask_ids), 1)
-        self.assertEqual(set(ticket.tenenet_subtask_ids.employee_ids.ids), {self.manager_employee.id, self.grand_manager_employee.id})
+        self.assertEqual(str(ticket.tenenet_date_deadline), "2026-04-30")
+        self.assertFalse(ticket.tenenet_subtask_ids)
+        self.assertEqual(
+            set(ticket.tenenet_mass_assigned_employee_ids.ids),
+            {self.manager_employee.id, self.grand_manager_employee.id},
+        )
+        self.assertEqual(
+            set(ticket.tenenet_mass_assigned_user_ids.ids),
+            {self.manager_user.id, self.grand_manager_user.id},
+        )
         self.assertIn(self.manager_user, ticket.tenenet_active_assigned_user_ids)
         self.assertIn(self.grand_manager_user, ticket.tenenet_active_assigned_user_ids)
 
@@ -494,3 +503,10 @@ class TestTenenetInternalHelpdesk(TransactionCase):
         })
 
         self.assertEqual(set(wizard.employee_ids.ids), {self.manager_employee.id, self.extra_employee.id})
+        action = wizard.action_create_ticket()
+        ticket = self.env["helpdesk.ticket"].browse(action["res_id"])
+
+        self.assertFalse(ticket.tenenet_subtask_ids)
+        self.assertEqual(set(ticket.tenenet_mass_assigned_employee_ids.ids), {self.manager_employee.id, self.extra_employee.id})
+        self.assertEqual(ticket.tenenet_mass_assigned_user_ids, self.manager_user)
+        self.assertIn(self.manager_user, ticket.tenenet_active_assigned_user_ids)

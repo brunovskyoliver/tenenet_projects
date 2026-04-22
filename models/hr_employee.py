@@ -25,6 +25,11 @@ class HrEmployee(models.Model):
     title_academic = fields.Char(string="Titul")
     first_name = fields.Char(string="Krstné meno", translate=False)
     last_name = fields.Char(string="Priezvisko", translate=False)
+    tenenet_list_name = fields.Char(
+        string="Zamestnanec",
+        compute="_compute_tenenet_list_name",
+        store=True,
+    )
     position = fields.Char(string="Pozícia", translate=False)
     contract_position = fields.Char(string="Pozícia podľa pracovnej zmluvy", translate=False)
     organizational_unit_id = fields.Many2one(
@@ -370,6 +375,17 @@ class HrEmployee(models.Model):
         parts = [part.strip() for part in [first_name, last_name] if part and part.strip()]
         return " ".join(parts)
 
+    @api.depends("first_name", "last_name", "name", "title_academic")
+    def _compute_tenenet_list_name(self):
+        for employee in self:
+            list_name = employee._compose_legal_name(employee.first_name, employee.last_name)
+            if not list_name:
+                list_name = (employee.name or "").strip()
+                title = (employee.title_academic or "").strip()
+                if title and list_name.startswith(title):
+                    list_name = list_name[len(title):].strip()
+            employee.tenenet_list_name = list_name
+
     def _get_site_sequence(self):
         self.ensure_one()
         sites = []
@@ -465,6 +481,43 @@ class HrEmployee(models.Model):
         if legal_name:
             synced_vals["legal_name"] = legal_name
         return synced_vals
+
+    @api.model
+    def _sync_tenenet_display_names(self):
+        employees = self.sudo().with_context(active_test=False).search([
+            "|",
+            ("first_name", "!=", False),
+            ("last_name", "!=", False),
+        ])
+        for employee in employees:
+            synced_vals = employee._prepare_identity_sync_vals(
+                {
+                    "title_academic": employee.title_academic,
+                    "first_name": employee.first_name,
+                    "last_name": employee.last_name,
+                },
+                employee,
+            )
+            values = {
+                field_name: synced_vals[field_name]
+                for field_name in ("name", "legal_name")
+                if synced_vals.get(field_name) and employee[field_name] != synced_vals[field_name]
+            }
+            if values:
+                employee.with_context(tenenet_self_write_sudo=True).write(values)
+
+    @api.model
+    def _remove_tenenet_employee_search_override(self):
+        xmlid = "tenenet_projects.view_employee_filter_tenenet_list_name"
+        view = self.env.ref(xmlid, raise_if_not_found=False)
+        model_data = self.env["ir.model.data"].sudo().search([
+            ("module", "=", "tenenet_projects"),
+            ("name", "=", "view_employee_filter_tenenet_list_name"),
+        ], limit=1)
+        if view:
+            view.sudo().unlink()
+        if model_data:
+            model_data.unlink()
 
     @api.model
     def _find_or_create_job_position(self, position_name):
