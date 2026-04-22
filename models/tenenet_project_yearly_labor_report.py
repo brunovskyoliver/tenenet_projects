@@ -143,7 +143,7 @@ class TenenetProjectYearlyLaborReportHandler(models.AbstractModel):
             project = self.env["tenenet.project"].with_context(active_test=False).browse(project_id[0]).exists()
             if project and project in allowed_projects:
                 return project
-        return self._get_default_project(allowed_projects=allowed_projects)
+        return self._get_default_project(available_projects=allowed_projects)
 
     def _get_default_project(self, available_projects=None):
         allowed_projects = available_projects or self.env["tenenet.project"].get_report_accessible_projects()

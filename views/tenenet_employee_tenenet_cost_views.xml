@@ -10,10 +10,12 @@
                     <field name="monthly_gross_salary_target"/>
                     <field name="monthly_gross_salary_target_hm"/>
                     <field name="gross_salary_employee" optional="hide"/>
-                    <field name="project_billed_gross" readonly="1"/>
+                    <field name="project_billed_gross" string="Projektom krytá HM" readonly="1"/>
+                    <field name="hours_covered_ccp" optional="hide" readonly="1"/>
+                    <field name="fixed_ratio_covered_ccp" optional="hide" readonly="1"/>
                     <field name="tenenet_residual_hm" readonly="1"/>
                     <field name="total_labor_cost_employee" optional="hide"/>
-                    <field name="project_billed_ccp" readonly="1"/>
+                    <field name="project_billed_ccp" string="Projektom krytá CCP" readonly="1"/>
                     <field name="tenenet_residual_ccp" readonly="1"/>
                     <field name="currency_id" column_invisible="1"/>
                 </list>
@@ -39,12 +41,16 @@
                         </group>
                         <group string="Hrubá mzda / HM (brutto)">
                             <field name="gross_salary_employee"/>
-                            <field name="project_billed_gross" readonly="1"/>
+                            <field name="project_billed_gross" string="Projektom krytá HM" readonly="1"/>
+                            <field name="hours_covered_hm" readonly="1"/>
+                            <field name="fixed_ratio_covered_hm" readonly="1"/>
                             <field name="tenenet_residual_hm" readonly="1"/>
                         </group>
                         <group string="Celková cena práce (CCP)">
                             <field name="total_labor_cost_employee"/>
-                            <field name="project_billed_ccp" readonly="1"/>
+                            <field name="project_billed_ccp" string="Projektom krytá CCP" readonly="1"/>
+                            <field name="hours_covered_ccp" readonly="1"/>
+                            <field name="fixed_ratio_covered_ccp" readonly="1"/>
                             <field name="tenenet_residual_ccp" readonly="1"/>
                         </group>
                     </sheet>

@@ -240,6 +240,55 @@ class TenenetProjectAssignment(models.Model):
             return True
         return _month_start(period) in set(periods)
 
+    def _is_active_in_period(self, period):
+        self.ensure_one()
+        if not self.active:
+            return False
+        normalized_period = _month_start(fields.Date.to_date(period))
+        start, end = self._get_effective_date_range()
+        if start and _month_start(start) > normalized_period:
+            return False
+        if end and _month_start(end) < normalized_period:
+            return False
+        return True
+
+    def _get_fixed_salary_share(self, period):
+        self.ensure_one()
+        if not self._is_active_in_period(period):
+            return 0.0
+        target_ccp = self.employee_id.monthly_gross_salary_target or 0.0
+        if target_ccp <= 0.0:
+            return 0.0
+        return target_ccp * ((self.allocation_ratio or 0.0) / 100.0)
+
+    def _get_fixed_salary_share_hm(self, period):
+        self.ensure_one()
+        if not self._is_active_in_period(period):
+            return 0.0
+        target_hm = self.employee_id.monthly_gross_salary_target_hm or 0.0
+        if target_hm <= 0.0:
+            return 0.0
+        return target_hm * ((self.allocation_ratio or 0.0) / 100.0)
+
+    def _get_hours_salary_share(self, period):
+        self.ensure_one()
+        normalized_period = _month_start(fields.Date.to_date(period))
+        timesheets = self.timesheet_ids.filtered(lambda timesheet: timesheet.period == normalized_period)
+        gross_salary = sum(timesheets.mapped("gross_salary"))
+        total_labor_cost = sum(timesheets.mapped("total_labor_cost"))
+        wage_internal = self.env["tenenet.internal.expense"].sudo().search([
+            ("source_assignment_id", "=", self.id),
+            ("period", "=", normalized_period),
+            ("category", "=", "wage"),
+        ], limit=1)
+        if wage_internal:
+            gross_salary = max(0.0, gross_salary - (wage_internal.cost_hm or 0.0))
+            total_labor_cost = max(0.0, total_labor_cost - (wage_internal.cost_ccp or 0.0))
+        return {
+            "hm": gross_salary,
+            "ccp": total_labor_cost,
+        }
+
     def _sync_precreated_timesheets(self):
         Timesheet = self.env["tenenet.project.timesheet"]
         Matrix = self.env["tenenet.project.timesheet.matrix"]
@@ -312,6 +361,7 @@ class TenenetProjectAssignment(models.Model):
                     )
         records = super().create(vals_list)
         records._sync_precreated_timesheets()
+        self.env["tenenet.employee.tenenet.cost"].sudo()._sync_for_assignments_periods(records)
         return records
 
     def unlink(self):
@@ -324,6 +374,12 @@ class TenenetProjectAssignment(models.Model):
             for ts in rec.timesheet_ids
             if ts.employee_id and ts.period
         }
+        cost_recompute_keys = {
+            (rec.employee_id.id, period)
+            for rec in self
+            if rec.employee_id
+            for period in set(rec._get_expected_periods()) | set(rec.timesheet_ids.mapped("period"))
+        }
         result = super().unlink()
         if affected:
             Util = self.env["tenenet.utilization"].sudo()
@@ -331,9 +387,19 @@ class TenenetProjectAssignment(models.Model):
                 util = Util.search([("employee_id", "=", emp_id), ("period", "=", period)])
                 if util:
                     util._compute_from_timesheets()
+        if cost_recompute_keys:
+            Cost = self.env["tenenet.employee.tenenet.cost"].sudo()
+            for emp_id, period in cost_recompute_keys:
+                Cost._sync_for_employee_period(emp_id, period)
         return result
 
     def write(self, vals):
+        previous_cost_keys = {
+            (rec.employee_id.id, period)
+            for rec in self
+            if rec.employee_id
+            for period in set(rec._get_expected_periods()) | set(rec.timesheet_ids.mapped("period"))
+        }
         result = super().write(vals)
         timesheets = self.mapped("timesheet_ids")
         if {
@@ -346,6 +412,11 @@ class TenenetProjectAssignment(models.Model):
         } & set(vals):
             self._sync_precreated_timesheets()
             timesheets = self.mapped("timesheet_ids")
+            self.env["tenenet.employee.tenenet.cost"].sudo()._sync_for_assignments_periods(self)
+            if previous_cost_keys:
+                Cost = self.env["tenenet.employee.tenenet.cost"].sudo()
+                for employee_id, period in previous_cost_keys:
+                    Cost._sync_for_employee_period(employee_id, period)
         if {"wage_hm", "max_monthly_wage_hm", "project_id"} & set(vals):
             timesheets._sync_employee_period_costs()
             timesheets._check_wage_cap()

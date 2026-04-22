@@ -189,6 +189,7 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
         self.assertAlmostEqual(wage_expense.cost_ccp, 681.0, places=2)
 
     def test_tenenet_cost_residual_auto_created_and_computed(self):
+        self.employee.write({"monthly_gross_salary_target": 2724.0})
         self.env["tenenet.project.timesheet"].create(self._timesheet_vals(
             hours_pp=100.0, hours_np=0.0, hours_vacation=0.0
         ))
@@ -201,10 +202,6 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
             ("period", "=", "2026-01-01"),
         ], limit=1)
         self.assertTrue(cost)
-        cost.write({
-            "gross_salary_employee": 2000.0,
-            "total_labor_cost_employee": 2724.0,
-        })
         # project billed: 100 * 10 + 50 * 12 = 1000 + 600 = 1600
         self.assertAlmostEqual(cost.project_billed_gross, 1600.0, places=2)
         self.assertAlmostEqual(cost.tenenet_residual_hm, 400.0, places=2)
@@ -220,14 +217,98 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
             ("period", "=", "2026-06-01"),
         ], limit=1)
         self.assertTrue(cost)
-        cost.write({
-            "gross_salary_employee": 500.0,
-            "total_labor_cost_employee": 700.0,
-        })
         self.assertAlmostEqual(cost.project_billed_gross, 100.0, places=2)
         ts.write({"hours_pp": 20.0})
         cost.invalidate_recordset()
         self.assertAlmostEqual(cost.project_billed_gross, 200.0, places=2)
+
+    def test_fixed_ratio_project_covers_monthly_target_share_without_hours(self):
+        self.employee.write({"monthly_gross_salary_target": 2000.0})
+        self.project.write({"salary_funding_mode": "fixed_ratio"})
+
+        cost = self.env["tenenet.employee.tenenet.cost"]._sync_for_employee_period(
+            self.employee.id,
+            "2026-08-01",
+        )
+
+        self.assertTrue(cost)
+        self.assertAlmostEqual(cost.fixed_ratio_covered_ccp, 1000.0, places=2)
+        self.assertAlmostEqual(cost.project_billed_ccp, 1000.0, places=2)
+        self.assertAlmostEqual(cost.tenenet_residual_ccp, 1000.0, places=2)
+
+    def test_fixed_ratio_overallocation_scales_to_monthly_target(self):
+        self.employee.write({"monthly_gross_salary_target": 1000.0})
+        self.project.write({"salary_funding_mode": "fixed_ratio"})
+        self.project2.write({"salary_funding_mode": "fixed_ratio"})
+        self.assignment.write({"allocation_ratio": 80.0})
+        self.assignment2.write({"allocation_ratio": 80.0})
+
+        cost = self.env["tenenet.employee.tenenet.cost"]._sync_for_employee_period(
+            self.employee.id,
+            "2026-09-01",
+        )
+        coverage = cost._get_project_salary_contributions()
+
+        self.assertAlmostEqual(cost.fixed_ratio_covered_ccp, 1000.0, places=2)
+        self.assertAlmostEqual(cost.project_billed_ccp, 1000.0, places=2)
+        self.assertAlmostEqual(cost.tenenet_residual_ccp, 0.0, places=2)
+        self.assertEqual(len(coverage["contributions"]), 2)
+        for row in coverage["contributions"]:
+            self.assertAlmostEqual(row["ccp"], 500.0, places=2)
+
+    def test_fixed_ratio_project_is_capped_by_monthly_labor_budget(self):
+        self.employee.write({"monthly_gross_salary_target": 2000.0})
+        self.project.write({"salary_funding_mode": "fixed_ratio"})
+        budget_line = self.env["tenenet.project.budget.line"].create({
+            "project_id": self.project.id,
+            "year": 2026,
+            "budget_type": "labor",
+            "program_id": self.program.id,
+            "name": "Mzdové 2026",
+            "amount": 6000.0,
+        })
+        budget_line.set_month_amounts({
+            "2": 545.45,
+            "3": 545.45,
+            "4": 545.45,
+            "5": 545.45,
+            "6": 545.45,
+            "7": 545.45,
+            "8": 545.45,
+            "9": 545.45,
+            "10": 545.45,
+            "11": 545.45,
+            "12": 545.50,
+        })
+
+        cost = self.env["tenenet.employee.tenenet.cost"]._sync_for_employee_period(
+            self.employee.id,
+            "2026-02-01",
+        )
+
+        self.assertAlmostEqual(cost.fixed_ratio_covered_ccp, 545.45, places=2)
+        self.assertAlmostEqual(cost.project_billed_ccp, 545.45, places=2)
+        self.assertAlmostEqual(cost.tenenet_residual_ccp, 1454.55, places=2)
+
+    def test_employee_without_assignment_gets_full_admin_residual(self):
+        employee = self.env["hr.employee"].create({
+            "name": "Bez projektu",
+            "monthly_gross_salary_target": 1200.0,
+        })
+
+        cost = self.env["tenenet.employee.tenenet.cost"]._sync_for_employee_period(
+            employee.id,
+            "2026-10-01",
+        )
+        expense = self.env["tenenet.internal.expense"].search([
+            ("tenenet_cost_id", "=", cost.id),
+        ], limit=1)
+
+        self.assertTrue(cost)
+        self.assertAlmostEqual(cost.project_billed_ccp, 0.0, places=2)
+        self.assertAlmostEqual(cost.tenenet_residual_ccp, 1200.0, places=2)
+        self.assertTrue(expense)
+        self.assertEqual(expense.category, "residual_wage")
 
     def test_plain_project_user_can_write_only_own_timesheets(self):
         base_group = self.env.ref("base.group_user")

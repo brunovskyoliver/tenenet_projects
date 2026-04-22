@@ -6,6 +6,7 @@ from odoo import fields, models
 
 class TenenetInternalExpenseReportBaseMixin:
     _report_variant = "employee"
+    _UNASSIGNED_PROJECT_LABEL = "Nezaradené interné náklady"
 
     def _custom_options_initializer(self, report, options, previous_options=None):
         super()._custom_options_initializer(report, options, previous_options=previous_options)
@@ -62,7 +63,7 @@ class TenenetInternalExpenseReportBaseMixin:
                 markup=f"int_exp_project_root_{top_record_id}",
             )
             expand_function = "_report_expand_unfoldable_line_int_exp_project_root"
-            line_name = top_record.name if top_record else "(Bez projektu)"
+            line_name = self._get_project_display_name(top_record)
 
         return {
             "id": line_id,
@@ -101,7 +102,7 @@ class TenenetInternalExpenseReportBaseMixin:
 
         for seq, (project, _hours, total_costs, cost_rows) in enumerate(project_rows, start=1):
             project_id = project.id if project else 0
-            project_name = project.name if project else "(Bez projektu)"
+            project_name = self._get_project_display_name(project)
             project_line_id = report._get_generic_line_id(
                 "tenenet.project" if project_id else None,
                 project_id or None,
@@ -114,12 +115,15 @@ class TenenetInternalExpenseReportBaseMixin:
                 "columns": self._build_columns(report, options, total_costs),
                 "level": 2,
                 "parent_id": line_dict_id,
-                "unfoldable": True,
+                "unfoldable": len(cost_rows) > 1,
                 "unfolded": bool(
-                    options.get("unfold_all")
-                    or project_line_id in (options.get("unfolded_lines") or [])
+                    len(cost_rows) > 1
+                    and (
+                        options.get("unfold_all")
+                        or project_line_id in (options.get("unfolded_lines") or [])
+                    )
                 ),
-                "expand_function": "_report_expand_unfoldable_line_int_exp_project",
+                "expand_function": "_report_expand_unfoldable_line_int_exp_project" if len(cost_rows) > 1 else None,
             })
         return {
             "lines": lines,
@@ -205,12 +209,15 @@ class TenenetInternalExpenseReportBaseMixin:
                 "columns": self._build_columns(report, options, total_costs),
                 "level": 2,
                 "parent_id": line_dict_id,
-                "unfoldable": True,
+                "unfoldable": len(cost_rows) > 1,
                 "unfolded": bool(
-                    options.get("unfold_all")
-                    or employee_line_id in (options.get("unfolded_lines") or [])
+                    len(cost_rows) > 1
+                    and (
+                        options.get("unfold_all")
+                        or employee_line_id in (options.get("unfolded_lines") or [])
+                    )
                 ),
-                "expand_function": "_report_expand_unfoldable_line_int_exp_project_root_employee",
+                "expand_function": "_report_expand_unfoldable_line_int_exp_project_root_employee" if len(cost_rows) > 1 else None,
             })
 
         return {
@@ -280,6 +287,10 @@ class TenenetInternalExpenseReportBaseMixin:
         options["date"]["string"] = str(selected_year)
 
     def _get_year_expenses(self, selected_year):
+        self.env["tenenet.employee.tenenet.cost"].sudo()._sync_target_employees_for_year(
+            selected_year,
+            employee_ids=self.env["tenenet.project"].get_report_accessible_employee_ids(),
+        )
         year_start = date(selected_year, 1, 1)
         year_end = date(selected_year, 12, 31)
         expenses = self.env["tenenet.internal.expense"].search(
@@ -298,6 +309,10 @@ class TenenetInternalExpenseReportBaseMixin:
         )
 
     def _get_year_expenses_for_employee(self, employee, selected_year):
+        self.env["tenenet.employee.tenenet.cost"].sudo()._sync_target_employees_for_year(
+            selected_year,
+            employee_ids=[employee.id],
+        )
         year_start = date(selected_year, 1, 1)
         year_end = date(selected_year, 12, 31)
         return self.env["tenenet.internal.expense"].search(
@@ -309,11 +324,19 @@ class TenenetInternalExpenseReportBaseMixin:
             order="period",
         )
 
+    def _get_project_display_name(self, project):
+        return project.name if project else self._UNASSIGNED_PROJECT_LABEL
+
     def _get_expense_type_bucket(self, expense):
         if expense.category == "expense" and expense.expense_type_config_id:
             return (
                 f"cfg_{expense.expense_type_config_id.id}",
                 f"Náklady - {expense.expense_type_config_id.display_name}",
+            )
+        if expense.category == "residual_wage":
+            return (
+                "cat_residual_wage",
+                "Dorovnanie mzdy - Admin TENENET",
             )
         category_labels = dict(self.env["tenenet.internal.expense"]._fields["category"].selection)
         return (
@@ -489,3 +512,5 @@ class TenenetInternalExpenseProjectReportHandler(TenenetInternalExpenseReportBas
     _inherit = ["account.report.custom.handler"]
     _description = "TENENET Interné náklady – ročný report podľa projektu"
     _report_variant = "project"
+    def _get_project_display_name(self, project):
+        return project.name if project else self._UNASSIGNED_PROJECT_LABEL

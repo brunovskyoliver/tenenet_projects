@@ -64,6 +64,14 @@ class TenenetProjectBudgetLine(models.Model):
         string="Môže kryť mzdy",
         default=False,
     )
+    payroll_employee_ids = fields.Many2many(
+        "hr.employee",
+        "tenenet_project_budget_line_payroll_employee_rel",
+        "budget_line_id",
+        "employee_id",
+        string="Povolení zamestnanci pre mzdy",
+        help="Ak je zoznam prázdny, položku môžu používať všetci aktuálne priradení zamestnanci projektu. Inak len vybraní zamestnanci s aktívnym priradením v danom mesiaci.",
+    )
     note = fields.Text(string="Poznámka")
     currency_id = fields.Many2one(
         "res.currency",
@@ -127,11 +135,18 @@ class TenenetProjectBudgetLine(models.Model):
             if rec.program_id not in rec.project_id.program_ids:
                 raise ValidationError("Program rozpočtovej položky musí patriť medzi programy projektu.")
 
-    @api.constrains("budget_type", "expense_type_config_id", "service_income_type", "can_cover_payroll", "project_id")
+    @api.constrains(
+        "budget_type",
+        "expense_type_config_id",
+        "service_income_type",
+        "can_cover_payroll",
+        "project_id",
+        "payroll_employee_ids",
+    )
     def _check_budget_line_detail_rules(self):
         for rec in self:
             if rec.budget_type != "other":
-                if rec.expense_type_config_id or rec.service_income_type or rec.can_cover_payroll:
+                if rec.expense_type_config_id or rec.service_income_type or rec.can_cover_payroll or rec.payroll_employee_ids:
                     raise ValidationError("Doplňujúce nastavenia sú dostupné iba pre rozpočtový typ Iné.")
                 continue
             if rec.service_income_type:
@@ -143,6 +158,13 @@ class TenenetProjectBudgetLine(models.Model):
                 raise ValidationError("Pri položke Iné treba zvoliť kategóriu výdavku alebo servisný príjem.")
             if rec.can_cover_payroll and not rec.service_income_type:
                 raise ValidationError("Mzdy možno kryť iba pri servisných príjmoch.")
+            if rec.payroll_employee_ids and not (rec.service_income_type == "sales_individual" and rec.can_cover_payroll):
+                raise ValidationError("Výber zamestnancov pre mzdy je dostupný iba pri Tržbách individuálne s povoleným krytím miezd.")
+            invalid_employees = rec.payroll_employee_ids.filtered(
+                lambda employee: employee not in rec.project_id.assignment_ids.mapped("employee_id")
+            )
+            if invalid_employees:
+                raise ValidationError("Vybraní zamestnanci pre mzdy musia byť priradení k rovnakému projektu.")
 
     @api.constrains("budget_month_ids", "amount")
     def _check_month_plan_total(self):
@@ -181,6 +203,7 @@ class TenenetProjectBudgetLine(models.Model):
         current_expense_type_id = current_record.expense_type_config_id.id if current_record else False
         current_service_income_type = current_record.service_income_type if current_record else False
         current_can_cover_payroll = current_record.can_cover_payroll if current_record else False
+        current_payroll_employee_ids = current_record.payroll_employee_ids.ids if current_record else []
         expense_type_config_id = (
             values.get("expense_type_config_id")
             if "expense_type_config_id" in values
@@ -196,21 +219,47 @@ class TenenetProjectBudgetLine(models.Model):
             if "can_cover_payroll" in values
             else current_can_cover_payroll
         )
+        payroll_employee_ids = values.get("payroll_employee_ids")
+        if payroll_employee_ids is None:
+            payroll_employee_ids = [(6, 0, current_payroll_employee_ids)]
         if budget_type != "other":
             values["expense_type_config_id"] = False
             values["service_income_type"] = False
             values["can_cover_payroll"] = False
+            values["payroll_employee_ids"] = [(5, 0, 0)]
         elif service_income_type:
             values["expense_type_config_id"] = False
             values["service_income_type"] = service_income_type
             values["can_cover_payroll"] = bool(can_cover_payroll)
+            if not (service_income_type == "sales_individual" and can_cover_payroll):
+                values["payroll_employee_ids"] = [(5, 0, 0)]
         elif expense_type_config_id:
             values["expense_type_config_id"] = expense_type_config_id
             values["service_income_type"] = False
             values["can_cover_payroll"] = False
+            values["payroll_employee_ids"] = [(5, 0, 0)]
         if not values.get("service_income_type"):
             values["can_cover_payroll"] = False
+            values["payroll_employee_ids"] = [(5, 0, 0)]
         return values
+
+    def _get_project_active_assignments(self, period):
+        self.ensure_one()
+        period_date = fields.Date.to_date(period).replace(day=1)
+        return self.project_id.assignment_ids.filtered(lambda assignment: assignment._is_active_in_period(period_date))
+
+    def _get_payroll_eligible_employees(self, period):
+        self.ensure_one()
+        assignments = self._get_project_active_assignments(period)
+        employees = assignments.mapped("employee_id")
+        if not self.payroll_employee_ids:
+            return employees
+        return employees & self.payroll_employee_ids
+
+    def _is_employee_payroll_eligible(self, employee, period):
+        self.ensure_one()
+        employee_record = employee if hasattr(employee, "ids") else self.env["hr.employee"].browse(employee)
+        return bool(employee_record and employee_record in self._get_payroll_eligible_employees(period))
 
     def _replace_month_amounts(self, normalized_amounts):
         self.ensure_one()

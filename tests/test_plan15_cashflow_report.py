@@ -435,6 +435,20 @@ class TestTenenetPlan15CashflowReport(TransactionCase):
         self.assertAlmostEqual(allocation_ccp["month_03"], 136.2, places=2)
         self.assertAlmostEqual(allocation_internal_wage["month_03"], 13.8, places=2)
 
+    def test_fixed_ratio_project_hits_allocation_report_without_timesheet_hours(self):
+        year = fields.Date.context_today(self).year + 1
+        self.employee.write({"monthly_gross_salary_target": 1000.0})
+        self.project_a.write({"salary_funding_mode": "fixed_ratio"})
+        self.assignment.write({"allocation_ratio": 25.0})
+
+        lines = self._get_allocation_lines(year)
+        ccp_line = self._column_map(self._find_allocation_line(lines, "CCP"))
+        expanded = self._get_expanded_allocation_project_lines(year, "Projekt A")
+        fixed_line = self._column_map(self._find_allocation_line(expanded, "Mzda fixným podielom"))
+
+        self.assertAlmostEqual(ccp_line["month_01"], 250.0, places=2)
+        self.assertAlmostEqual(fixed_line["month_01"], 250.0, places=2)
+
     def test_income_override_rebalances_last_active_month_to_project_total(self):
         selected_year = fields.Date.context_today(self).year + 1
         self.env["tenenet.project.receipt"].create({

@@ -191,3 +191,18 @@ class TenenetInternalExpense(models.Model):
     def _onchange_source_assignment_id(self):
         if self.source_assignment_id:
             self.wage_hm = self.source_assignment_id.wage_hm
+
+    @api.model
+    def cleanup_orphaned_project_expenses(self):
+        """Remove stale internal expenses left after deleted project/assignment records."""
+        orphaned = self.search([
+            ("category", "in", ["wage", "expense", "leave"]),
+            ("source_project_id", "=", False),
+            ("source_assignment_id", "=", False),
+            ("tenenet_cost_id", "=", False),
+            ("hr_expense_id", "=", False),
+            ("leave_id", "=", False),
+        ])
+        if orphaned:
+            orphaned.unlink()
+        return len(orphaned)

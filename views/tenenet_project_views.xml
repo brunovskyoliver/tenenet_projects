@@ -286,6 +286,10 @@
                                         <field name="expense_type_config_id" optional="show"/>
                                         <field name="service_income_type" optional="show"/>
                                         <field name="can_cover_payroll" optional="show"/>
+                                        <field name="payroll_employee_ids"
+                                               optional="hide"
+                                               widget="many2many_tags"
+                                               column_invisible="service_income_type != 'sales_individual' or not can_cover_payroll"/>
                                         <field name="amount"/>
                                         <field name="note" optional="show"/>
                                         <button name="action_open_planner"
@@ -390,6 +394,7 @@
                                     <group>
                                         <field name="default_max_monthly_wage_hm" readonly="not can_edit_project"/>
                                         <field name="default_max_monthly_wage_ccp" readonly="1"/>
+                                        <field name="salary_funding_mode" readonly="not can_edit_project"/>
                                     </group>
                                 </group>
                                 <field name="leave_rule_ids" readonly="not can_edit_project">

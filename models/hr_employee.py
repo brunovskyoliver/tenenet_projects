@@ -966,7 +966,18 @@ class HrEmployee(models.Model):
             vals = self._prepare_tenenet_responsible_sync_vals(vals, self)
             result = super().write(vals)
             if "monthly_gross_salary_target" in vals:
-                self.tenenet_cost_ids._sync_internal_residual_expense()
+                periods = set(self.tenenet_cost_ids.mapped("period"))
+                for assignment in self.assignment_ids:
+                    periods.update(assignment._get_expected_periods())
+                    periods.update(assignment.timesheet_ids.mapped("period"))
+                if not periods and self.assignment_ids:
+                    periods.add(fields.Date.context_today(self).replace(day=1))
+                Cost = self.env["tenenet.employee.tenenet.cost"].sudo()
+                if periods:
+                    for period in periods:
+                        Cost._sync_for_employee_period(self.id, period)
+                else:
+                    self.tenenet_cost_ids._sync_internal_residual_expense()
             if "user_id" in vals:
                 (previous_users | self.mapped("user_id"))._tenenet_sync_hr_project_admin_group_membership()
             return result
@@ -979,7 +990,18 @@ class HrEmployee(models.Model):
             record_vals = record._prepare_tenenet_responsible_sync_vals(record_vals, record)
             super(HrEmployee, record).write(record_vals)
             if "monthly_gross_salary_target" in vals:
-                record.tenenet_cost_ids._sync_internal_residual_expense()
+                periods = set(record.tenenet_cost_ids.mapped("period"))
+                for assignment in record.assignment_ids:
+                    periods.update(assignment._get_expected_periods())
+                    periods.update(assignment.timesheet_ids.mapped("period"))
+                if not periods and record.assignment_ids:
+                    periods.add(fields.Date.context_today(self).replace(day=1))
+                Cost = self.env["tenenet.employee.tenenet.cost"].sudo()
+                if periods:
+                    for period in periods:
+                        Cost._sync_for_employee_period(record.id, period)
+                else:
+                    record.tenenet_cost_ids._sync_internal_residual_expense()
         if "user_id" in vals:
             (previous_users | self.mapped("user_id"))._tenenet_sync_hr_project_admin_group_membership()
         return True
@@ -1361,19 +1383,21 @@ class HrEmployee(models.Model):
     )
     @api.depends_context("tenenet_period")
     def _compute_hourly_rate(self):
+        Cost = self.env["tenenet.employee.tenenet.cost"].sudo()
         Timesheet = self.env["tenenet.project.timesheet"].sudo()
         period = self._get_tenenet_hourly_rate_period()
         for rec in self:
             if not rec.id:
                 rec.hourly_rate = 0.0
                 continue
+            coverage = Cost._get_employee_month_project_coverage(rec, period)
             timesheets = Timesheet.search([
                 ("employee_id", "=", rec.id),
                 ("period", "=", period),
                 ("project_id.is_tenenet_internal", "=", False),
             ])
             project_hours = sum(timesheets.mapped("hours_total"))
-            project_ccp = sum(timesheets.mapped("total_labor_cost"))
+            project_ccp = coverage["total_ccp"]
             remaining_ccp = max(0.0, (rec.monthly_gross_salary_target or 0.0) - project_ccp)
             remaining_hours = max(0.0, (rec.monthly_capacity_hours or 0.0) - project_hours)
             rec.hourly_rate = remaining_ccp / remaining_hours if remaining_hours else 0.0

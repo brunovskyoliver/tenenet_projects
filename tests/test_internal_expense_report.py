@@ -141,3 +141,50 @@ class TestTenenetInternalExpenseReport(TransactionCase):
             employee_line.get("horizontal_split_side"),
         )
         self.assertEqual([line["name"] for line in detail_lines], ["Náklady - Nájom"])
+
+    def test_deleting_project_removes_linked_internal_expenses(self):
+        assignment = self.env["tenenet.project.assignment"].create({
+            "employee_id": self.employee_a.id,
+            "project_id": self.project_a.id,
+            "allocation_ratio": 50.0,
+            "wage_hm": 10.0,
+        })
+        linked_expense = self.env["tenenet.internal.expense"].create({
+            "employee_id": self.employee_a.id,
+            "period": f"{self.report_year}-04-01",
+            "category": "wage",
+            "source_assignment_id": assignment.id,
+            "cost_hm": 40.0,
+            "wage_hm": 10.0,
+        })
+
+        self.project_a.unlink()
+
+        self.assertFalse(linked_expense.exists())
+        self.assertFalse(self.env["tenenet.internal.expense"].search([
+            "|",
+            ("source_project_id", "=", self.project_a.id),
+            ("source_assignment_id", "=", assignment.id),
+        ]))
+
+    def test_cleanup_orphaned_project_expenses_removes_stale_unassigned_rows(self):
+        orphan = self.env["tenenet.internal.expense"].create({
+            "employee_id": self.employee_a.id,
+            "period": f"{self.report_year}-05-01",
+            "category": "wage",
+            "cost_hm": 25.0,
+        })
+
+        removed = self.env["tenenet.internal.expense"].cleanup_orphaned_project_expenses()
+
+        self.assertEqual(removed, 1)
+        self.assertFalse(orphan.exists())
+
+    def test_report_syncs_target_only_employee_into_admin_tenenet(self):
+        employee = self.env["hr.employee"].create({
+            "name": "Ciel bez projektu",
+            "monthly_gross_salary_target": 900.0,
+        })
+        lines, _options = self._get_lines(self.employee_report, date_to=f"{self.report_year}-12-31")
+
+        self.assertIn("Ciel bez projektu", [line["name"] for line in lines])

@@ -331,6 +331,16 @@ class TenenetProject(models.Model):
         store=True,
         help="Predvolený mesačný strop CCP = max. mzda HM × 1.362",
     )
+    salary_funding_mode = fields.Selection(
+        [
+            ("hours", "Podľa odpracovaných hodín"),
+            ("fixed_ratio", "Fixný podiel z mesačnej mzdy"),
+        ],
+        string="Spôsob krytia mzdy",
+        default="hours",
+        required=True,
+        help="Určuje, či projekt kryje mzdu podľa odpracovaných hodín alebo fixným podielom z mesačného cieľa podľa allocation_ratio na aktívnych priradeniach.",
+    )
     donor_contact = fields.Text(string="Kontakt donor", compute="_compute_donor_contact", store=True)
     partner_contact = fields.Text(string="Kontakt partner", compute="_compute_partner_contact", store=True)
     allowed_expense_type_ids = fields.One2many(
@@ -1035,6 +1045,7 @@ class TenenetProject(models.Model):
             "project_manager_id": source_project.project_manager_id.id or False,
             "currency_id": source_project.currency_id.id or False,
             "default_max_monthly_wage_hm": source_project.default_max_monthly_wage_hm,
+            "salary_funding_mode": source_project.salary_funding_mode,
             "recurring_root_project_id": root.id,
             "recurring_source_project_id": source_project.id,
             "recurring_base_name": root.recurring_base_name or root.name,
@@ -1073,6 +1084,10 @@ class TenenetProject(models.Model):
                 "budget_type": budget_line.budget_type,
                 "program_id": budget_line.program_id.id,
                 "amount": budget_line.amount,
+                "expense_type_config_id": budget_line.expense_type_config_id.id,
+                "service_income_type": budget_line.service_income_type,
+                "can_cover_payroll": budget_line.can_cover_payroll,
+                "payroll_employee_ids": [Command.set(budget_line.payroll_employee_ids.ids)],
                 "note": budget_line.note,
             })
         for milestone in source_project.milestone_ids:
@@ -1424,7 +1439,9 @@ class TenenetProject(models.Model):
 
     @api.model
     def get_report_accessible_employee_ids(self):
-        return self.get_report_accessible_projects().mapped("assignment_ids.employee_id").ids
+        return self.env["hr.employee"].search([
+            ("active", "=", True),
+        ]).ids
 
     def _can_current_user_edit_project(self):
         self.ensure_one()
@@ -1517,6 +1534,8 @@ class TenenetProject(models.Model):
             self.mapped("assignment_ids")._sync_precreated_timesheets()
         if "default_max_monthly_wage_hm" in vals:
             self.mapped("assignment_ids.timesheet_ids")._check_wage_cap()
+        if "salary_funding_mode" in vals:
+            self.env["tenenet.employee.tenenet.cost"].sudo()._sync_for_assignments_periods(self.mapped("assignment_ids"))
         if "odborny_garant_id" in vals or "project_manager_id" in vals or "active" in vals:
             self._sync_garant_pm_group(previous_role_employees | self.mapped("odborny_garant_id") | self.mapped("project_manager_id"))
         if "project_manager_id" in vals or "active" in vals:
@@ -1533,6 +1552,15 @@ class TenenetProject(models.Model):
 
     def unlink(self):
         previous_project_managers = self.mapped("project_manager_id")
+        assignment_ids = self.mapped("assignment_ids").ids
+        project_ids = self.ids
+        internal_expenses = self.env["tenenet.internal.expense"].sudo().search([
+            "|",
+            ("source_project_id", "in", project_ids or [0]),
+            ("source_assignment_id", "in", assignment_ids or [0]),
+        ])
+        if internal_expenses:
+            internal_expenses.unlink()
         result = super().unlink()
         previous_project_managers.mapped("user_id")._tenenet_sync_hr_project_admin_group_membership()
         return result

@@ -1,4 +1,5 @@
 from odoo import fields
+from odoo import Command
 from odoo.exceptions import ValidationError
 from odoo.tests import TransactionCase, tagged
 
@@ -111,6 +112,70 @@ class TestTenenetBudgetLinePlanner(TransactionCase):
 
         self.assertEqual(len(budget_line), 1)
         self.assertTrue(budget_line.can_cover_payroll)
+
+    def test_payroll_employee_must_belong_to_same_project(self):
+        service_project = self.env["tenenet.project"].create({
+            "name": "Service Project Payroll",
+            "project_type": "sluzby",
+            "program_ids": [Command.set(self.program.ids)],
+        })
+        employee = self.env["hr.employee"].create({"name": "Payroll Employee"})
+        outsider = self.env["hr.employee"].create({"name": "Outsider"})
+        self.env["tenenet.project.assignment"].create({
+            "employee_id": employee.id,
+            "project_id": service_project.id,
+        })
+
+        with self.assertRaises(ValidationError):
+            self.env["tenenet.project.budget.line"].create({
+                "project_id": service_project.id,
+                "year": 2027,
+                "budget_type": "other",
+                "program_id": self.program.id,
+                "name": "Payroll line",
+                "amount": 300.0,
+                "service_income_type": "sales_individual",
+                "can_cover_payroll": True,
+                "payroll_employee_ids": [Command.set([employee.id, outsider.id])],
+            })
+
+    def test_payroll_employee_eligibility_uses_active_assignment_scope(self):
+        service_project = self.env["tenenet.project"].create({
+            "name": "Scoped Service Project",
+            "project_type": "sluzby",
+            "program_ids": [Command.set(self.program.ids)],
+        })
+        employee = self.env["hr.employee"].create({"name": "Scoped Employee"})
+        employee_late = self.env["hr.employee"].create({"name": "Late Employee"})
+        self.env["tenenet.project.assignment"].create({
+            "employee_id": employee.id,
+            "project_id": service_project.id,
+            "date_start": "2027-01-01",
+            "date_end": "2027-12-31",
+        })
+        self.env["tenenet.project.assignment"].create({
+            "employee_id": employee_late.id,
+            "project_id": service_project.id,
+            "date_start": "2027-06-01",
+            "date_end": "2027-12-31",
+        })
+        budget_line = self.env["tenenet.project.budget.line"].create({
+            "project_id": service_project.id,
+            "year": 2027,
+            "budget_type": "other",
+            "program_id": self.program.id,
+            "name": "Payroll line",
+            "amount": 300.0,
+            "service_income_type": "sales_individual",
+            "can_cover_payroll": True,
+            "payroll_employee_ids": [Command.set([employee.id, employee_late.id])],
+        })
+
+        eligible_jan = budget_line._get_payroll_eligible_employees("2027-01-01")
+        eligible_jul = budget_line._get_payroll_eligible_employees("2027-07-01")
+
+        self.assertEqual(eligible_jan, employee)
+        self.assertEqual(eligible_jul, employee | employee_late)
 
     def test_generic_other_budget_line_uses_expense_category_label(self):
         budget_line = self.env["tenenet.project.budget.line"].create({

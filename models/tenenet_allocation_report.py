@@ -38,7 +38,12 @@ class TenenetAllocationReportHandler(models.AbstractModel):
             return []
 
         year = self._get_selected_year(options)
+        self.env["tenenet.employee.tenenet.cost"].sudo()._sync_target_employees_for_year(
+            year,
+            employee_ids=[employee.id],
+        )
         timesheets = self._get_employee_year_timesheets(employee, year)
+        coverage_rows = self._get_employee_year_salary_coverage(employee, year)
         utilizations = self._get_employee_year_utilizations(employee, year)
 
         util_by_month = {util.period.month: util for util in utilizations}
@@ -59,9 +64,12 @@ class TenenetAllocationReportHandler(models.AbstractModel):
         lines = []
         emp_id = employee.id
 
-        gross_by_month = self._aggregate_field_by_month(timesheets, "gross_salary")
-        deductions_by_month = self._aggregate_field_by_month(timesheets, "deductions")
-        ccp_by_month = self._aggregate_field_by_month(timesheets, "total_labor_cost")
+        gross_by_month = self._aggregate_contribution_field_by_month(coverage_rows, "hm")
+        ccp_by_month = self._aggregate_contribution_field_by_month(coverage_rows, "ccp")
+        deductions_by_month = defaultdict(float, {
+            month: ccp_by_month.get(month, 0.0) - gross_by_month.get(month, 0.0)
+            for month in range(1, 13)
+        })
 
         lines.append((0, self._build_report_line(
             report, options,
@@ -118,21 +126,21 @@ class TenenetAllocationReportHandler(models.AbstractModel):
 
         # ── Project sections (collapsible) ───────────────────────────────────
         internal_expenses = self._get_employee_year_internal_expenses(employee, year)
-        internal_wage_by_project = self._group_internal_wage_by_project(
-            internal_expenses.filtered(lambda e: e.category == "wage")
-        )
-        project_groups = self._group_timesheets_by_project(timesheets)
-        sorted_projects = sorted(
-            project_groups.keys(),
-            key=lambda p: (p.name or "").lower(),
+        project_groups = self._group_contributions_by_project(coverage_rows)
+        project_ids = {
+            project.id
+            for project in project_groups
+        } | {
+            project.id
+            for project in self._group_timesheets_by_project(timesheets)
+        }
+        sorted_projects = self.env["tenenet.project"].browse(sorted(project_ids)).sorted(
+            lambda project: (project.name or "").lower()
         )
 
         for project in sorted_projects:
-            proj_timesheets = project_groups[project]
-            proj_ccp = self._aggregate_field_by_month(proj_timesheets, "total_labor_cost")
-            internal_wage = internal_wage_by_project.get(project.id, {})
-            internal_ccp = internal_wage.get("ccp", defaultdict(float))
-            proj_ccp_net = self._subtract_monthly_values(proj_ccp, internal_ccp)
+            proj_contributions = project_groups.get(project, [])
+            proj_ccp_net = self._aggregate_contribution_field_by_month(proj_contributions, "ccp")
 
             proj_line_id = report._get_generic_line_id(
                 "tenenet.project", project.id,
@@ -144,7 +152,7 @@ class TenenetAllocationReportHandler(models.AbstractModel):
             )
             lines.append((0, {
                 "id": proj_line_id,
-                "name": self._get_project_allocation_line_name(project, proj_timesheets),
+                "name": self._get_project_allocation_line_name(project, proj_contributions),
                 "columns": self._build_allocation_columns(report, options, proj_ccp_net, "monetary"),
                 "level": 1,
                 "unfoldable": True,
@@ -210,27 +218,16 @@ class TenenetAllocationReportHandler(models.AbstractModel):
                 f"alloc_{emp_id}_internal_wage_ccp",
             )))
 
-        empty_values = defaultdict(float)
-        lines.append((0, self._build_report_line(
-            report, options, "Náhrady za dovolenku", empty_values, "monetary", 2,
-            f"alloc_{emp_id}_placeholder_vacation",
-        )))
-        lines.append((0, self._build_report_line(
-            report, options, "Ošetrenie u lekára - náhrady", empty_values, "monetary", 2,
-            f"alloc_{emp_id}_placeholder_doctor",
-        )))
-        lines.append((0, self._build_report_line(
-            report, options, "Cestovné náhrady", ie_travel or empty_values, "monetary", 2,
-            f"alloc_{emp_id}_internal_travel",
-        )))
-        lines.append((0, self._build_report_line(
-            report, options, "Školenie", ie_training or empty_values, "monetary", 2,
-            f"alloc_{emp_id}_internal_training",
-        )))
-        lines.append((0, self._build_report_line(
-            report, options, "Finančný príspevok za stravu - náklady", empty_values, "monetary", 2,
-            f"alloc_{emp_id}_placeholder_meal",
-        )))
+        if any(ie_travel.values()):
+            lines.append((0, self._build_report_line(
+                report, options, "Cestovné náhrady", ie_travel, "monetary", 2,
+                f"alloc_{emp_id}_internal_travel",
+            )))
+        if any(ie_training.values()):
+            lines.append((0, self._build_report_line(
+                report, options, "Školenie", ie_training, "monetary", 2,
+                f"alloc_{emp_id}_internal_training",
+            )))
 
         return lines
 
@@ -251,46 +248,39 @@ class TenenetAllocationReportHandler(models.AbstractModel):
 
     def _get_project_allocation_line_name(self, project, timesheets):
         name = project.display_name or project.name or ""
-        if timesheets and all(timesheets.mapped("assignment_id.settlement_only")):
+        if timesheets and all(
+            row.get("settlement_only")
+            for row in (timesheets if isinstance(timesheets, list) else [
+                {"settlement_only": assignment.settlement_only}
+                for assignment in timesheets.mapped("assignment_id")
+            ])
+        ):
             return f"{name} (iba na zúčtovanie)"
         return name
 
     def _build_project_detail_lines(self, report, options, employee, year, project, parent_line_id):
         emp_id = employee.id
         proj_timesheets = self._get_project_timesheets_for_employee(employee, project, year)
-        internal_expenses = self._get_employee_year_internal_expenses(employee, year)
-        internal_wage_by_project = self._group_internal_wage_by_project(
-            internal_expenses.filtered(lambda e: e.category == "wage")
-        )
-        internal_wage_by_assignment = self._group_internal_wage_by_assignment(
-            internal_expenses.filtered(lambda e: e.category == "wage")
-        )
+        coverage_rows = [
+            row for row in self._get_employee_year_salary_coverage(employee, year)
+            if row["project_id"] == project.id
+        ]
 
         proj_name = project.name or ""
-        proj_gross = self._aggregate_field_by_month(proj_timesheets, "gross_salary")
-        proj_deductions = self._aggregate_field_by_month(proj_timesheets, "deductions")
-        proj_ccp = self._aggregate_field_by_month(proj_timesheets, "total_labor_cost")
-        proj_hours = self._aggregate_field_by_month(proj_timesheets, "hours_project_total")
-        settlement_timesheets = proj_timesheets.filtered(lambda ts: ts.assignment_id.settlement_only)
-        settlement_ccp = self._aggregate_field_by_month(settlement_timesheets, "total_labor_cost")
-        settlement_internal_ccp = defaultdict(float)
-        for assignment_id in settlement_timesheets.mapped("assignment_id").ids:
-            assignment_wage = internal_wage_by_assignment.get(assignment_id, {})
-            assignment_ccp = assignment_wage.get("ccp", defaultdict(float))
-            for month in range(1, 13):
-                settlement_internal_ccp[month] += assignment_ccp.get(month, 0.0)
-        settlement_ccp = self._subtract_monthly_values(settlement_ccp, settlement_internal_ccp)
-
-        internal_wage = internal_wage_by_project.get(project.id, {})
-        internal_hm = internal_wage.get("hm", defaultdict(float))
-        internal_ccp = internal_wage.get("ccp", defaultdict(float))
-        internal_deductions = defaultdict(float, {
-            month: (internal_ccp.get(month, 0.0) - internal_hm.get(month, 0.0))
+        proj_gross = self._aggregate_contribution_field_by_month(coverage_rows, "hm")
+        proj_ccp = self._aggregate_contribution_field_by_month(coverage_rows, "ccp")
+        proj_deductions = defaultdict(float, {
+            month: proj_ccp.get(month, 0.0) - proj_gross.get(month, 0.0)
             for month in range(1, 13)
         })
-        proj_gross = self._subtract_monthly_values(proj_gross, internal_hm)
-        proj_deductions = self._subtract_monthly_values(proj_deductions, internal_deductions)
-        proj_ccp = self._subtract_monthly_values(proj_ccp, internal_ccp)
+        proj_hours = self._aggregate_field_by_month(proj_timesheets, "hours_project_total")
+        hours_ccp = self._aggregate_contribution_field_by_month(coverage_rows, "ccp", modes={"hours"})
+        fixed_ccp = self._aggregate_contribution_field_by_month(coverage_rows, "ccp", modes={"fixed_ratio"})
+        settlement_ccp = self._aggregate_contribution_field_by_month(
+            coverage_rows,
+            "ccp",
+            settlement_only=True,
+        )
 
         lines = [
             self._build_report_line(
@@ -314,6 +304,18 @@ class TenenetAllocationReportHandler(models.AbstractModel):
                 parent_line_id=parent_line_id,
             ),
         ]
+        if any(hours_ccp.values()):
+            lines.append(self._build_report_line(
+                report, options, "Mzda podľa hodín", hours_ccp, "monetary", 3,
+                f"alloc_{emp_id}_proj_{project.id}_hours_mode",
+                parent_line_id=parent_line_id,
+            ))
+        if any(fixed_ccp.values()):
+            lines.append(self._build_report_line(
+                report, options, "Mzda fixným podielom", fixed_ccp, "monetary", 3,
+                f"alloc_{emp_id}_proj_{project.id}_fixed_ratio_mode",
+                parent_line_id=parent_line_id,
+            ))
         if any(settlement_ccp.values()):
             lines.append(self._build_report_line(
                 report, options, "Mzda iba na zúčtovanie", settlement_ccp, "monetary", 3,
@@ -334,6 +336,14 @@ class TenenetAllocationReportHandler(models.AbstractModel):
 
     def _get_default_employee(self, allowed_employee_ids=None):
         employee_ids = allowed_employee_ids or self.env["tenenet.project"].get_report_accessible_employee_ids()
+        Cost = self.env["tenenet.employee.tenenet.cost"]
+        first_cost = Cost.search(
+            [("employee_id", "in", employee_ids or [0])],
+            order="employee_id, period",
+            limit=1,
+        )
+        if first_cost:
+            return first_cost.employee_id
         Timesheet = self.env["tenenet.project.timesheet"]
         first_ts = Timesheet.search(
             [("employee_id", "in", employee_ids or [0])],
@@ -373,6 +383,15 @@ class TenenetAllocationReportHandler(models.AbstractModel):
             ],
             order="project_id, period",
         )
+
+    def _get_employee_year_salary_coverage(self, employee, year):
+        Cost = self.env["tenenet.employee.tenenet.cost"]
+        rows = []
+        for month in range(1, 13):
+            period = date(year, month, 1)
+            coverage = Cost._get_employee_month_project_coverage(employee, period)
+            rows.extend(coverage["contributions"])
+        return rows
 
     def _get_project_timesheets_for_employee(self, employee, project, year):
         year_start = date(year, 1, 1)
@@ -415,6 +434,16 @@ class TenenetAllocationReportHandler(models.AbstractModel):
             result[ts.period.month] += getattr(ts, field) or 0.0
         return result
 
+    def _aggregate_contribution_field_by_month(self, contributions, field, modes=None, settlement_only=None):
+        result = defaultdict(float)
+        for row in contributions:
+            if modes and row.get("mode") not in modes:
+                continue
+            if settlement_only is not None and bool(row.get("settlement_only")) != settlement_only:
+                continue
+            result[row["period"].month] += row.get(field, 0.0) or 0.0
+        return result
+
     def _group_timesheets_by_project(self, timesheets):
         project_to_record = {}
         project_map = {}
@@ -426,6 +455,15 @@ class TenenetAllocationReportHandler(models.AbstractModel):
                 project_map[pid] = self.env["tenenet.project.timesheet"]
             project_map[pid] |= ts
         return {project_to_record[pid]: tss for pid, tss in project_map.items()}
+
+    def _group_contributions_by_project(self, contributions):
+        result = {}
+        for row in contributions:
+            project = row.get("project")
+            if not project:
+                continue
+            result.setdefault(project, []).append(row)
+        return result
 
     def _group_internal_wage_by_project(self, wage_expenses):
         result = {}
