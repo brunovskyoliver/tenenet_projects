@@ -116,7 +116,7 @@ class TestTenenetInternalHelpdesk(TransactionCase):
         vals = {
             "ticket_id": ticket.id,
             "name": "Čiastková úloha",
-            "employee_id": self.manager_employee.id,
+            "employee_ids": [Command.set([self.manager_employee.id])],
         }
         vals.update(extra_vals)
         return self.env["tenenet.helpdesk.subtask"].with_user(user).create(vals)
@@ -317,10 +317,26 @@ class TestTenenetInternalHelpdesk(TransactionCase):
 
         self.assertEqual(subtask.ticket_id, ticket)
         self.assertIn(subtask, ticket.tenenet_subtask_ids)
-        self.assertEqual(subtask.employee_id, self.manager_employee)
+        self.assertEqual(subtask.employee_ids, self.manager_employee)
         self.assertIn(self.manager_user, ticket.tenenet_active_assigned_user_ids)
         self.assertEqual(ticket.tenenet_open_subtask_count, 1)
         self.assertEqual(ticket.tenenet_done_subtask_count, 0)
+
+    def test_subtask_owner_can_assign_multiple_employees(self):
+        ticket = self._create_ticket(self.requester_user)
+
+        subtask = self._create_subtask(
+            ticket,
+            self.requester_user,
+            employee_ids=[Command.set([self.manager_employee.id, self.grand_manager_employee.id])],
+        )
+
+        self.assertEqual(subtask.employee_ids, self.manager_employee | self.grand_manager_employee)
+        self.assertIn(self.manager_user, ticket.tenenet_active_assigned_user_ids)
+        self.assertIn(self.grand_manager_user, ticket.tenenet_active_assigned_user_ids)
+
+        subtask.with_user(self.grand_manager_user).write({"is_done": True})
+        self.assertTrue(subtask.is_done)
 
     def test_done_subtask_is_removed_from_active_assignees(self):
         ticket = self._create_ticket(self.requester_user)
@@ -346,7 +362,7 @@ class TestTenenetInternalHelpdesk(TransactionCase):
         with self.assertRaises(AccessError):
             subtask.with_user(self.manager_user).write({"description": "<p>Denied</p>"})
         with self.assertRaises(AccessError):
-            subtask.with_user(self.manager_user).write({"employee_id": self.grand_manager_employee.id})
+            subtask.with_user(self.manager_user).write({"employee_ids": [Command.set([self.grand_manager_employee.id])]})
         with self.assertRaises(AccessError):
             subtask.with_user(self.manager_user).write({"date_deadline": "2026-04-30"})
         with self.assertRaises(AccessError):
@@ -362,12 +378,12 @@ class TestTenenetInternalHelpdesk(TransactionCase):
             "name": "Owner edit",
             "description": "<p>Owner note</p>",
             "date_deadline": "2026-04-30",
-            "employee_id": self.extra_employee.id,
+            "employee_ids": [Command.set([self.extra_employee.id])],
             "priority": "2",
         })
 
         self.assertEqual(subtask.name, "Owner edit")
-        self.assertEqual(subtask.employee_id, self.extra_employee)
+        self.assertEqual(subtask.employee_ids, self.extra_employee)
         self.assertEqual(subtask.priority, "2")
         subtask.with_user(self.requester_user).unlink()
         self.assertFalse(subtask.exists())
@@ -400,9 +416,13 @@ class TestTenenetInternalHelpdesk(TransactionCase):
     def test_subtask_owner_can_assign_any_active_company_employee(self):
         ticket = self._create_ticket(self.requester_user)
 
-        subtask = self._create_subtask(ticket, self.requester_user, employee_id=self.extra_employee.id)
+        subtask = self._create_subtask(
+            ticket,
+            self.requester_user,
+            employee_ids=[Command.set([self.extra_employee.id])],
+        )
 
-        self.assertEqual(subtask.employee_id, self.extra_employee)
+        self.assertEqual(subtask.employee_ids, self.extra_employee)
         self.assertNotIn(self.extra_employee.user_id, ticket.tenenet_active_assigned_user_ids)
 
     def test_subtask_leaving_done_clears_done_metadata(self):

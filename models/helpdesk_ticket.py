@@ -203,7 +203,7 @@ class HelpdeskTicket(models.Model):
         "tenenet_followup_user_id",
         "tenenet_control_user_id",
         "tenenet_subtask_ids",
-        "tenenet_subtask_ids.user_id",
+        "tenenet_subtask_ids.user_ids",
         "tenenet_subtask_ids.is_done",
     )
     def _compute_tenenet_active_assigned_user_ids(self):
@@ -216,7 +216,7 @@ class HelpdeskTicket(models.Model):
                     active_users |= ticket.tenenet_control_user_id
                 active_users |= ticket.tenenet_subtask_ids.filtered(
                     lambda subtask: not subtask.is_done
-                ).mapped("user_id")
+                ).mapped("user_ids")
             ticket.tenenet_active_assigned_user_ids = [Command.set(active_users.filtered("id").ids)]
 
     @api.depends("tenenet_subtask_ids", "tenenet_subtask_ids.is_done")

@@ -1,5 +1,6 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import AccessError, ValidationError
+from odoo.fields import Command
 
 
 class TenenetHelpdeskSubtask(models.Model):
@@ -35,16 +36,19 @@ class TenenetHelpdeskSubtask(models.Model):
         default="0",
         tracking=True,
     )
-    employee_id = fields.Many2one(
+    employee_ids = fields.Many2many(
         "hr.employee",
+        "tenenet_helpdesk_subtask_hr_employee_rel",
+        "subtask_id",
+        "employee_id",
         string="Pridelená osoba",
         required=True,
         tracking=True,
     )
-    user_id = fields.Many2one(
+    user_ids = fields.Many2many(
         "res.users",
-        related="employee_id.user_id",
-        string="Pridelený používateľ",
+        compute="_compute_user_ids",
+        string="Pridelení používatelia",
         store=True,
         readonly=True,
     )
@@ -73,6 +77,11 @@ class TenenetHelpdeskSubtask(models.Model):
         copy=False,
     )
 
+    @api.depends("employee_ids.user_id")
+    def _compute_user_ids(self):
+        for subtask in self:
+            subtask.user_ids = [Command.set(subtask.employee_ids.mapped("user_id").filtered("id").ids)]
+
     @api.model
     def _helpdesk_ticket_model(self):
         return self.env["helpdesk.ticket"]
@@ -90,7 +99,7 @@ class TenenetHelpdeskSubtask(models.Model):
             return True
         if not self._user_is_helpdesk_user(user):
             return False
-        if user == self.user_id:
+        if user in self.user_ids:
             return True
         if user in (
             ticket.tenenet_requested_by_user_id
@@ -106,7 +115,7 @@ class TenenetHelpdeskSubtask(models.Model):
             | ticket.user_id
             | ticket.tenenet_followup_user_id
             | ticket.tenenet_control_user_id
-            | self.user_id
+            | self.user_ids
         ).filtered("id")
         return any(
             self._helpdesk_ticket_model()._user_is_above_responsible_user(user, responsible_user)
@@ -148,7 +157,7 @@ class TenenetHelpdeskSubtask(models.Model):
         for subtask in self:
             if not (
                 subtask._user_is_helpdesk_manager(current_user)
-                or subtask.user_id == current_user
+                or current_user in subtask.user_ids
             ):
                 raise AccessError(
                     _("Dokončenie čiastkovej úlohy môže meniť iba pridelená osoba alebo TENENET helpdesk manažér.")
@@ -161,20 +170,28 @@ class TenenetHelpdeskSubtask(models.Model):
                     _("Čiastkové úlohy sú dostupné iba pre interné TENENET helpdesk požiadavky.")
                 )
 
-    def _check_assigned_employee(self):
-        for subtask in self:
-            if not subtask.employee_id.active:
+    def _check_assigned_employees(self):
+        for subtask in self.sudo():
+            if not subtask.employee_ids:
+                raise ValidationError(_("Čiastková úloha musí mať aspoň jedného prideleného zamestnanca."))
+            inactive_employees = subtask.employee_ids.filtered(lambda employee: not employee.active)
+            if inactive_employees:
                 raise ValidationError(
                     _(
                         "Zamestnanec %(employee)s nie je aktívny.",
-                        employee=subtask.employee_id.display_name,
+                        employee=", ".join(inactive_employees.mapped("display_name")),
                     )
                 )
-            if subtask.ticket_id.company_id and subtask.employee_id.company_id and subtask.employee_id.company_id != subtask.ticket_id.company_id:
+            wrong_company_employees = subtask.employee_ids.filtered(
+                lambda employee: subtask.ticket_id.company_id
+                and employee.company_id
+                and employee.company_id != subtask.ticket_id.company_id
+            )
+            if wrong_company_employees:
                 raise ValidationError(
                     _(
                         "Zamestnanec %(employee)s nepatrí do spoločnosti helpdesk požiadavky.",
-                        employee=subtask.employee_id.display_name,
+                        employee=", ".join(wrong_company_employees.mapped("display_name")),
                     )
                 )
 
@@ -193,22 +210,29 @@ class TenenetHelpdeskSubtask(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         prepared_vals_list = []
+        employee_commands_by_index = []
         for vals in vals_list:
             vals = dict(vals)
             ticket = self.env["helpdesk.ticket"].browse(vals.get("ticket_id") or self.env.context.get("default_ticket_id"))
             if not ticket:
                 raise ValidationError(_("Čiastková úloha musí byť priradená k helpdesk požiadavke."))
             vals["ticket_id"] = ticket.id
-            if not vals.get("employee_id"):
+            if "employee_id" in vals and not vals.get("employee_ids"):
+                employee_id = vals.pop("employee_id")
+                vals["employee_ids"] = [Command.set([employee_id] if employee_id else [])]
+            if not vals.get("employee_ids"):
                 employee = self._get_default_employee_for_ticket(ticket)
                 if not employee:
                     raise ValidationError(_("Čiastková úloha musí mať prideleného zamestnanca."))
-                vals["employee_id"] = employee.id
+                vals["employee_ids"] = [Command.set(employee.ids)]
+            employee_commands_by_index.append(vals.pop("employee_ids"))
             prepared_vals_list.append(vals)
         subtasks = super().create(prepared_vals_list)
+        for subtask, employee_commands in zip(subtasks, employee_commands_by_index):
+            super(TenenetHelpdeskSubtask, subtask.sudo()).write({"employee_ids": employee_commands})
         subtasks._check_ticket_internal()
         subtasks._check_manage_access()
-        subtasks._check_assigned_employee()
+        subtasks._check_assigned_employees()
         return subtasks
 
     def read(self, fields=None, load="_classic_read"):
@@ -217,12 +241,16 @@ class TenenetHelpdeskSubtask(models.Model):
 
     def write(self, vals):
         vals = dict(vals)
+        if "employee_id" in vals and not vals.get("employee_ids"):
+            employee_id = vals.pop("employee_id")
+            vals["employee_ids"] = [Command.set([employee_id] if employee_id else [])]
+        employee_commands = vals.pop("employee_ids", None)
         vals_without_meta = {
             field_name: value
             for field_name, value in vals.items()
             if field_name not in ("done_by_user_id", "done_date")
         }
-        if set(vals_without_meta) == {"is_done"}:
+        if set(vals_without_meta) == {"is_done"} and employee_commands is None:
             self._check_done_write_access()
         else:
             self._check_manage_access()
@@ -234,11 +262,13 @@ class TenenetHelpdeskSubtask(models.Model):
             vals["done_by_user_id"] = False
             vals["done_date"] = False
 
-        result = super().write(vals)
+        result = super().write(vals) if vals else True
+        if employee_commands is not None:
+            super(TenenetHelpdeskSubtask, self.sudo()).write({"employee_ids": employee_commands})
         if "ticket_id" in vals:
             self._check_ticket_internal()
-        if "employee_id" in vals or "ticket_id" in vals:
-            self._check_assigned_employee()
+        if employee_commands is not None or "ticket_id" in vals:
+            self._check_assigned_employees()
         return result
 
     def unlink(self):

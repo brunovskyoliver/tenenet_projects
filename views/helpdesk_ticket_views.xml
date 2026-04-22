@@ -154,8 +154,8 @@
                                 />
                                 <field name="name"/>
                                 <field
-                                    name="employee_id"
-                                    widget="many2one_avatar_employee"
+                                    name="employee_ids"
+                                    widget="many2many_avatar_employee"
                                     context="{'active_test': True}"
                                     domain="['|', ('company_id', '=', False), ('company_id', '=', parent.company_id)]"
                                 />
@@ -179,9 +179,15 @@
                                 <sheet>
                                     <group>
                                         <field name="ticket_id" readonly="1"/>
+                                        <field name="company_id" invisible="1"/>
                                         <field name="name"/>
                                         <field name="priority" widget="priority"/>
-                                        <field name="employee_id" widget="many2one_avatar_employee"/>
+                                        <field
+                                            name="employee_ids"
+                                            widget="many2many_avatar_employee"
+                                            context="{'active_test': True}"
+                                            domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]"
+                                        />
                                         <field name="date_deadline"/>
                                     </group>
                                     <notebook>

@@ -139,6 +139,17 @@
             <field name="perm_unlink" eval="0"/>
         </record>
 
+        <record id="rule_hr_employee_tenenet_helpdesk_user_read_all" model="ir.rule">
+            <field name="name">Zamestnanci: TENENET helpdesk používateľ číta všetko</field>
+            <field name="model_id" ref="hr.model_hr_employee"/>
+            <field name="domain_force">[(1, '=', 1)]</field>
+            <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_helpdesk_user'))]"/>
+            <field name="perm_read" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
+            <field name="perm_unlink" eval="0"/>
+        </record>
+
         <record id="rule_hr_employee_tenenet_hr_card_super_admin_all" model="ir.rule">
             <field name="name">Zamestnanci: TENENET HR Super admin všetko</field>
             <field name="model_id" ref="hr.model_hr_employee"/>
@@ -1023,7 +1034,7 @@
                 ('ticket_id.user_id', '=', user.id),
                 ('ticket_id.tenenet_followup_user_id', '=', user.id),
                 ('ticket_id.tenenet_control_user_id', '=', user.id),
-                ('user_id', '=', user.id),
+                ('user_ids', 'in', [user.id]),
                 ('ticket_id.message_partner_ids', 'in', [user.partner_id.id])]</field>
             <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_helpdesk_user'))]"/>
             <field name="perm_read" eval="1"/>
