@@ -385,6 +385,20 @@ class TenenetProjectAssignment(models.Model):
         self._after_ratio_plan_changed(periods)
         return True
 
+    def action_open_ratio_planner(self):
+        self.ensure_one()
+        return {
+            "name": "Alokačný plán",
+            "type": "ir.actions.client",
+            "tag": "tenenet_assignment_ratio_planner_action",
+            "target": "new",
+            "params": {
+                "assignment_id": self.id,
+                "year": fields.Date.context_today(self).year,
+            },
+            "context": dict(self.env.context, dialog_size="extra-large"),
+        }
+
     def _after_ratio_plan_changed(self, periods=None):
         if not self:
             return

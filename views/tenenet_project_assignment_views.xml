@@ -40,6 +40,13 @@
                             >
                                 Otvoriť maticu
                             </button>
+                            <button
+                                type="object"
+                                name="action_open_ratio_planner"
+                                class="btn btn-sm btn-outline-secondary"
+                            >
+                                Alokačný plán
+                            </button>
                         </t>
                     </templates>
                 </kanban>
@@ -74,6 +81,12 @@
                         string="Otvoriť maticu"
                         class="btn-link"
                     />
+                    <button
+                        name="action_open_ratio_planner"
+                        type="object"
+                        string="Alokačný plán"
+                        class="btn-link"
+                    />
                 </list>
             </field>
         </record>
@@ -89,6 +102,11 @@
                             type="object"
                             string="Otvoriť maticu"
                             class="btn-primary"
+                        />
+                        <button
+                            name="action_open_ratio_planner"
+                            type="object"
+                            string="Alokačný plán"
                         />
                     </header>
                     <sheet>
@@ -143,11 +161,11 @@
                                 <group>
                                     <field name="has_explicit_ratio_plan" readonly="1" />
                                 </group>
-                                <field
-                                    name="ratio_planner_state"
-                                    widget="tenenet_assignment_ratio_planner"
-                                    nolabel="1"
-                                    readonly="1"
+                                <button
+                                    name="action_open_ratio_planner"
+                                    type="object"
+                                    string="Otvoriť alokačný plán"
+                                    class="btn btn-primary"
                                 />
                             </page>
                         </notebook>

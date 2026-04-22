@@ -1,12 +1,40 @@
 .o_tenenet_assignment_ratio_planner {
+    .o_tenenet_budget_line_planner_table {
+        background: var(--planner-surface);
+    }
+
+    .o_tenenet_budget_line_planner_month_head,
+    .o_tenenet_budget_line_planner_label_head,
+    .o_tenenet_budget_line_planner_label_cell {
+        background: var(--planner-surface-strong);
+        color: var(--planner-text);
+    }
+
     .o_tenenet_budget_line_planner_cell.is-fallback {
-        background: #f8f9fa;
-        color: #6c757d;
+        background: var(--planner-surface);
+        color: var(--planner-text-muted);
+
+        .o_tenenet_budget_line_planner_cell_value {
+            color: var(--planner-text-muted);
+        }
     }
 
     .o_tenenet_budget_line_planner_cell.is-filled {
-        background: #e7f1ff;
-        color: #0f5132;
+        background: var(--planner-accent-soft);
+        color: var(--planner-text);
         font-weight: 600;
+
+        .o_tenenet_budget_line_planner_cell_value {
+            color: var(--planner-text);
+        }
+    }
+
+    .o_tenenet_budget_line_planner_cell.is-selected {
+        background: var(--planner-accent);
+        color: var(--planner-accent-text);
+
+        .o_tenenet_budget_line_planner_cell_value {
+            color: var(--planner-accent-text);
+        }
     }
 }

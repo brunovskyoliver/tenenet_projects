@@ -343,6 +343,12 @@
                                                 string="Matica"
                                                 icon="fa-table"
                                                 class="btn-link"/>
+                                        <button name="action_open_ratio_planner"
+                                                type="object"
+                                                string="Planner"
+                                                icon="fa-percent"
+                                                class="btn-link"
+                                                invisible="not parent.can_edit_project"/>
                                         <button name="action_open_employee_card_readonly"
                                                 type="object"
                                                 string="Karta"

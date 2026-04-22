@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="tenenet_projects.TenenetAssignmentRatioPlannerAction">
+        <div class="o_tenenet_budget_line_planner_action o_tenenet_assignment_ratio_planner_action" t-ref="root">
+            <t t-if="state.loading">
+                <div class="o_tenenet_budget_line_planner_loading">
+                    <i class="fa fa-spinner fa-spin me-2"/>Načítavam...
+                </div>
+            </t>
+            <t t-elif="!row">
+                <div class="o_tenenet_budget_line_planner_empty">
+                    Alokačný plán sa nepodarilo načítať.
+                </div>
+            </t>
+            <t t-else="">
+                <div class="o_tenenet_budget_line_planner_action_meta">
+                    <div class="o_tenenet_budget_line_planner_action_grid">
+                        <div class="o_tenenet_budget_line_planner_action_item">
+                            <span class="o_tenenet_budget_line_planner_action_label">Projekt</span>
+                            <strong t-out="row.project_name"/>
+                        </div>
+                        <div class="o_tenenet_budget_line_planner_action_item">
+                            <span class="o_tenenet_budget_line_planner_action_label">Zamestnanec</span>
+                            <strong t-out="row.employee_name"/>
+                        </div>
+                        <div class="o_tenenet_budget_line_planner_action_item">
+                            <span class="o_tenenet_budget_line_planner_action_label">Rok</span>
+                            <strong t-out="row.year"/>
+                        </div>
+                        <div class="o_tenenet_budget_line_planner_action_item">
+                            <span class="o_tenenet_budget_line_planner_action_label">Predvolené</span>
+                            <strong t-out="formatRatio(row.fallback_ratio)"/>
+                        </div>
+                    </div>
+                </div>
+                <div class="o_tenenet_budget_line_planner o_tenenet_assignment_ratio_planner">
+                    <div class="o_tenenet_budget_line_planner_header">
+                        <div>
+                            <div class="o_tenenet_budget_line_planner_title">Alokačný plán</div>
+                            <div class="o_tenenet_budget_line_planner_subtitle" t-out="row.label"/>
+                        </div>
+                        <div class="o_tenenet_budget_line_planner_controls">
+                            <label class="o_tenenet_cashflow_planner_toggle">
+                                <input type="checkbox"
+                                       t-att-checked="state.zeroMode"
+                                       t-on-change="onToggleZeroMode"/>
+                                <span>Nulovať výber</span>
+                            </label>
+                            <div class="o_tenenet_cashflow_planner_year">
+                                <button class="btn btn-secondary btn-sm"
+                                        t-on-click="() => this.changeYear(-1)">
+                                    <i class="fa fa-chevron-left"/>
+                                </button>
+                                <span class="o_tenenet_cashflow_planner_year_value" t-out="state.year"/>
+                                <button class="btn btn-secondary btn-sm"
+                                        t-on-click="() => this.changeYear(1)">
+                                    <i class="fa fa-chevron-right"/>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="o_tenenet_budget_line_planner_meta">
+                        <span class="o_tenenet_budget_line_planner_badge">
+                            Predvolené <t t-out="formatRatio(row.fallback_ratio)"/>
+                        </span>
+                        <span class="o_tenenet_budget_line_planner_badge" t-out="row.project_name"/>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm o_tenenet_budget_line_planner_table o_tenenet_assignment_ratio_planner_table">
+                            <thead>
+                                <tr>
+                                    <th class="o_tenenet_budget_line_planner_label_head">Priradenie</th>
+                                    <t t-foreach="months" t-as="month" t-key="month.number">
+                                        <th class="o_tenenet_budget_line_planner_month_head" t-out="month.label"/>
+                                    </t>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="o_tenenet_budget_line_planner_label_cell">
+                                        <div class="o_tenenet_budget_line_planner_line_label" t-out="row.employee_name"/>
+                                    </td>
+                                    <t t-foreach="months" t-as="month" t-key="month.number">
+                                        <td t-att-class="{
+                                                'o_tenenet_budget_line_planner_cell': true,
+                                                'is-filled': this.isExplicit(month.number),
+                                                'is-fallback': !this.isExplicit(month.number),
+                                                'is-selected': this.isSelected(month.number),
+                                                'is-selection-edge': this.isSelectionEdge(month.number),
+                                            }"
+                                            t-on-pointerdown="(ev) => this.onCellPointerDown(month.number, ev)"
+                                            t-on-pointerenter="() => this.onCellPointerEnter(month.number)">
+                                            <span class="o_tenenet_budget_line_planner_cell_value"
+                                                  t-out="this.formatCellValue(month.number)"/>
+                                        </td>
+                                    </t>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="o_tenenet_budget_line_planner_action_footer">
+                    <button class="btn btn-secondary" t-on-click="close">Zavrieť</button>
+                </div>
+            </t>
+        </div>
+    </t>
+</templates>

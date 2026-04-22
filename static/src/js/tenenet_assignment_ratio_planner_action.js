@@ -1,112 +1,32 @@
 /** @odoo-module **/
 
-import { Dialog } from "@web/core/dialog/dialog";
+import { Component, onMounted, onPatched, onWillStart, useExternalListener, useRef, useState } from "@odoo/owl";
 import { _t } from "@web/core/l10n/translation";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
-import { standardFieldProps } from "@web/views/fields/standard_field_props";
-
-import { Component, onWillStart, useExternalListener, useState } from "@odoo/owl";
+import { standardActionServiceProps } from "@web/webclient/actions/action_service";
 
 import {
     MONTHS,
-    getMonthLabel,
     normalizeRange,
-    parseAmount,
     roundAmount,
 } from "./tenenet_month_planner_utils";
+import { TenenetAssignmentRatioPlannerDialog } from "./tenenet_assignment_ratio_planner_field";
 
-export class TenenetAssignmentRatioPlannerDialog extends Component {
-    static template = "tenenet_projects.TenenetAssignmentRatioPlannerDialog";
-    static components = { Dialog };
-    static props = {
-        close: Function,
-        rowLabel: String,
-        year: Number,
-        entries: Array,
-        fallbackRatio: Number,
-        hasExistingAllocation: Boolean,
-        save: Function,
-        clear: Function,
-    };
-
-    setup() {
-        this.state = useState({
-            saving: false,
-            entries: this.props.entries.map((entry) => ({ ...entry })),
-        });
-    }
-
-    get entries() {
-        return this.state.entries;
-    }
-
-    getMonthLabel(month) {
-        return getMonthLabel(month);
-    }
-
-    formatRatio(value) {
-        return roundAmount(value).toFixed(2);
-    }
-
-    onRatioChange(month, ev) {
-        const entry = this.state.entries.find((item) => item.month === month);
-        if (!entry) {
-            return;
-        }
-        entry.amount = Math.min(100, Math.max(0, parseAmount(ev.target.value)));
-        entry.manual = true;
-        ev.target.value = this.formatRatio(entry.amount);
-    }
-
-    serializeEntries() {
-        return Object.fromEntries(
-            this.state.entries.map((entry) => [String(entry.month), roundAmount(entry.amount)])
-        );
-    }
-
-    async onSave() {
-        if (this.state.saving) {
-            return;
-        }
-        this.state.saving = true;
-        try {
-            const shouldClose = await this.props.save({ monthRatios: this.serializeEntries() });
-            if (shouldClose !== false) {
-                this.props.close();
-            }
-        } finally {
-            this.state.saving = false;
-        }
-    }
-
-    async onClear() {
-        if (this.state.saving) {
-            return;
-        }
-        this.state.saving = true;
-        try {
-            const shouldClose = await this.props.clear();
-            if (shouldClose !== false) {
-                this.props.close();
-            }
-        } finally {
-            this.state.saving = false;
-        }
-    }
-}
-
-export class TenenetAssignmentRatioPlannerField extends Component {
-    static template = "tenenet_projects.TenenetAssignmentRatioPlannerField";
-    static props = { ...standardFieldProps };
+export class TenenetAssignmentRatioPlannerAction extends Component {
+    static template = "tenenet_projects.TenenetAssignmentRatioPlannerAction";
+    static props = { ...standardActionServiceProps };
 
     setup() {
         this.orm = useService("orm");
-        this.notification = useService("notification");
         this.dialog = useService("dialog");
+        this.notification = useService("notification");
+        this.actionService = useService("action");
+        this.rootRef = useRef("root");
+        this.assignmentId = this.props.action.params?.assignment_id;
         this.state = useState({
             loading: true,
-            year: this.initialYear,
+            year: this.props.action.params?.year || new Date().getFullYear(),
             row: null,
             zeroMode: false,
             drag: this._emptyDragState(),
@@ -115,20 +35,19 @@ export class TenenetAssignmentRatioPlannerField extends Component {
         onWillStart(async () => {
             await this.loadPlannerData();
         });
+        onMounted(() => this.applyModalSizing());
+        onPatched(() => this.applyModalSizing());
 
         useExternalListener(window, "pointerup", this.onGlobalPointerUp.bind(this));
-    }
-
-    get initialYear() {
-        return this.props.record.data[this.props.name]?.current_year || new Date().getFullYear();
-    }
-
-    get hasRecord() {
-        return !!this.props.record.resId;
+        useExternalListener(window, "resize", this.applyModalSizing.bind(this));
     }
 
     get months() {
         return MONTHS;
+    }
+
+    get row() {
+        return this.state.row;
     }
 
     _emptyDragState() {
@@ -140,7 +59,7 @@ export class TenenetAssignmentRatioPlannerField extends Component {
     }
 
     async loadPlannerData(year = this.state.year) {
-        if (!this.hasRecord) {
+        if (!this.assignmentId) {
             this.state.loading = false;
             this.state.row = null;
             return;
@@ -148,7 +67,7 @@ export class TenenetAssignmentRatioPlannerField extends Component {
         this.state.loading = true;
         try {
             this.state.row = await this.orm.call("tenenet.project.assignment", "get_ratio_planner_data", [
-                [this.props.record.resId],
+                [this.assignmentId],
                 year,
             ]);
             this.state.year = this.state.row.year;
@@ -173,7 +92,7 @@ export class TenenetAssignmentRatioPlannerField extends Component {
     }
 
     onCellPointerDown(month, ev) {
-        if (!this.state.row || this.state.loading) {
+        if (!this.row || this.state.loading) {
             return;
         }
         ev.preventDefault();
@@ -183,14 +102,13 @@ export class TenenetAssignmentRatioPlannerField extends Component {
     }
 
     onCellPointerEnter(month) {
-        if (!this.state.drag.active) {
-            return;
+        if (this.state.drag.active) {
+            this.state.drag.endMonth = month;
         }
-        this.state.drag.endMonth = month;
     }
 
     async onGlobalPointerUp() {
-        if (!this.state.drag.active || !this.state.row) {
+        if (!this.state.drag.active || !this.row) {
             return;
         }
         const selection = this.getSelection();
@@ -223,17 +141,17 @@ export class TenenetAssignmentRatioPlannerField extends Component {
     buildDialogEntries(selection) {
         return selection.selectedMonths.map((month) => ({
             month,
-            amount: roundAmount(this.state.row.months?.[String(month)] || 0),
+            amount: roundAmount(this.row.months?.[String(month)] || 0),
             manual: true,
         }));
     }
 
     openEditorDialog(selection) {
-        const explicit = new Set(this.state.row.explicit_months || []);
+        const explicit = new Set(this.row.explicit_months || []);
         this.dialog.add(TenenetAssignmentRatioPlannerDialog, {
-            rowLabel: this.state.row.label,
-            year: this.state.row.year,
-            fallbackRatio: this.state.row.fallback_ratio,
+            rowLabel: this.row.label,
+            year: this.row.year,
+            fallbackRatio: this.row.fallback_ratio,
             entries: this.buildDialogEntries(selection),
             hasExistingAllocation: selection.selectedMonths.some((month) => explicit.has(month)),
             save: (payload) => this.applySelection(payload),
@@ -244,7 +162,7 @@ export class TenenetAssignmentRatioPlannerField extends Component {
     async applySelection(payload) {
         try {
             await this.orm.call("tenenet.project.assignment", "set_month_ratios", [
-                [this.props.record.resId],
+                [this.assignmentId],
                 this.state.year,
                 payload.monthRatios,
             ]);
@@ -267,7 +185,7 @@ export class TenenetAssignmentRatioPlannerField extends Component {
     async clearSelection(selection) {
         try {
             await this.orm.call("tenenet.project.assignment", "clear_month_ratios", [
-                [this.props.record.resId],
+                [this.assignmentId],
                 this.state.year,
                 selection.selectedMonths,
             ]);
@@ -283,7 +201,7 @@ export class TenenetAssignmentRatioPlannerField extends Component {
     }
 
     isExplicit(month) {
-        return (this.state.row?.explicit_months || []).includes(month);
+        return (this.row?.explicit_months || []).includes(month);
     }
 
     isSelected(month) {
@@ -308,13 +226,48 @@ export class TenenetAssignmentRatioPlannerField extends Component {
         return month === startMonth || month === endMonth;
     }
 
-    formatCellValue(month) {
-        const value = this.state.row?.months?.[String(month)] || 0;
+    formatRatio(value) {
         return `${roundAmount(value).toFixed(2)} %`;
+    }
+
+    formatCellValue(month) {
+        return this.formatRatio(this.row?.months?.[String(month)] || 0);
+    }
+
+    close() {
+        if (this.env.dialogData?.close) {
+            this.env.dialogData.close();
+            return;
+        }
+        this.actionService.restore();
+    }
+
+    applyModalSizing() {
+        const root = this.rootRef.el;
+        if (!root) {
+            return;
+        }
+        const dialog = root.closest(".modal-dialog");
+        const content = root.closest(".modal-content");
+        if (!dialog || !content) {
+            return;
+        }
+        const mobile = window.innerWidth < 992;
+        const targetWidth = mobile ? "calc(100vw - 1rem)" : "1320px";
+        const maxWidth = mobile ? "calc(100vw - 1rem)" : "calc(100vw - 2rem)";
+
+        dialog.classList.add("o_tenenet_budget_line_planner_modal");
+        dialog.style.setProperty("--bs-modal-width", targetWidth, "important");
+        dialog.style.setProperty("--modal-width", targetWidth, "important");
+        dialog.style.setProperty("width", targetWidth, "important");
+        dialog.style.setProperty("max-width", maxWidth, "important");
+
+        content.style.setProperty("width", mobile ? "100%" : "max-content", "important");
+        content.style.setProperty("max-width", maxWidth, "important");
     }
 }
 
-registry.category("fields").add("tenenet_assignment_ratio_planner", {
-    component: TenenetAssignmentRatioPlannerField,
-    supportedTypes: ["json"],
-});
+registry.category("actions").add(
+    "tenenet_assignment_ratio_planner_action",
+    TenenetAssignmentRatioPlannerAction
+);

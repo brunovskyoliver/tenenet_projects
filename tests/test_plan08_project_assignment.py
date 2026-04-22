@@ -104,8 +104,18 @@ class TestTenenetPlan08ProjectAssignment(TransactionCase):
             view_type="form",
         )["arch"]
 
-        self.assertIn('name="ratio_planner_state"', assignment_arch)
-        self.assertIn('widget="tenenet_assignment_ratio_planner"', assignment_arch)
+        self.assertIn('name="action_open_ratio_planner"', assignment_arch)
+        self.assertIn("Otvoriť alokačný plán", assignment_arch)
+
+    def test_assignment_ratio_planner_action(self):
+        assignment = self.env["tenenet.project.assignment"].create(self._assignment_vals(allocation_ratio=50.0))
+
+        action = assignment.action_open_ratio_planner()
+
+        self.assertEqual(action["type"], "ir.actions.client")
+        self.assertEqual(action["tag"], "tenenet_assignment_ratio_planner_action")
+        self.assertEqual(action["target"], "new")
+        self.assertEqual(action["params"]["assignment_id"], assignment.id)
 
     def test_monthly_ratio_overrides_scalar_fallback(self):
         assignment = self.env["tenenet.project.assignment"].create(self._assignment_vals(allocation_ratio=50.0))
