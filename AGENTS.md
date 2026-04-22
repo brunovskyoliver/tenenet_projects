@@ -189,6 +189,13 @@ Minimum content per feature entry:
 - Always include `currency_id` field alongside Monetary fields
 - Default: `self.env.ref('base.EUR')`
 
+### Salary Target Semantics
+
+- `hr.employee.monthly_gross_salary_target` is base imported CCP for month without public holidays.
+- Month-sensitive computations must not read that raw field directly when period matters.
+- Use employee month helper methods (`_get_effective_monthly_gross_salary_target*`, `_get_month_workday_metrics`) or stored period values on `tenenet.employee.tenenet.cost`.
+- Public holidays come from `resource.calendar.leaves`.
+
 ### Date Formats
 
 - Excel dates may be `datetime` objects or strings like "12.2.2025"

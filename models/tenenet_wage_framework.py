@@ -709,6 +709,9 @@ class HrEmployee(models.Model):
     def _compute_salary_guidance_context_html(self):
         for employee in self:
             context = employee._get_salary_guidance_context()
+            current_target_ccp = employee._get_effective_monthly_gross_salary_target()
+            current_target_hm = employee._get_effective_monthly_gross_salary_target_hm()
+            metrics = employee._get_month_workday_metrics(employee._get_target_period())
             source_label = "Manuálne zvolený program" if context["source"] == "manual" else "Aktívne priradenia"
             program_items = "".join(
                 f"<span class='o_tenenet_employee_chip'>{escape(program.display_name)}</span>"
@@ -742,6 +745,18 @@ class HrEmployee(models.Model):
                         <div class="o_tenenet_salary_context_label">Výnimky</div>
                         <div class="o_tenenet_salary_context_value">%s</div>
                     </div>
+                    <div class="o_tenenet_salary_context_card">
+                        <div class="o_tenenet_salary_context_label">Base cieľ bez sviatkov</div>
+                        <div class="o_tenenet_salary_context_value">%s CCP / %s HM</div>
+                    </div>
+                    <div class="o_tenenet_salary_context_card">
+                        <div class="o_tenenet_salary_context_label">Aktuálny mesiac po sviatkoch</div>
+                        <div class="o_tenenet_salary_context_value">%s CCP / %s HM</div>
+                    </div>
+                    <div class="o_tenenet_salary_context_card">
+                        <div class="o_tenenet_salary_context_label">Pracovné dni</div>
+                        <div class="o_tenenet_salary_context_value">%s dní, sviatky %s, po sviatkoch %s</div>
+                    </div>
                 </div>
                 """
             ) % (
@@ -749,6 +764,13 @@ class HrEmployee(models.Model):
                 Markup(program_items),
                 Markup(job_items),
                 escape(override_label),
+                escape(f"{employee.monthly_gross_salary_target:,.2f}".replace(",", " ")),
+                escape(f"{employee.monthly_gross_salary_target_hm:,.2f}".replace(",", " ")),
+                escape(f"{current_target_ccp:,.2f}".replace(",", " ")),
+                escape(f"{current_target_hm:,.2f}".replace(",", " ")),
+                escape(metrics["base_workdays"]),
+                escape(metrics["holiday_workdays"]),
+                escape(metrics["effective_workdays"]),
             )
 
     @api.depends(
@@ -793,12 +815,20 @@ class HrEmployee(models.Model):
         for employee in self:
             target_html = ""
             cards = []
+            effective_target_ccp = employee._get_effective_monthly_gross_salary_target()
+            effective_target_hm = employee._get_effective_monthly_gross_salary_target_hm()
+            metrics = employee._get_month_workday_metrics(employee._get_target_period())
             if employee.monthly_gross_salary_target:
                 target_html = (
-                    "<div class='o_tenenet_salary_target'>Mesačný cieľ CCP: "
+                    "<div class='o_tenenet_salary_target'>Base mesačný cieľ CCP bez sviatkov: "
                     f"<strong>{escape(f'{employee.monthly_gross_salary_target:,.2f}'.replace(',', ' '))} EUR</strong>"
                     " / odvodený HM (brutto): "
                     f"<strong>{escape(f'{employee.monthly_gross_salary_target_hm:,.2f}'.replace(',', ' '))} EUR</strong></div>"
+                    "<div class='o_tenenet_salary_target'>Aktuálny mesiac po sviatkoch: "
+                    f"<strong>{escape(f'{effective_target_ccp:,.2f}'.replace(',', ' '))} EUR CCP</strong>"
+                    " / "
+                    f"<strong>{escape(f'{effective_target_hm:,.2f}'.replace(',', ' '))} EUR HM</strong>"
+                    f" <span class='text-muted'>({metrics['base_workdays']} prac. dní, sviatky {metrics['holiday_workdays']}, po sviatkoch {metrics['effective_workdays']})</span></div>"
                 )
 
             resolutions = employee._get_legal_wage_resolutions()
@@ -852,17 +882,17 @@ class HrEmployee(models.Model):
                         experience_label = f"Praxe: od {resolution.line.experience_years_from:g} rokov"
 
                 delta_html = ""
-                if resolution.amount and employee.monthly_gross_salary_target:
-                    delta = employee.monthly_gross_salary_target_hm - resolution.amount
+                if resolution.amount and effective_target_ccp:
+                    delta = effective_target_hm - resolution.amount
                     if abs(delta) < 0.005:
                         delta_class = "is-match"
-                        delta_text = "Odvodený HM cieľ je na úrovni odporúčania."
+                        delta_text = "Aktuálny HM cieľ po sviatkoch je na úrovni odporúčania."
                     elif delta < 0:
                         delta_class = "is-below"
-                        delta_text = f"Odvodený HM cieľ je nižší o {abs(delta):,.2f} EUR."
+                        delta_text = f"Aktuálny HM cieľ po sviatkoch je nižší o {abs(delta):,.2f} EUR."
                     else:
                         delta_class = "is-above"
-                        delta_text = f"Odvodený HM cieľ je vyšší o {abs(delta):,.2f} EUR."
+                        delta_text = f"Aktuálny HM cieľ po sviatkoch je vyšší o {abs(delta):,.2f} EUR."
                     delta_html = (
                         f"<div class='o_tenenet_salary_delta {delta_class}'>{escape(delta_text.replace(',', ' '))}</div>"
                     )

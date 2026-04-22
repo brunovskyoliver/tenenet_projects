@@ -22,11 +22,11 @@
                                 <field name="detail_label" readonly="1"/>
                                 <field name="expense_type_config_id" readonly="1" invisible="not expense_type_config_id"/>
                                 <field name="service_income_type" readonly="1" invisible="not service_income_type"/>
-                                <field name="can_cover_payroll" readonly="1" invisible="not service_income_type"/>
+                                <field name="can_cover_payroll" readonly="1" invisible="not can_cover_payroll"/>
                                 <field name="payroll_employee_ids"
                                        readonly="1"
                                        widget="many2many_tags"
-                                       invisible="service_income_type != 'sales_individual' or not can_cover_payroll"/>
+                                       invisible="not can_cover_payroll"/>
                                 <field name="amount" readonly="1"/>
                                 <field name="has_explicit_month_plan" readonly="1"/>
                             </group>

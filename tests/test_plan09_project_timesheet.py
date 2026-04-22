@@ -9,6 +9,7 @@ from odoo.tests import TransactionCase, tagged
 class TestTenenetPlan09ProjectTimesheet(TransactionCase):
     def setUp(self):
         super().setUp()
+        self.admin_program = self.env["tenenet.program"].search([("code", "=", "ADMIN_TENENET")], limit=1)
         self.program = self.env["tenenet.program"].create({"name": "Program Timesheet", "code": "PLAN09_TS"})
         self.employee = self.env["hr.employee"].create({"name": "Zamestnanec Timesheet"})
         self.project = self.env["tenenet.project"].create({
@@ -190,21 +191,23 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
 
     def test_tenenet_cost_residual_auto_created_and_computed(self):
         self.employee.write({"monthly_gross_salary_target": 2724.0})
+        expected_target_hm = self.employee._get_effective_monthly_gross_salary_target_hm("2026-08-01")
         self.env["tenenet.project.timesheet"].create(self._timesheet_vals(
+            period="2026-08-01",
             hours_pp=100.0, hours_np=0.0, hours_vacation=0.0
         ))
         self.env["tenenet.project.timesheet"].create(self._timesheet_vals(
-            assignment=self.assignment2, period="2026-01-01",
+            assignment=self.assignment2, period="2026-08-01",
             hours_pp=50.0, hours_np=0.0, hours_vacation=0.0
         ))
         cost = self.env["tenenet.employee.tenenet.cost"].search([
             ("employee_id", "=", self.employee.id),
-            ("period", "=", "2026-01-01"),
+            ("period", "=", "2026-08-01"),
         ], limit=1)
         self.assertTrue(cost)
         # project billed: 100 * 10 + 50 * 12 = 1000 + 600 = 1600
         self.assertAlmostEqual(cost.project_billed_gross, 1600.0, places=2)
-        self.assertAlmostEqual(cost.tenenet_residual_hm, 400.0, places=2)
+        self.assertAlmostEqual(cost.tenenet_residual_hm, expected_target_hm - 1600.0, places=2)
 
     def test_residual_record_updates_when_lines_change(self):
         ts = self.env["tenenet.project.timesheet"].create({
@@ -225,6 +228,7 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
     def test_fixed_ratio_project_covers_monthly_target_share_without_hours(self):
         self.employee.write({"monthly_gross_salary_target": 2000.0})
         self.project.write({"salary_funding_mode": "fixed_ratio"})
+        expected_target_ccp = self.employee._get_effective_monthly_gross_salary_target("2026-08-01")
 
         cost = self.env["tenenet.employee.tenenet.cost"]._sync_for_employee_period(
             self.employee.id,
@@ -232,29 +236,30 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
         )
 
         self.assertTrue(cost)
-        self.assertAlmostEqual(cost.fixed_ratio_covered_ccp, 1000.0, places=2)
-        self.assertAlmostEqual(cost.project_billed_ccp, 1000.0, places=2)
-        self.assertAlmostEqual(cost.tenenet_residual_ccp, 1000.0, places=2)
+        self.assertAlmostEqual(cost.fixed_ratio_covered_ccp, expected_target_ccp * 0.5, places=2)
+        self.assertAlmostEqual(cost.project_billed_ccp, expected_target_ccp * 0.5, places=2)
+        self.assertAlmostEqual(cost.tenenet_residual_ccp, expected_target_ccp * 0.5, places=2)
 
     def test_fixed_ratio_overallocation_scales_to_monthly_target(self):
-        self.employee.write({"monthly_gross_salary_target": 1000.0})
+        self.employee.write({"monthly_gross_salary_target": 1000.0, "work_ratio": 200.0})
         self.project.write({"salary_funding_mode": "fixed_ratio"})
         self.project2.write({"salary_funding_mode": "fixed_ratio"})
         self.assignment.write({"allocation_ratio": 80.0})
         self.assignment2.write({"allocation_ratio": 80.0})
+        expected_target_ccp = self.employee._get_effective_monthly_gross_salary_target("2026-07-01")
 
         cost = self.env["tenenet.employee.tenenet.cost"]._sync_for_employee_period(
             self.employee.id,
-            "2026-09-01",
+            "2026-07-01",
         )
         coverage = cost._get_project_salary_contributions()
 
-        self.assertAlmostEqual(cost.fixed_ratio_covered_ccp, 1000.0, places=2)
-        self.assertAlmostEqual(cost.project_billed_ccp, 1000.0, places=2)
+        self.assertAlmostEqual(cost.fixed_ratio_covered_ccp, expected_target_ccp, places=2)
+        self.assertAlmostEqual(cost.project_billed_ccp, expected_target_ccp, places=2)
         self.assertAlmostEqual(cost.tenenet_residual_ccp, 0.0, places=2)
         self.assertEqual(len(coverage["contributions"]), 2)
         for row in coverage["contributions"]:
-            self.assertAlmostEqual(row["ccp"], 500.0, places=2)
+            self.assertAlmostEqual(row["ccp"], expected_target_ccp / 2.0, places=2)
 
     def test_fixed_ratio_project_is_capped_by_monthly_labor_budget(self):
         self.employee.write({"monthly_gross_salary_target": 2000.0})
@@ -424,6 +429,8 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
             "name": "Projekt s rozsahom",
             "date_start": "2026-01-15",
             "date_end": "2026-03-05",
+            "program_ids": [(6, 0, self.admin_program.ids)],
+            "reporting_program_id": self.admin_program.id,
         })
         assignment = self.env["tenenet.project.assignment"].create({
             "employee_id": self.employee.id,
@@ -449,6 +456,8 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
             "name": "Projekt na maticu",
             "date_start": "2025-12-01",
             "date_end": "2026-12-31",
+            "program_ids": [(6, 0, self.admin_program.ids)],
+            "reporting_program_id": self.admin_program.id,
         })
         assignment = self.env["tenenet.project.assignment"].create({
             "employee_id": self.employee.id,
@@ -529,6 +538,8 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
     def test_open_ended_assignment_creates_year_matrices_until_present(self):
         project = self.env["tenenet.project"].create({
             "name": "Projekt bez konca",
+            "program_ids": [(6, 0, self.admin_program.ids)],
+            "reporting_program_id": self.admin_program.id,
         })
         assignment = self.env["tenenet.project.assignment"].create({
             "employee_id": self.employee.id,
@@ -571,6 +582,8 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
             "name": "Projekt s hranicami matice",
             "date_start": "2025-12-01",
             "date_end": "2026-12-31",
+            "program_ids": [(6, 0, self.admin_program.ids)],
+            "reporting_program_id": self.admin_program.id,
         })
         assignment = self.env["tenenet.project.assignment"].create({
             "employee_id": self.employee.id,

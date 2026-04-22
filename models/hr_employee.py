@@ -1,4 +1,7 @@
+import calendar
+import unicodedata
 from copy import deepcopy
+from datetime import timedelta
 
 from lxml import etree
 from markupsafe import Markup, escape
@@ -11,6 +14,23 @@ class HrEmployee(models.Model):
     _inherit = "hr.employee"
 
     CCP_MULTIPLIER = 1.362
+    SK_PUBLIC_HOLIDAY_NAMES = {
+        "den vzniku slovenskej republiky",
+        "zjavenie pana",
+        "velky piatok",
+        "velkonocny pondelok",
+        "sviatok prace",
+        "den vitazstva nad fasizmom",
+        "sviatok svateho cyrila a svateho metoda",
+        "vyrocie slovenskeho narodneho povstania",
+        "den ustavy slovenskej republiky",
+        "sedembolestna panna maria",
+        "sviatok vsetkych svatych",
+        "den boja za slobodu a demokraciu",
+        "stedry den",
+        "prvy sviatok vianocny",
+        "druhy sviatok vianocny",
+    }
 
     _PAYROLL_CLEANUP_XMLID = "tenenet_projects.view_hr_employee_form_tenenet_payroll_cleanup_optional"
     _PAYROLL_CLEANUP_ARCH = """
@@ -133,6 +153,24 @@ class HrEmployee(models.Model):
         currency_field="salary_currency_id",
         compute="_compute_monthly_gross_salary_target_hm",
         help="Informatívna hrubá mzda odvodená z mesačného cieľa CCP.",
+    )
+    current_month_effective_workday_count = fields.Integer(
+        string="Aktuálny mesiac - pracovné dni po sviatkoch",
+        compute="_compute_current_month_salary_target_fields",
+    )
+    current_month_holiday_workday_count = fields.Integer(
+        string="Aktuálny mesiac - sviatky v pracovných dňoch",
+        compute="_compute_current_month_salary_target_fields",
+    )
+    current_month_monthly_gross_salary_target = fields.Monetary(
+        string="Aktuálny mesiac - efektívny cieľ CCP",
+        currency_field="salary_currency_id",
+        compute="_compute_current_month_salary_target_fields",
+    )
+    current_month_monthly_gross_salary_target_hm = fields.Monetary(
+        string="Aktuálny mesiac - efektívny cieľ HM (brutto)",
+        currency_field="salary_currency_id",
+        compute="_compute_current_month_salary_target_fields",
     )
     profile_summary_html = fields.Html(
         string="Súhrn pracovísk a pozícií",
@@ -965,7 +1003,7 @@ class HrEmployee(models.Model):
             vals = self._prepare_tenenet_resource_calendar_vals(vals, self)
             vals = self._prepare_tenenet_responsible_sync_vals(vals, self)
             result = super().write(vals)
-            if "monthly_gross_salary_target" in vals:
+            if {"monthly_gross_salary_target", "resource_calendar_id", "work_ratio"} & set(vals):
                 periods = set(self.tenenet_cost_ids.mapped("period"))
                 for assignment in self.assignment_ids:
                     periods.update(assignment._get_expected_periods())
@@ -989,7 +1027,7 @@ class HrEmployee(models.Model):
             record_vals = record._prepare_tenenet_resource_calendar_vals(record_vals, record)
             record_vals = record._prepare_tenenet_responsible_sync_vals(record_vals, record)
             super(HrEmployee, record).write(record_vals)
-            if "monthly_gross_salary_target" in vals:
+            if {"monthly_gross_salary_target", "resource_calendar_id", "work_ratio"} & set(vals):
                 periods = set(record.tenenet_cost_ids.mapped("period"))
                 for assignment in record.assignment_ids:
                     periods.update(assignment._get_expected_periods())
@@ -1369,6 +1407,111 @@ class HrEmployee(models.Model):
             rec.monthly_gross_salary_target_hm = (rec.monthly_gross_salary_target or 0.0) / self.CCP_MULTIPLIER
 
     @api.model
+    def _get_target_period(self, period=None):
+        raw_period = period or self.env.context.get("tenenet_period") or fields.Date.context_today(self)
+        return fields.Date.to_date(raw_period).replace(day=1)
+
+    def _get_working_weekdays(self):
+        self.ensure_one()
+        calendar_record = self.resource_calendar_id
+        if not calendar_record:
+            return {0, 1, 2, 3, 4}
+        weekdays = {
+            int(attendance.dayofweek)
+            for attendance in calendar_record.attendance_ids
+            if attendance.dayofweek not in (False, None)
+        }
+        return weekdays or {0, 1, 2, 3, 4}
+
+    @api.model
+    def _normalize_sk_public_holiday_name(self, name):
+        normalized = unicodedata.normalize("NFKD", (name or "").strip().casefold())
+        return "".join(char for char in normalized if not unicodedata.combining(char))
+
+    @api.model
+    def _is_calendar_leave_public_holiday(self, leave):
+        if not leave or leave.resource_id:
+            return False
+        return self._normalize_sk_public_holiday_name(leave.name) in self.SK_PUBLIC_HOLIDAY_NAMES
+
+    def _get_public_holiday_leaves_for_period(self, period):
+        self.ensure_one()
+        normalized_period = self._get_target_period(period)
+        month_end_day = calendar.monthrange(normalized_period.year, normalized_period.month)[1]
+        month_start = normalized_period
+        month_end = normalized_period.replace(day=month_end_day)
+        leave_model = self.env["resource.calendar.leaves"].sudo()
+        domain = [
+            ("resource_id", "=", False),
+            ("date_from", "<=", fields.Datetime.to_string(month_end + timedelta(days=1))),
+            ("date_to", ">=", fields.Datetime.to_string(month_start)),
+        ]
+        if self.resource_calendar_id:
+            domain = ["|", ("calendar_id", "=", False), ("calendar_id", "=", self.resource_calendar_id.id)] + domain
+        leaves = leave_model.search(domain)
+        return leaves.filtered(self._is_calendar_leave_public_holiday)
+
+    def _get_month_workday_metrics(self, period):
+        self.ensure_one()
+        normalized_period = self._get_target_period(period)
+        month_end_day = calendar.monthrange(normalized_period.year, normalized_period.month)[1]
+        working_weekdays = self._get_working_weekdays()
+        base_days = {
+            normalized_period.replace(day=day)
+            for day in range(1, month_end_day + 1)
+            if normalized_period.replace(day=day).weekday() in working_weekdays
+        }
+        holiday_days = set()
+        for leave in self._get_public_holiday_leaves_for_period(normalized_period):
+            date_from = fields.Datetime.to_datetime(leave.date_from)
+            date_to = fields.Datetime.to_datetime(leave.date_to)
+            current_day = date_from.date()
+            end_day = date_to.date()
+            while current_day <= end_day:
+                if (
+                    current_day.month == normalized_period.month
+                    and current_day.year == normalized_period.year
+                    and current_day in base_days
+                ):
+                    holiday_days.add(current_day)
+                current_day += timedelta(days=1)
+        return {
+            "base_workdays": len(base_days),
+            "holiday_workdays": len(holiday_days),
+            "effective_workdays": max(0, len(base_days) - len(holiday_days)),
+        }
+
+    def _get_effective_monthly_gross_salary_target(self, period=None):
+        self.ensure_one()
+        raw_target = self.monthly_gross_salary_target or 0.0
+        if raw_target <= 0.0:
+            return 0.0
+        metrics = self._get_month_workday_metrics(period)
+        base_workdays = metrics["base_workdays"]
+        if base_workdays <= 0:
+            return 0.0
+        return raw_target * (metrics["effective_workdays"] / base_workdays)
+
+    def _get_effective_monthly_gross_salary_target_hm(self, period=None):
+        self.ensure_one()
+        return self._get_effective_monthly_gross_salary_target(period) / self.CCP_MULTIPLIER
+
+    @api.depends(
+        "monthly_gross_salary_target",
+        "resource_calendar_id",
+        "resource_calendar_id.attendance_ids",
+        "resource_calendar_id.leave_ids",
+    )
+    def _compute_current_month_salary_target_fields(self):
+        current_period = self._get_target_period()
+        for rec in self:
+            metrics = rec._get_month_workday_metrics(current_period)
+            rec.current_month_effective_workday_count = metrics["effective_workdays"]
+            rec.current_month_holiday_workday_count = metrics["holiday_workdays"]
+            rec.current_month_monthly_gross_salary_target = rec._get_effective_monthly_gross_salary_target(current_period)
+            rec.current_month_monthly_gross_salary_target_hm = rec._get_effective_monthly_gross_salary_target_hm(current_period)
+
+    @api.model
     def _get_tenenet_hourly_rate_period(self):
         period = self.env.context.get("tenenet_period") or fields.Date.context_today(self)
         return fields.Date.to_date(period).replace(day=1)
@@ -1398,7 +1541,8 @@ class HrEmployee(models.Model):
             ])
             project_hours = sum(timesheets.mapped("hours_total"))
             project_ccp = coverage["total_ccp"]
-            remaining_ccp = max(0.0, (rec.monthly_gross_salary_target or 0.0) - project_ccp)
+            effective_target_ccp = rec._get_effective_monthly_gross_salary_target(period)
+            remaining_ccp = max(0.0, effective_target_ccp - project_ccp)
             remaining_hours = max(0.0, (rec.monthly_capacity_hours or 0.0) - project_hours)
             rec.hourly_rate = remaining_ccp / remaining_hours if remaining_hours else 0.0
 

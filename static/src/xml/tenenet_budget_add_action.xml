@@ -85,7 +85,7 @@
                                 </select>
                             </div>
                         </t>
-                        <t t-if="state.serviceIncomeType">
+                        <t t-if="state.budgetType === 'other'">
                             <div class="col-12">
                                 <label class="o_tenenet_cashflow_planner_toggle">
                                     <input type="checkbox"
@@ -93,6 +93,32 @@
                                            t-on-change="onPayrollToggle"/>
                                     <span>Môže kryť mzdy zamestnancov</span>
                                 </label>
+                            </div>
+                        </t>
+                        <t t-if="showPayrollEmployeePicker">
+                            <div class="col-12">
+                                <label class="form-label">Povolení zamestnanci pre mzdy</label>
+                                <div class="text-muted small mb-2">
+                                    Ak nevyberieš nikoho, položku môžu použiť všetci priradení zamestnanci projektu.
+                                </div>
+                                <t t-if="payrollEmployeeOptions.length">
+                                    <div class="o_tenenet_budget_add_type_badges">
+                                        <t t-foreach="payrollEmployeeOptions" t-as="employee" t-key="employee.id">
+                                            <button type="button"
+                                                    class="o_selection_badge btn mb-1"
+                                                    t-att-class="state.payrollEmployeeIds.includes(employee.id) ? 'btn-primary' : 'btn-secondary'"
+                                                    t-att-data-employee-id="employee.id"
+                                                    t-on-click="onPayrollEmployeeToggle">
+                                                <t t-out="employee.label"/>
+                                            </button>
+                                        </t>
+                                    </div>
+                                </t>
+                                <t t-else="">
+                                    <div class="alert alert-warning mb-0">
+                                        Projekt zatiaľ nemá aktívne priradených zamestnancov.
+                                    </div>
+                                </t>
                             </div>
                         </t>
                         <div class="col-md-6">

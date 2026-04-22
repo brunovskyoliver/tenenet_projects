@@ -66,10 +66,28 @@ class TenenetProjectBudgetLineMonth(models.Model):
             if normalized_vals.get("period"):
                 normalized_vals["period"] = self._normalize_period(normalized_vals["period"])
             normalized_vals_list.append(normalized_vals)
-        return super().create(normalized_vals_list)
+        records = super().create(normalized_vals_list)
+        records._sync_salary_costs_for_budget_months()
+        return records
 
     def write(self, vals):
+        records_to_sync = self
         vals = dict(vals)
         if vals.get("period"):
             vals["period"] = self._normalize_period(vals["period"])
-        return super().write(vals)
+        result = super().write(vals)
+        records_to_sync._sync_salary_costs_for_budget_months()
+        return result
+
+    def unlink(self):
+        assignments = self.mapped("budget_line_id.project_id.assignment_ids")
+        periods = set(self.mapped("period"))
+        result = super().unlink()
+        if assignments:
+            self.env["tenenet.employee.tenenet.cost"]._sync_for_assignments_periods(assignments, periods=periods)
+        return result
+
+    def _sync_salary_costs_for_budget_months(self):
+        assignments = self.mapped("budget_line_id.project_id.assignment_ids")
+        if assignments:
+            self.env["tenenet.employee.tenenet.cost"]._sync_for_assignments_periods(assignments, periods=set(self.mapped("period")))

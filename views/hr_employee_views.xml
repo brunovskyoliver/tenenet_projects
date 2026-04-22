@@ -312,10 +312,16 @@
                                 <field name="work_ratio" string="Úväzok (%)" readonly="not can_manage_services" />
                                 <field name="experience_years_total" readonly="not can_manage_services" />
                             </group>
-                            <group string="Mzdové nastavenie">
-                                <field name="monthly_gross_salary_target" string="Mesačný cieľ CCP" readonly="not can_manage_services" />
-                                <field name="monthly_gross_salary_target_hm" readonly="1" string="Mesačný cieľ HM (brutto)" />
+                            <group string="Mzdové nastavenie - base">
+                                <field name="monthly_gross_salary_target" string="Base mesačný cieľ CCP" readonly="not can_manage_services" />
+                                <field name="monthly_gross_salary_target_hm" readonly="1" string="Base mesačný cieľ HM (brutto)" />
                                 <field name="hourly_rate" readonly="1" string="Reziduálna hodinová sadzba CCP" />
+                            </group>
+                            <group string="Aktuálny mesiac">
+                                <field name="current_month_monthly_gross_salary_target" readonly="1" string="Aktuálny mesiac - efektívny cieľ CCP" />
+                                <field name="current_month_monthly_gross_salary_target_hm" readonly="1" string="Aktuálny mesiac - efektívny cieľ HM (brutto)" />
+                                <field name="current_month_holiday_workday_count" readonly="1" string="Aktuálny mesiac - sviatky" />
+                                <field name="current_month_effective_workday_count" readonly="1" string="Aktuálny mesiac - pracovné dni po sviatkoch" />
                             </group>
                         </group>
                         <group>

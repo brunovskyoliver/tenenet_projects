@@ -6,10 +6,19 @@ class TestTenenetInternalExpenseReport(TransactionCase):
     def setUp(self):
         super().setUp()
         self.report_year = 2100
+        self.admin_program = self.env["tenenet.program"].search([("code", "=", "ADMIN_TENENET")], limit=1)
         self.employee_a = self.env["hr.employee"].create({"name": "Adam Interny"})
         self.employee_b = self.env["hr.employee"].create({"name": "Beata Interna"})
-        self.project_a = self.env["tenenet.project"].create({"name": "Projekt Alfa"})
-        self.project_b = self.env["tenenet.project"].create({"name": "Projekt Beta"})
+        self.project_a = self.env["tenenet.project"].create({
+            "name": "Projekt Alfa",
+            "program_ids": [(6, 0, self.admin_program.ids)],
+            "reporting_program_id": self.admin_program.id,
+        })
+        self.project_b = self.env["tenenet.project"].create({
+            "name": "Projekt Beta",
+            "program_ids": [(6, 0, self.admin_program.ids)],
+            "reporting_program_id": self.admin_program.id,
+        })
         self.type_phone = self.env["tenenet.expense.type.config"].create({"name": "Telefón"})
         self.type_rent = self.env["tenenet.expense.type.config"].create({"name": "Nájom"})
 

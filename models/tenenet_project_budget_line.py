@@ -156,10 +156,8 @@ class TenenetProjectBudgetLine(models.Model):
                     raise ValidationError("Servisné príjmy možno použiť iba pri projekte typu Služby.")
             elif not rec.expense_type_config_id:
                 raise ValidationError("Pri položke Iné treba zvoliť kategóriu výdavku alebo servisný príjem.")
-            if rec.can_cover_payroll and not rec.service_income_type:
-                raise ValidationError("Mzdy možno kryť iba pri servisných príjmoch.")
-            if rec.payroll_employee_ids and not (rec.service_income_type == "sales_individual" and rec.can_cover_payroll):
-                raise ValidationError("Výber zamestnancov pre mzdy je dostupný iba pri Tržbách individuálne s povoleným krytím miezd.")
+            if rec.payroll_employee_ids and not rec.can_cover_payroll:
+                raise ValidationError("Výber zamestnancov pre mzdy je dostupný iba pri položkách Iné s povoleným krytím miezd.")
             invalid_employees = rec.payroll_employee_ids.filtered(
                 lambda employee: employee not in rec.project_id.assignment_ids.mapped("employee_id")
             )
@@ -231,16 +229,14 @@ class TenenetProjectBudgetLine(models.Model):
             values["expense_type_config_id"] = False
             values["service_income_type"] = service_income_type
             values["can_cover_payroll"] = bool(can_cover_payroll)
-            if not (service_income_type == "sales_individual" and can_cover_payroll):
+            if not can_cover_payroll:
                 values["payroll_employee_ids"] = [(5, 0, 0)]
         elif expense_type_config_id:
             values["expense_type_config_id"] = expense_type_config_id
             values["service_income_type"] = False
-            values["can_cover_payroll"] = False
-            values["payroll_employee_ids"] = [(5, 0, 0)]
-        if not values.get("service_income_type"):
-            values["can_cover_payroll"] = False
-            values["payroll_employee_ids"] = [(5, 0, 0)]
+            values["can_cover_payroll"] = bool(can_cover_payroll)
+            if not can_cover_payroll:
+                values["payroll_employee_ids"] = [(5, 0, 0)]
         return values
 
     def _get_project_active_assignments(self, period):
@@ -260,6 +256,22 @@ class TenenetProjectBudgetLine(models.Model):
         self.ensure_one()
         employee_record = employee if hasattr(employee, "ids") else self.env["hr.employee"].browse(employee)
         return bool(employee_record and employee_record in self._get_payroll_eligible_employees(period))
+
+    def _get_salary_sync_periods(self):
+        periods = set()
+        for line in self:
+            if not line.year:
+                continue
+            periods.update(date(line.year, month, 1) for month in range(1, 13))
+        return periods
+
+    def _sync_salary_costs_for_budget_projects(self):
+        assignments = self.mapped("project_id.assignment_ids")
+        if assignments:
+            self.env["tenenet.employee.tenenet.cost"]._sync_for_assignments_periods(
+                assignments,
+                periods=self._get_salary_sync_periods(),
+            )
 
     def _replace_month_amounts(self, normalized_amounts):
         self.ensure_one()
@@ -353,7 +365,20 @@ class TenenetProjectBudgetLine(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         normalized_vals = [self._normalize_detail_values(vals) for vals in vals_list]
-        return super().create(normalized_vals)
+        records = super().create(normalized_vals)
+        records._sync_salary_costs_for_budget_projects()
+        return records
 
     def write(self, vals):
-        return super().write(self._normalize_detail_values(vals))
+        records_to_sync = self
+        result = super().write(self._normalize_detail_values(vals))
+        records_to_sync._sync_salary_costs_for_budget_projects()
+        return result
+
+    def unlink(self):
+        assignments = self.mapped("project_id.assignment_ids")
+        periods = self._get_salary_sync_periods()
+        result = super().unlink()
+        if assignments:
+            self.env["tenenet.employee.tenenet.cost"]._sync_for_assignments_periods(assignments, periods=periods)
+        return result

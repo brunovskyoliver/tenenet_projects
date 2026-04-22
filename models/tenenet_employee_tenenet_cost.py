@@ -35,15 +35,35 @@ class TenenetEmployeeTenenetCost(models.Model):
         help="Celková cena práce zamestnanca za daný mesiac (z mzdovej agendy)",
     )
     monthly_gross_salary_target = fields.Monetary(
-        string="Mesačný cieľ CCP",
+        string="Cieľ CCP za obdobie",
         currency_field="currency_id",
-        related="employee_id.monthly_gross_salary_target",
+        compute="_compute_period_targets",
+        store=True,
         readonly=True,
     )
     monthly_gross_salary_target_hm = fields.Monetary(
-        string="Mesačný cieľ HM (brutto)",
+        string="Cieľ HM za obdobie (brutto)",
         currency_field="currency_id",
-        related="employee_id.monthly_gross_salary_target_hm",
+        compute="_compute_period_targets",
+        store=True,
+        readonly=True,
+    )
+    base_workdays = fields.Integer(
+        string="Pracovné dni v mesiaci",
+        compute="_compute_period_targets",
+        store=True,
+        readonly=True,
+    )
+    holiday_workdays = fields.Integer(
+        string="Sviatky v pracovných dňoch",
+        compute="_compute_period_targets",
+        store=True,
+        readonly=True,
+    )
+    effective_workdays = fields.Integer(
+        string="Pracovné dni po sviatkoch",
+        compute="_compute_period_targets",
+        store=True,
         readonly=True,
     )
     project_billed_gross = fields.Monetary(
@@ -103,6 +123,30 @@ class TenenetEmployeeTenenetCost(models.Model):
     @api.depends(
         "employee_id",
         "period",
+        "employee_id.monthly_gross_salary_target",
+        "employee_id.resource_calendar_id",
+        "employee_id.resource_calendar_id.attendance_ids",
+        "employee_id.resource_calendar_id.leave_ids",
+    )
+    def _compute_period_targets(self):
+        for rec in self:
+            if not rec.employee_id or not rec.period:
+                rec.monthly_gross_salary_target = 0.0
+                rec.monthly_gross_salary_target_hm = 0.0
+                rec.base_workdays = 0
+                rec.holiday_workdays = 0
+                rec.effective_workdays = 0
+                continue
+            metrics = rec.employee_id._get_month_workday_metrics(rec.period)
+            rec.base_workdays = metrics["base_workdays"]
+            rec.holiday_workdays = metrics["holiday_workdays"]
+            rec.effective_workdays = metrics["effective_workdays"]
+            rec.monthly_gross_salary_target = rec.employee_id._get_effective_monthly_gross_salary_target(rec.period)
+            rec.monthly_gross_salary_target_hm = rec.employee_id._get_effective_monthly_gross_salary_target_hm(rec.period)
+
+    @api.depends(
+        "employee_id",
+        "period",
         "gross_salary_employee",
         "total_labor_cost_employee",
         "employee_id.assignment_ids.timesheet_ids.gross_salary",
@@ -114,6 +158,8 @@ class TenenetEmployeeTenenetCost(models.Model):
         "employee_id.assignment_ids.date_start",
         "employee_id.assignment_ids.date_end",
         "employee_id.assignment_ids.active",
+        "monthly_gross_salary_target",
+        "monthly_gross_salary_target_hm",
     )
     def _compute_residual(self):
         for rec in self:
@@ -287,8 +333,8 @@ class TenenetEmployeeTenenetCost(models.Model):
                 "settlement_only": bool(assignment.settlement_only),
             })
 
-        target_ccp = employee.monthly_gross_salary_target or 0.0
-        target_hm = employee.monthly_gross_salary_target_hm or 0.0
+        target_ccp = employee._get_effective_monthly_gross_salary_target(normalized_period)
+        target_hm = employee._get_effective_monthly_gross_salary_target_hm(normalized_period)
         normalized_contributions = contributions
         if target_ccp > 0.0:
             normalized_contributions = self._normalize_monthly_contributions_to_target(
@@ -354,8 +400,8 @@ class TenenetEmployeeTenenetCost(models.Model):
             ("employee_id", "=", employee_id),
             ("period", "=", normalized_period),
         ], limit=1)
-        target_ccp = employee.monthly_gross_salary_target or 0.0
-        target_hm = employee.monthly_gross_salary_target_hm or 0.0
+        target_ccp = employee._get_effective_monthly_gross_salary_target(normalized_period)
+        target_hm = employee._get_effective_monthly_gross_salary_target_hm(normalized_period)
         has_coverage = bool(coverage["total_ccp"] or coverage["total_hm"])
         if not existing and not has_coverage and target_ccp <= 0.0 and target_hm <= 0.0:
             return self.browse()
@@ -365,6 +411,7 @@ class TenenetEmployeeTenenetCost(models.Model):
                 "period": normalized_period,
             })
         else:
+            existing._compute_period_targets()
             existing._compute_residual()
         existing._sync_internal_residual_expense()
         return existing

@@ -1722,6 +1722,9 @@ class TenenetProject(models.Model):
         received = sum(self.receipt_line_ids.filtered(lambda line: line.year == year).mapped("amount"))
         budgeted = sum(self.budget_line_ids.filtered(lambda line: line.year == year).mapped("amount"))
         available = received - budgeted
+        assignment_employees = self.assignment_ids.filtered(
+            lambda assignment: assignment.active and assignment.employee_id and assignment.employee_id.active
+        ).mapped("employee_id").sorted("name")
         return {
             "project_id": self.id,
             "project_name": self.display_name,
@@ -1746,6 +1749,10 @@ class TenenetProject(models.Model):
                 {"value": value, "label": label}
                 for value, label in budget_line_model._fields["service_income_type"].selection
             ],
+            "payroll_employee_options": [
+                {"id": employee.id, "label": employee.display_name}
+                for employee in assignment_employees
+            ],
         }
 
     def action_create_budget_line_from_quick_add(
@@ -1757,6 +1764,7 @@ class TenenetProject(models.Model):
         expense_type_config_id=False,
         service_income_type=False,
         can_cover_payroll=False,
+        payroll_employee_ids=None,
     ):
         self.ensure_one()
         year = fields.Date.context_today(self).year
@@ -1786,14 +1794,17 @@ class TenenetProject(models.Model):
             raise ValidationError(_("Servisné príjmy možno plánovať iba na projekte typu Služby."))
         if budget_type == "other" and not service_income_type and not expense_type_config_id:
             raise ValidationError(_("Pri položke Iné treba vybrať kategóriu výdavku."))
-        if can_cover_payroll and not service_income_type:
-            raise ValidationError(_("Prepínač mzdového krytia je dostupný iba pre servisné príjmy."))
+        if can_cover_payroll and budget_type != "other":
+            raise ValidationError(_("Prepínač mzdového krytia je dostupný iba pre položky Iné."))
+        payroll_employee_ids = [int(employee_id) for employee_id in (payroll_employee_ids or [])]
+        if payroll_employee_ids and not (budget_type == "other" and can_cover_payroll):
+            raise ValidationError(_("Zamestnancov pre mzdy možno vybrať iba pri položkách Iné s krytím miezd."))
         detail_name = type_label
         if expense_type_config_id:
             detail_name = self.env["tenenet.expense.type.config"].browse(expense_type_config_id).display_name or detail_name
         elif service_income_type:
             detail_name = dict(budget_line_model._fields["service_income_type"].selection).get(service_income_type, detail_name)
-        budget_line = self.env["tenenet.project.budget.line"].create({
+        create_values = {
             "project_id": self.id,
             "year": year,
             "budget_type": budget_type,
@@ -1804,7 +1815,10 @@ class TenenetProject(models.Model):
             "expense_type_config_id": expense_type_config_id or False,
             "service_income_type": service_income_type or False,
             "can_cover_payroll": bool(can_cover_payroll),
-        })
+        }
+        if payroll_employee_ids:
+            create_values["payroll_employee_ids"] = [Command.set(payroll_employee_ids)]
+        budget_line = self.env["tenenet.project.budget.line"].create(create_values)
         return budget_line.action_open_planner()
 
     def action_open_site_wizard(self):

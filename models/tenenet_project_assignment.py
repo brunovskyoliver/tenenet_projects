@@ -256,7 +256,7 @@ class TenenetProjectAssignment(models.Model):
         self.ensure_one()
         if not self._is_active_in_period(period):
             return 0.0
-        target_ccp = self.employee_id.monthly_gross_salary_target or 0.0
+        target_ccp = self.employee_id._get_effective_monthly_gross_salary_target(period) or 0.0
         if target_ccp <= 0.0:
             return 0.0
         return target_ccp * ((self.allocation_ratio or 0.0) / 100.0)
@@ -265,7 +265,7 @@ class TenenetProjectAssignment(models.Model):
         self.ensure_one()
         if not self._is_active_in_period(period):
             return 0.0
-        target_hm = self.employee_id.monthly_gross_salary_target_hm or 0.0
+        target_hm = self.employee_id._get_effective_monthly_gross_salary_target_hm(period) or 0.0
         if target_hm <= 0.0:
             return 0.0
         return target_hm * ((self.allocation_ratio or 0.0) / 100.0)

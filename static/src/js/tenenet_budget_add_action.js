@@ -26,6 +26,7 @@ export class TenenetBudgetAddAction extends Component {
             expenseTypeConfigId: null,
             serviceIncomeType: null,
             canCoverPayroll: false,
+            payrollEmployeeIds: [],
             amount: 0,
             allocationPercentage: 0,
             amountInput: "0.00",
@@ -55,6 +56,17 @@ export class TenenetBudgetAddAction extends Component {
 
     get serviceIncomeTypeOptions() {
         return this.data?.service_income_type_options || [];
+    }
+
+    get payrollEmployeeOptions() {
+        return this.data?.payroll_employee_options || [];
+    }
+
+    get showPayrollEmployeePicker() {
+        return (
+            this.state.budgetType === "other" &&
+            this.state.canCoverPayroll
+        );
     }
 
     get isServiceProject() {
@@ -116,6 +128,7 @@ export class TenenetBudgetAddAction extends Component {
             this.state.expenseTypeConfigId = null;
             this.state.serviceIncomeType = null;
             this.state.canCoverPayroll = false;
+            this.state.payrollEmployeeIds = [];
             this.state.amount = 0;
             this.state.allocationPercentage = 0;
             this.state.amountInput = this.formatAmountInput(0);
@@ -159,8 +172,10 @@ export class TenenetBudgetAddAction extends Component {
             this.state.expenseTypeConfigId = null;
             this.state.serviceIncomeType = null;
             this.state.canCoverPayroll = false;
+            this.state.payrollEmployeeIds = [];
         } else if (!this.isServiceProject) {
             this.state.serviceIncomeType = null;
+            this.state.payrollEmployeeIds = [];
         }
     }
 
@@ -173,7 +188,6 @@ export class TenenetBudgetAddAction extends Component {
         this.state.expenseTypeConfigId = Number.isFinite(nextValue) ? nextValue : null;
         if (this.state.expenseTypeConfigId) {
             this.state.serviceIncomeType = null;
-            this.state.canCoverPayroll = false;
         }
     }
 
@@ -186,11 +200,25 @@ export class TenenetBudgetAddAction extends Component {
 
     onGenericOtherClick() {
         this.state.serviceIncomeType = null;
-        this.state.canCoverPayroll = false;
     }
 
     onPayrollToggle(ev) {
         this.state.canCoverPayroll = Boolean(ev.target.checked);
+        if (!this.state.canCoverPayroll) {
+            this.state.payrollEmployeeIds = [];
+        }
+    }
+
+    onPayrollEmployeeToggle(ev) {
+        const employeeId = parseInt(ev.currentTarget.dataset.employeeId, 10);
+        if (!Number.isFinite(employeeId)) {
+            return;
+        }
+        if (this.state.payrollEmployeeIds.includes(employeeId)) {
+            this.state.payrollEmployeeIds = this.state.payrollEmployeeIds.filter((id) => id !== employeeId);
+        } else {
+            this.state.payrollEmployeeIds = [...this.state.payrollEmployeeIds, employeeId];
+        }
     }
 
     onAmountChange(ev) {
@@ -235,6 +263,7 @@ export class TenenetBudgetAddAction extends Component {
                 this.state.expenseTypeConfigId || false,
                 this.state.serviceIncomeType || false,
                 this.state.canCoverPayroll,
+                this.showPayrollEmployeePicker ? this.state.payrollEmployeeIds : [],
             ]);
             await this.actionService.doAction(action);
         } catch (error) {

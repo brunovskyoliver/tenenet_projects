@@ -289,7 +289,7 @@
                                         <field name="payroll_employee_ids"
                                                optional="hide"
                                                widget="many2many_tags"
-                                               column_invisible="service_income_type != 'sales_individual' or not can_cover_payroll"/>
+                                               column_invisible="not can_cover_payroll"/>
                                         <field name="amount"/>
                                         <field name="note" optional="show"/>
                                         <button name="action_open_planner"

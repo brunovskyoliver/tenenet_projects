@@ -445,9 +445,10 @@ class TestTenenetPlan15CashflowReport(TransactionCase):
         ccp_line = self._column_map(self._find_allocation_line(lines, "CCP"))
         expanded = self._get_expanded_allocation_project_lines(year, "Projekt A")
         fixed_line = self._column_map(self._find_allocation_line(expanded, "Mzda fixným podielom"))
+        expected = self.employee._get_effective_monthly_gross_salary_target(f"{year}-01-01") * 0.25
 
-        self.assertAlmostEqual(ccp_line["month_01"], 250.0, places=2)
-        self.assertAlmostEqual(fixed_line["month_01"], 250.0, places=2)
+        self.assertAlmostEqual(ccp_line["month_01"], expected, places=2)
+        self.assertAlmostEqual(fixed_line["month_01"], expected, places=2)
 
     def test_income_override_rebalances_last_active_month_to_project_total(self):
         selected_year = fields.Date.context_today(self).year + 1

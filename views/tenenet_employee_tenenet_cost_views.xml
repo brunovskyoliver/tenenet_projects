@@ -9,6 +9,9 @@
                     <field name="period"/>
                     <field name="monthly_gross_salary_target"/>
                     <field name="monthly_gross_salary_target_hm"/>
+                    <field name="base_workdays" optional="hide"/>
+                    <field name="holiday_workdays" optional="hide"/>
+                    <field name="effective_workdays" optional="hide"/>
                     <field name="gross_salary_employee" optional="hide"/>
                     <field name="project_billed_gross" string="Projektom krytá HM" readonly="1"/>
                     <field name="hours_covered_ccp" optional="hide" readonly="1"/>
@@ -35,9 +38,12 @@
                                 <field name="currency_id" invisible="1"/>
                             </group>
                         </group>
-                        <group string="Mesačný cieľ">
+                        <group string="Cieľ za obdobie">
                             <field name="monthly_gross_salary_target" readonly="1"/>
                             <field name="monthly_gross_salary_target_hm" readonly="1"/>
+                            <field name="base_workdays" readonly="1"/>
+                            <field name="holiday_workdays" readonly="1"/>
+                            <field name="effective_workdays" readonly="1"/>
                         </group>
                         <group string="Hrubá mzda / HM (brutto)">
                             <field name="gross_salary_employee"/>
