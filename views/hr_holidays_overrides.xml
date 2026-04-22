@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="hr_holidays.menu_hr_holidays_root" model="ir.ui.menu">
-        <field name="name">Dovolenky</field>
+        <field name="name">Dochádzka</field>
     </record>
 
     <!-- Change 2a: Override placeholder on description field in leave request form -->
