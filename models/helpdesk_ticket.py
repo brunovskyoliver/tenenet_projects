@@ -32,6 +32,25 @@ class HelpdeskTicket(models.Model):
         "ticket_id",
         string="Čiastkové úlohy",
     )
+    tenenet_mass_assigned_employee_ids = fields.Many2many(
+        "hr.employee",
+        "helpdesk_ticket_tenenet_mass_assigned_employee_rel",
+        "ticket_id",
+        "employee_id",
+        string="Hromadne pridelení zamestnanci",
+        copy=False,
+    )
+    tenenet_mass_assigned_user_ids = fields.Many2many(
+        "res.users",
+        "helpdesk_ticket_tenenet_mass_assigned_user_rel",
+        "ticket_id",
+        "user_id",
+        string="Hromadne pridelení používatelia",
+        compute="_compute_tenenet_mass_assigned_user_ids",
+        store=True,
+        copy=False,
+        export_string_translation=False,
+    )
     tenenet_open_subtask_count = fields.Integer(
         compute="_compute_tenenet_subtask_counts",
         string="Otvorené čiastkové úlohy",
@@ -205,6 +224,7 @@ class HelpdeskTicket(models.Model):
         "tenenet_subtask_ids",
         "tenenet_subtask_ids.user_ids",
         "tenenet_subtask_ids.is_done",
+        "tenenet_mass_assigned_user_ids",
     )
     def _compute_tenenet_active_assigned_user_ids(self):
         for ticket in self:
@@ -217,7 +237,16 @@ class HelpdeskTicket(models.Model):
                 active_users |= ticket.tenenet_subtask_ids.filtered(
                     lambda subtask: not subtask.is_done
                 ).mapped("user_ids")
+                active_users |= ticket.tenenet_mass_assigned_user_ids
             ticket.tenenet_active_assigned_user_ids = [Command.set(active_users.filtered("id").ids)]
+
+    @api.depends("tenenet_mass_assigned_employee_ids", "tenenet_mass_assigned_employee_ids.user_id")
+    def _compute_tenenet_mass_assigned_user_ids(self):
+        for ticket in self:
+            users = ticket.tenenet_mass_assigned_employee_ids.mapped("user_id").filtered(
+                lambda user: user.active and not user.share
+            )
+            ticket.tenenet_mass_assigned_user_ids = [Command.set(users.ids)]
 
     @api.depends("tenenet_subtask_ids", "tenenet_subtask_ids.is_done")
     def _compute_tenenet_subtask_counts(self):
@@ -286,7 +315,11 @@ class HelpdeskTicket(models.Model):
     @api.model
     def _user_has_tenenet_helpdesk_manager_role(self, user):
         return bool(
-            user and user.has_group("tenenet_projects.group_tenenet_helpdesk_manager")
+            user
+            and (
+                user.has_group("tenenet_projects.group_tenenet_helpdesk_manager")
+                or user.has_group("base.group_system")
+            )
         )
 
     @api.model
@@ -418,6 +451,7 @@ class HelpdeskTicket(models.Model):
             | self.user_id
             | self.tenenet_followup_user_id
             | self.tenenet_control_user_id
+            | self.tenenet_mass_assigned_user_ids
         ):
             return True
         if current_user.partner_id in self.message_partner_ids:
@@ -427,6 +461,7 @@ class HelpdeskTicket(models.Model):
             | self.user_id
             | self.tenenet_followup_user_id
             | self.tenenet_control_user_id
+            | self.tenenet_mass_assigned_user_ids
         ).filtered("id")
         return any(
             self._user_is_above_responsible_user(current_user, responsible_user)

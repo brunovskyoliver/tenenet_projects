@@ -12,6 +12,7 @@ from . import sign_request
 from . import helpdesk_ticket
 from . import tenenet_helpdesk_ticket_state_wizard
 from . import tenenet_helpdesk_subtask
+from . import tenenet_helpdesk_mass_ticket_wizard
 from . import tenenet_employee_update_request_wizard
 from . import tenenet_employee_asset_type
 from . import tenenet_employee_asset_handover

@@ -158,15 +158,26 @@ class TenenetPLReportingSupport(models.AbstractModel):
         options["date"]["string"] = str(selected_year)
 
     def _get_report_programs(self):
-        return self.env["tenenet.program"].with_context(active_test=False).search([], order="name")
+        if (
+            self.env.is_superuser()
+            or self.env.user.has_group("tenenet_projects.group_tenenet_manager")
+            or self.env.user.has_group("base.group_system")
+        ):
+            return self.env["tenenet.program"].with_context(active_test=False).search([], order="name")
+        projects = self.env["tenenet.project"].with_context(active_test=False).get_report_accessible_projects()
+        programs = projects.mapped("ui_program_ids") | projects.mapped("reporting_program_id")
+        return programs.sorted(lambda program: (program.name or program.display_name or "").lower())
 
     def _get_default_program(self):
         return self._get_report_programs()[:1]
 
     def _get_selected_program_from_options(self, options):
+        allowed_programs = self._get_report_programs()
         program_ids = (options or {}).get("program_ids") or []
         if program_ids:
-            return self.env["tenenet.program"].with_context(active_test=False).browse(program_ids[0]).exists()
+            program = self.env["tenenet.program"].with_context(active_test=False).browse(program_ids[0]).exists()
+            if program and program in allowed_programs:
+                return program
         return self._get_default_program()
 
     def _get_program_line_name(self, program):

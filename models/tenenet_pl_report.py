@@ -27,6 +27,8 @@ class TenenetPLReportHandler(models.AbstractModel):
 
         selected_program = self._get_selected_program_from_options(previous_options or options)
         options["enable_program_filter"] = True
+        report_programs = self._get_report_programs()
+        options["available_program_domain"] = [("id", "in", report_programs.ids or [0])]
         options["program_ids"] = [selected_program.id] if selected_program else []
         options["selected_program_name"] = self._get_program_line_name(selected_program) if selected_program else "Program"
 

@@ -262,7 +262,7 @@ class TenenetProjectTimesheet(models.Model):
                     })
 
     def _sync_employee_period_costs(self):
-        Cost = self.env["tenenet.employee.tenenet.cost"]
+        Cost = self.env["tenenet.employee.tenenet.cost"].sudo()
         for rec in self.filtered(lambda ts: ts.employee_id and ts.period):
             Cost._sync_for_employee_period(rec.employee_id.id, rec.period)
 
@@ -281,7 +281,7 @@ class TenenetProjectTimesheet(models.Model):
             record._sync_line_hours(hour_vals)
         records._sync_employee_period_costs()
         records._check_wage_cap()
-        self.env["tenenet.utilization"]._recompute_for_employee_periods([
+        self.env["tenenet.utilization"].sudo()._recompute_for_employee_periods([
             (r.employee_id.id, r.period) for r in records if r.employee_id and r.period
         ])
         self.env["tenenet.project"]._sync_finance_monthly_comparison_pairs(
@@ -299,7 +299,7 @@ class TenenetProjectTimesheet(models.Model):
             self._sync_employee_period_costs()
         if hour_vals or {"assignment_id", "period", "wage_hm", "wage_ccp"} & set(clean_vals):
             self._check_wage_cap()
-        self.env["tenenet.utilization"]._recompute_for_employee_periods([
+        self.env["tenenet.utilization"].sudo()._recompute_for_employee_periods([
             (r.employee_id.id, r.period) for r in self if r.employee_id and r.period
         ])
         self.env["tenenet.project"]._sync_finance_monthly_comparison_pairs(
@@ -334,7 +334,7 @@ class TenenetProjectTimesheet(models.Model):
                     ("period", "=", period),
                     ("category", "=", "wage"),
                 ]).unlink()
-        self.env["tenenet.utilization"]._recompute_for_employee_periods(sync_keys)
+        self.env["tenenet.utilization"].sudo()._recompute_for_employee_periods(sync_keys)
         self.env["tenenet.project"]._sync_finance_monthly_comparison_pairs(finance_pairs)
         return result
 

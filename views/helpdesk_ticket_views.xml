@@ -264,6 +264,16 @@
                     <field name="tenenet_requested_by_user_id"/>
                     <field name="tenenet_followup_user_id"/>
                     <field name="tenenet_control_user_id"/>
+                    <header>
+                        <button
+                            string="Hromadný ticket"
+                            class="btn btn-primary"
+                            type="action"
+                            display="always"
+                            name="tenenet_projects.action_tenenet_helpdesk_mass_ticket_wizard"
+                            groups="tenenet_projects.group_tenenet_helpdesk_manager,base.group_system"
+                        />
+                    </header>
                 </kanban>
                 <field name="properties" position="after">
                     <t t-if="record.tenenet_is_internal_team.raw_value">

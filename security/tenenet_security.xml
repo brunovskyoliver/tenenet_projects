@@ -596,9 +596,9 @@
             <field name="domain_force">[('is_tenenet_internal', '=', False)]</field>
             <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_garant_pm'))]"/>
             <field name="perm_read" eval="1"/>
-            <field name="perm_write" eval="0"/>
-            <field name="perm_create" eval="0"/>
-            <field name="perm_unlink" eval="0"/>
+            <field name="perm_write" eval="1"/>
+            <field name="perm_create" eval="1"/>
+            <field name="perm_unlink" eval="1"/>
         </record>
 
         <record id="rule_tenenet_project_garant_pm_pm_write" model="ir.rule">
@@ -629,8 +629,8 @@
             <field name="domain_force">[('project_id.is_tenenet_internal', '=', False), '|', ('project_id.odborny_garant_id.user_id', '=', user.id), ('project_id.project_manager_id.user_id', '=', user.id)]</field>
             <field name="groups" eval="[(4, ref('tenenet_projects.group_tenenet_garant_pm'))]"/>
             <field name="perm_read" eval="1"/>
-            <field name="perm_write" eval="1"/>
-            <field name="perm_create" eval="1"/>
+            <field name="perm_write" eval="0"/>
+            <field name="perm_create" eval="0"/>
             <field name="perm_unlink" eval="0"/>
         </record>
 

@@ -100,14 +100,14 @@
                   parent="menu_tenenet_reporting"
                   action="action_tenenet_pl_report"
                   sequence="20"
-                  groups="tenenet_projects.group_tenenet_manager"/>
+                  groups="tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"/>
 
         <menuitem id="menu_tenenet_pl_summary_report"
                   name="P&amp;L súhrn programov"
                   parent="menu_tenenet_reporting"
                   action="action_tenenet_pl_summary_report"
                   sequence="21"
-                  groups="tenenet_projects.group_tenenet_manager"/>
+                  groups="tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"/>
 
         <menuitem id="menu_tenenet_cashflow_report"
                   name="CashFlow report"

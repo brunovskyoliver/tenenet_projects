@@ -66,6 +66,13 @@ class TestTenenetInternalHelpdesk(TransactionCase):
             "name": "Extra Employee",
             "company_id": self.company.id,
         })
+        self.helpdesk_department = self.env["hr.department"].create({
+            "name": "Helpdesk Department",
+            "company_id": self.company.id,
+        })
+        (self.manager_employee | self.grand_manager_employee).write({
+            "department_id": self.helpdesk_department.id,
+        })
 
         self.internal_team = self.env["helpdesk.team"].create({
             "name": "Interné TENENET",
@@ -437,3 +444,53 @@ class TestTenenetInternalHelpdesk(TransactionCase):
 
         self.assertFalse(subtask.done_by_user_id)
         self.assertFalse(subtask.done_date)
+
+    def test_mass_ticket_wizard_creates_ticket_for_department_employees(self):
+        wizard = self.env["tenenet.helpdesk.mass.ticket.wizard"].with_user(self.helpdesk_manager_user).create({
+            "name": "Hromadný test",
+            "team_id": self.internal_team.id,
+            "target_type": "department",
+            "department_id": self.helpdesk_department.id,
+            "description": "<p>Test</p>",
+            "date_deadline": "2026-04-30",
+        })
+
+        self.assertEqual(set(wizard.employee_ids.ids), {self.manager_employee.id, self.grand_manager_employee.id})
+        action = wizard.action_create_ticket()
+        ticket = self.env["helpdesk.ticket"].browse(action["res_id"])
+
+        self.assertEqual(action["res_model"], "helpdesk.ticket")
+        self.assertEqual(action["view_mode"], "form")
+        self.assertEqual(ticket.name, "Hromadný test")
+        self.assertEqual(ticket.team_id, self.internal_team)
+        self.assertEqual(ticket.tenenet_requested_by_user_id, self.helpdesk_manager_user)
+        self.assertEqual(len(ticket.tenenet_subtask_ids), 1)
+        self.assertEqual(set(ticket.tenenet_subtask_ids.employee_ids.ids), {self.manager_employee.id, self.grand_manager_employee.id})
+        self.assertIn(self.manager_user, ticket.tenenet_active_assigned_user_ids)
+        self.assertIn(self.grand_manager_user, ticket.tenenet_active_assigned_user_ids)
+
+    def test_mass_ticket_wizard_project_uses_project_assignment_employees(self):
+        admin_program = self.env.ref("tenenet_projects.tenenet_program_admin_tenenet")
+        project = self.env["tenenet.project"].create({
+            "name": "Helpdesk project",
+            "program_ids": [Command.set(admin_program.ids)],
+        })
+        self.env["tenenet.project.assignment"].create({
+            "project_id": project.id,
+            "employee_id": self.manager_employee.id,
+            "allocation_ratio": 100.0,
+        })
+        self.env["tenenet.project.assignment"].create({
+            "project_id": project.id,
+            "employee_id": self.extra_employee.id,
+            "allocation_ratio": 100.0,
+        })
+
+        wizard = self.env["tenenet.helpdesk.mass.ticket.wizard"].with_user(self.helpdesk_manager_user).create({
+            "name": "Projektový hromadný test",
+            "team_id": self.internal_team.id,
+            "target_type": "project",
+            "project_id": project.id,
+        })
+
+        self.assertEqual(set(wizard.employee_ids.ids), {self.manager_employee.id, self.extra_employee.id})

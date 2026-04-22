@@ -17,6 +17,7 @@ class HrEmployee(models.Model):
         <data>
             <xpath expr="//button[@icon='fa-dollar']" position="replace"/>
             <xpath expr="//page[@name='salary_attachment']" position="replace"/>
+            <xpath expr="//page[@name='personal_information']//field[@name='lang']" position="replace"/>
         </data>
     """
 
@@ -34,6 +35,11 @@ class HrEmployee(models.Model):
             "tenenet_projects.tenenet_organizational_unit_tenenet_oz",
             raise_if_not_found=False,
         ),
+    )
+    lang = fields.Selection(
+        selection=lambda self: self.env["res.lang"].get_installed(),
+        default=lambda self: self._tenenet_default_employee_lang(),
+        groups="hr.group_hr_user",
     )
     position_catalog_id = fields.Many2one(
         "hr.job",
@@ -94,6 +100,12 @@ class HrEmployee(models.Model):
         related="company_id.currency_id",
         readonly=True,
     )
+
+    @api.model
+    def _tenenet_default_employee_lang(self):
+        installed_codes = {code for code, _name in self.env["res.lang"].get_installed()}
+        return "sk_SK" if "sk_SK" in installed_codes else self.env.lang
+
     monthly_gross_salary_target = fields.Monetary(
         string="Mesačný cieľ CCP",
         currency_field="salary_currency_id",

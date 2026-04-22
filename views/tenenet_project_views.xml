@@ -30,23 +30,28 @@
             <field name="arch" type="xml">
                 <form string="Projekt" class="o_tenenet_project_form">
                     <sheet>
+                        <field name="can_edit_project" invisible="1"/>
                         <group>
                             <group>
-                                <field name="name"/>
-                                <field name="description"/>
-                                <field name="project_type"/>
-                                <field name="date_start"/>
-                                <field name="date_end"/>
+                                <field name="name" readonly="not can_edit_project"/>
+                                <field name="description" readonly="not can_edit_project"/>
+                                <field name="project_type" readonly="not can_edit_project"/>
+                                <field name="date_start" readonly="not can_edit_project"/>
+                                <field name="date_end" readonly="not can_edit_project"/>
                                 <field name="active"
-                                       groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"/>
+                                       groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"
+                                       readonly="not can_edit_project"/>
                                 <field name="is_recurring_license_project"
-                                       groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"/>
+                                       groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"
+                                       readonly="not can_edit_project"/>
                                 <field name="recurring_clone_anchor_date"
                                        groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"
-                                       invisible="not is_recurring_license_project"/>
+                                       invisible="not is_recurring_license_project"
+                                       readonly="not can_edit_project"/>
                                 <field name="recurring_clone_interval_type"
                                        groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"
-                                       invisible="not is_recurring_license_project"/>
+                                       invisible="not is_recurring_license_project"
+                                       readonly="not can_edit_project"/>
                                 <field name="recurring_next_clone_date"
                                        groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"
                                        readonly="1"
@@ -56,20 +61,21 @@
                                         string="Test klonovania"
                                         class="btn btn-secondary"
                                         groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"
-                                        invisible="not id or not is_recurring_license_project"/>
+                                        invisible="not id or not is_recurring_license_project or not can_edit_project"/>
                                 <field name="semaphore"
-                                       groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"/>
+                                       groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager"
+                                       readonly="not can_edit_project"/>
                             </group>
                             <group groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager">
-                                <field name="primary_program_id" invisible="project_type == 'medzinarodny'" required="project_type != 'medzinarodny'"/>
+                                <field name="primary_program_id" invisible="project_type == 'medzinarodny'" required="project_type != 'medzinarodny'" readonly="not can_edit_project"/>
                                 <field name="organizational_unit_id" readonly="1"/>
-                                <field name="organizational_unit_override_id"/>
+                                <field name="organizational_unit_override_id" readonly="not can_edit_project"/>
                                 <div class="text-muted" colspan="2" invisible="project_type != 'medzinarodny'">
                                     Program sa pri medzinárodnom projekte vedie iba pod Admin TENENET.
                                 </div>
-                                <field name="donor_id"/>
-                                <field name="recipient_partner_id"/>
-                                <field name="partner_id"/>
+                                <field name="donor_id" readonly="not can_edit_project"/>
+                                <field name="recipient_partner_id" readonly="not can_edit_project"/>
+                                <field name="partner_id" readonly="not can_edit_project"/>
                             </group>
                         </group>
                         <notebook>
@@ -174,14 +180,14 @@
                                             type="object"
                                             string="Pridať príjem"
                                             class="btn btn-primary"
-                                            invisible="not id"/>
+                                            invisible="not id or not can_edit_project"/>
                                     <button name="action_open_cashflow_gantt"
                                             type="object"
                                             string="Predikovaný cashflow"
                                             class="btn btn-secondary ms-2"
                                             invisible="not id or not receipt_line_ids"/>
                                 </div>
-                                <field name="receipt_line_ids" nolabel="1">
+                                <field name="receipt_line_ids" nolabel="1" readonly="not can_edit_project">
                                     <list string="Prijaté prostriedky" create="0" edit="0" delete="0"
                                           default_order="date_received desc">
                                         <field name="date_received"/>
@@ -191,12 +197,14 @@
                                         <button name="action_open_cashflow_distribute_wizard"
                                                 type="object"
                                                 string="Distribuovať cashflow"
-                                                class="btn-link"/>
+                                                class="btn-link"
+                                                invisible="not parent.can_edit_project"/>
                                         <button name="action_delete_with_reload"
                                                 type="object"
                                                 string="Odstrániť"
                                                 icon="fa-trash"
-                                                class="btn-link text-danger"/>
+                                                class="btn-link text-danger"
+                                                invisible="not parent.can_edit_project"/>
                                     </list>
                                 </field>
                                 <separator string="Cashflow planner" invisible="not id"/>
@@ -229,11 +237,12 @@
                                             type="object"
                                             string="Pridať rozpočtovú položku"
                                             class="btn btn-primary"
-                                            invisible="not id"/>
+                                            invisible="not id or not can_edit_project"/>
                                 </div>
                                 <separator string="Paušálne"/>
                                 <field name="budget_pausal_line_ids"
-                                       context="{'form_view_ref': 'tenenet_projects.view_tenenet_project_budget_line_planner_form', 'dialog_size': 'extra-large'}">
+                                       context="{'form_view_ref': 'tenenet_projects.view_tenenet_project_budget_line_planner_form', 'dialog_size': 'extra-large'}"
+                                       readonly="not can_edit_project">
                                     <list string="Paušálne položky" create="0" edit="0">
                                         <field name="year" options="{'enable_formatting': False}"/>
                                         <field name="program_id"/>
@@ -244,12 +253,14 @@
                                         <button name="action_open_planner"
                                                 type="object"
                                                 string="Planner"
-                                                class="btn-link"/>
+                                                class="btn-link"
+                                                invisible="not parent.can_edit_project"/>
                                     </list>
                                 </field>
                                 <separator string="Mzdové"/>
                                 <field name="budget_labor_line_ids"
-                                       context="{'form_view_ref': 'tenenet_projects.view_tenenet_project_budget_line_planner_form', 'dialog_size': 'extra-large'}">
+                                       context="{'form_view_ref': 'tenenet_projects.view_tenenet_project_budget_line_planner_form', 'dialog_size': 'extra-large'}"
+                                       readonly="not can_edit_project">
                                     <list string="Mzdové položky" create="0" edit="0">
                                         <field name="year" options="{'enable_formatting': False}"/>
                                         <field name="program_id"/>
@@ -260,12 +271,14 @@
                                         <button name="action_open_planner"
                                                 type="object"
                                                 string="Planner"
-                                                class="btn-link"/>
+                                                class="btn-link"
+                                                invisible="not parent.can_edit_project"/>
                                     </list>
                                 </field>
                                 <separator string="Iné"/>
                                 <field name="budget_other_line_ids"
-                                       context="{'form_view_ref': 'tenenet_projects.view_tenenet_project_budget_line_planner_form', 'dialog_size': 'extra-large'}">
+                                       context="{'form_view_ref': 'tenenet_projects.view_tenenet_project_budget_line_planner_form', 'dialog_size': 'extra-large'}"
+                                       readonly="not can_edit_project">
                                     <list string="Iné položky" create="0" edit="0">
                                         <field name="year" options="{'enable_formatting': False}"/>
                                         <field name="program_id"/>
@@ -278,7 +291,8 @@
                                         <button name="action_open_planner"
                                                 type="object"
                                                 string="Planner"
-                                                class="btn-link"/>
+                                                class="btn-link"
+                                                invisible="not parent.can_edit_project"/>
                                     </list>
                                 </field>
                             </page>
@@ -286,8 +300,8 @@
                                   groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager">
                                 <group string="Zodpovedné osoby">
                                     <group>
-                                        <field name="odborny_garant_id"/>
-                                        <field name="project_manager_id"/>
+                                        <field name="odborny_garant_id" readonly="not can_edit_project"/>
+                                        <field name="project_manager_id" readonly="not can_edit_project"/>
                                     </group>
                                 </group>
                                 <separator string="Priradení zamestnanci"/>
@@ -296,9 +310,9 @@
                                             type="object"
                                             string="Pridať priradenie"
                                             class="btn btn-primary"
-                                            invisible="not id"/>
+                                            invisible="not id or not can_edit_project"/>
                                 </div>
-                                <field name="assignment_ids" nolabel="1">
+                                <field name="assignment_ids" nolabel="1" readonly="not can_edit_project">
                                     <list string="Priradenia zamestnancov"
                                           create="false"
                                           delete="false"
@@ -335,7 +349,8 @@
                                                 type="object"
                                                 string="Odstrániť"
                                                 icon="fa-trash"
-                                                class="btn-link text-danger"/>
+                                                class="btn-link text-danger"
+                                                invisible="not parent.can_edit_project"/>
                                     </list>
                                 </field>
                             </page>
@@ -346,9 +361,9 @@
                                             type="object"
                                             string="Pridať prevádzku, centrum alebo terén"
                                             class="btn btn-primary"
-                                            invisible="not id"/>
+                                            invisible="not id or not can_edit_project"/>
                                 </div>
-                                <field name="site_ids" nolabel="1">
+                                <field name="site_ids" nolabel="1" readonly="not can_edit_project">
                                     <list string="Prevádzky / centrá / terén"
                                           create="false"
                                           delete="false"
@@ -364,7 +379,8 @@
                                                 string="Odpojiť"
                                                 icon="fa-chain-broken"
                                                 class="btn-link"
-                                                context="{'unlink_project_id': parent.id}"/>
+                                                context="{'unlink_project_id': parent.id}"
+                                                invisible="not parent.can_edit_project"/>
                                     </list>
                                 </field>
                             </page>
@@ -372,11 +388,11 @@
                                   groups="tenenet_projects.group_tenenet_user,tenenet_projects.group_tenenet_garant_pm,tenenet_projects.group_tenenet_manager">
                                 <group string="Mzdový strop pre priradenia zamestnanca">
                                     <group>
-                                        <field name="default_max_monthly_wage_hm"/>
+                                        <field name="default_max_monthly_wage_hm" readonly="not can_edit_project"/>
                                         <field name="default_max_monthly_wage_ccp" readonly="1"/>
                                     </group>
                                 </group>
-                                <field name="leave_rule_ids">
+                                <field name="leave_rule_ids" readonly="not can_edit_project">
                                     <list string="Pravidlá dovolenky" editable="bottom">
                                         <field name="leave_type_id"/>
                                         <field name="included"/>
@@ -389,9 +405,9 @@
                                             type="object"
                                             string="Pridať typ výdavku"
                                             class="btn btn-secondary"
-                                            invisible="not id"/>
+                                            invisible="not id or not can_edit_project"/>
                                 </div>
-                                <field name="allowed_expense_type_ids" nolabel="1">
+                                <field name="allowed_expense_type_ids" nolabel="1" readonly="not can_edit_project">
                                     <list string="Povolené typy výdavkov" editable="bottom">
                                         <field name="config_id" optional="show"/>
                                         <field name="name"/>
@@ -426,9 +442,9 @@
                                             type="object"
                                             string="Pridať existujúci kontakt"
                                             class="btn btn-primary"
-                                            invisible="not id"/>
+                                            invisible="not id or not can_edit_project"/>
                                 </div>
-                                <field name="contact_ids" nolabel="1">
+                                <field name="contact_ids" nolabel="1" readonly="not can_edit_project">
                                     <list string="Kontakty projektu"
                                           create="true"
                                           delete="false"
@@ -444,7 +460,8 @@
                                                 string="Odpojiť"
                                                 icon="fa-chain-broken"
                                                 class="btn-link"
-                                                context="{'unlink_project_id': parent.id}"/>
+                                                context="{'unlink_project_id': parent.id}"
+                                                invisible="not parent.can_edit_project"/>
                                     </list>
                                     <form string="Kontakt projektu">
                                         <sheet>
@@ -466,7 +483,7 @@
                                     </form>
                                 </field>
                                 <group string="Ostatné kontaktné údaje">
-                                    <field name="portal"/>
+                                    <field name="portal" readonly="not can_edit_project"/>
                                     <field name="donor_contact" readonly="1"/>
                                     <field name="partner_contact" readonly="1"/>
                                 </group>

@@ -120,6 +120,8 @@ class TestTenenetPlan02Project(TransactionCase):
             self.env["tenenet.project"].with_user(pm_user).search_count([("id", "=", other_project.id)]),
             1,
         )
+        self.assertTrue(assigned_project.with_user(pm_user).can_edit_project)
+        self.assertFalse(other_project.with_user(pm_user).can_edit_project)
 
         assigned_project.with_user(pm_user).write({"description": "Allowed"})
         with self.assertRaises(AccessError):
@@ -150,8 +152,71 @@ class TestTenenetPlan02Project(TransactionCase):
             self.env["tenenet.project"].with_user(garant_user).search_count([("id", "=", project.id)]),
             1,
         )
+        self.assertFalse(project.with_user(garant_user).can_edit_project)
         with self.assertRaises(AccessError):
             project.with_user(garant_user).write({"description": "Blocked for garant"})
+
+    def test_odborny_garant_can_edit_timesheets_but_not_project_assignment(self):
+        base_group = self.env.ref("base.group_user")
+        user_group = self.env.ref("tenenet_projects.group_tenenet_user")
+        garant_user = self._create_user("project_garant_timesheets", [base_group.id, user_group.id])
+        garant_employee = self.env["hr.employee"].create({
+            "name": "Garant timesheetov",
+            "user_id": garant_user.id,
+        })
+        assigned_employee = self.env["hr.employee"].create({"name": "Priradený zamestnanec"})
+        project = self.env["tenenet.project"].create({
+            "name": "Projekt garant timesheety",
+            "program_ids": [(4, self.program.id)],
+            "odborny_garant_id": garant_employee.id,
+        })
+        assignment = self.env["tenenet.project.assignment"].create({
+            "employee_id": assigned_employee.id,
+            "project_id": project.id,
+            "allocation_ratio": 25.0,
+        })
+        timesheet = self.env["tenenet.project.timesheet"].create({
+            "assignment_id": assignment.id,
+            "period": "2026-01-01",
+        })
+
+        garant_user.invalidate_recordset(["group_ids"])
+        timesheet.with_user(garant_user).write({"hours_pp": 8.0})
+        timesheet.invalidate_recordset(["hours_pp"])
+        self.assertEqual(timesheet.hours_pp, 8.0)
+        with self.assertRaises(AccessError):
+            assignment.with_user(garant_user).write({"allocation_ratio": 50.0})
+
+    def test_odborny_garant_pl_report_programs_are_limited_to_assigned_projects(self):
+        base_group = self.env.ref("base.group_user")
+        user_group = self.env.ref("tenenet_projects.group_tenenet_user")
+        garant_user = self._create_user("project_garant_reports", [base_group.id, user_group.id])
+        garant_employee = self.env["hr.employee"].create({
+            "name": "Garant reportov",
+            "user_id": garant_user.id,
+        })
+        other_program = self.env["tenenet.program"].create({
+            "name": "Program bez garanta",
+            "code": "PG_NO_GARANT",
+        })
+        self.env["tenenet.project"].create({
+            "name": "Projekt garant reporty",
+            "program_ids": [(4, self.program.id)],
+            "odborny_garant_id": garant_employee.id,
+        })
+        self.env["tenenet.project"].create({
+            "name": "Projekt bez garanta reporty",
+            "program_ids": [(4, other_program.id)],
+        })
+        garant_user.invalidate_recordset(["group_ids"])
+
+        handler = self.env["tenenet.pl.report.handler"].with_user(garant_user)
+        self.assertIn(self.program, handler._get_report_programs())
+        self.assertNotIn(other_program, handler._get_report_programs())
+        self.assertEqual(
+            handler._get_selected_program_from_options({"program_ids": [other_program.id]}),
+            self.program,
+        )
 
     def test_manager_role_survives_project_appointment(self):
         base_group = self.env.ref("base.group_user")

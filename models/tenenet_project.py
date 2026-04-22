@@ -244,6 +244,10 @@ class TenenetProject(models.Model):
         string="Môže spravovať míľniky",
         compute="_compute_can_manage_milestones",
     )
+    can_edit_project = fields.Boolean(
+        string="Môže upravovať projekt",
+        compute="_compute_can_edit_project",
+    )
 
     currency_id = fields.Many2one(
         "res.currency",
@@ -1339,7 +1343,14 @@ class TenenetProject(models.Model):
         for rec in self:
             rec.kanban_color = color_map.get(rec.semaphore, 0)
 
-    @api.depends("odborny_garant_id", "odborny_garant_id.user_id")
+    @api.depends("project_manager_id", "project_manager_id.user_id")
+    @api.depends_context("uid")
+    def _compute_can_edit_project(self):
+        for rec in self:
+            rec.can_edit_project = rec._can_current_user_edit_project()
+
+    @api.depends("project_manager_id", "project_manager_id.user_id")
+    @api.depends_context("uid")
     def _compute_can_manage_milestones(self):
         current_user = self.env.user
         is_manager = current_user.has_group("tenenet_projects.group_tenenet_manager")
@@ -1927,14 +1938,10 @@ class TenenetProject(models.Model):
     def _check_milestone_manage_access(self):
         if self.env.is_superuser():
             return
-        current_user = self.env.user
-        is_manager = current_user.has_group("tenenet_projects.group_tenenet_manager")
-        employee_ids = set(current_user.employee_ids.ids)
         for rec in self:
-            is_garant = rec.odborny_garant_id.id in employee_ids
-            if not (is_manager or is_garant):
+            if not rec._can_current_user_edit_project():
                 raise AccessError(
-                    _("Míľniky môže upravovať iba TENENET manažér alebo odborný garant projektu.")
+                    _("Míľniky môže upravovať iba projektový manažér alebo TENENET manažér.")
                 )
 
     @api.constrains("is_tenenet_internal", "active")

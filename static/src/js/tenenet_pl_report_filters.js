@@ -18,6 +18,7 @@ export class TenenetPLReportFilters extends AccountReportFilters {
         return {
             resModel: "tenenet.program",
             resIds: this.selectedProgramIds,
+            domain: this.controller.cachedFilterOptions.available_program_domain || [["id", "=", 0]],
             update: (resIds) => this.selectProgram(resIds),
             context: { active_test: false },
             placeholder: "Vyber program...",

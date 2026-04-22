@@ -76,11 +76,11 @@ class TestProjectMilestone(TransactionCase):
         vals.update(overrides)
         return vals
 
-    def test_garant_can_create_milestone(self):
-        milestone = self.env["tenenet.project.milestone"].with_user(self.garant_user).create(
-            self._milestone_vals()
-        )
-        self.assertEqual(milestone.project_id, self.project)
+    def test_garant_cannot_create_milestone(self):
+        with self.assertRaises(AccessError):
+            self.env["tenenet.project.milestone"].with_user(self.garant_user).create(
+                self._milestone_vals()
+            )
 
     def test_manager_can_create_milestone(self):
         milestone = self.env["tenenet.project.milestone"].with_user(self.manager_user).create(
@@ -88,11 +88,11 @@ class TestProjectMilestone(TransactionCase):
         )
         self.assertEqual(milestone.name, "Manažérsky míľnik")
 
-    def test_pm_cannot_create_milestone(self):
-        with self.assertRaises(AccessError):
-            self.env["tenenet.project.milestone"].with_user(self.pm_user).create(
-                self._milestone_vals()
-            )
+    def test_pm_can_create_milestone(self):
+        milestone = self.env["tenenet.project.milestone"].with_user(self.pm_user).create(
+            self._milestone_vals()
+        )
+        self.assertEqual(milestone.project_id, self.project)
 
     def test_regular_user_cannot_create_milestone(self):
         with self.assertRaises(AccessError):
@@ -100,8 +100,8 @@ class TestProjectMilestone(TransactionCase):
                 self._milestone_vals()
             )
 
-    def test_wizard_creates_milestone_for_garant(self):
-        wizard = self.env["tenenet.project.milestone.wizard"].with_user(self.garant_user).create({
+    def test_wizard_creates_milestone_for_pm(self):
+        wizard = self.env["tenenet.project.milestone.wizard"].with_user(self.pm_user).create({
             "project_id": self.project.id,
             "name": "Odovzdanie výstupu",
             "date": "2026-09-01",
@@ -111,9 +111,9 @@ class TestProjectMilestone(TransactionCase):
         milestone = self.project.milestone_ids.filtered(lambda item: item.name == "Odovzdanie výstupu")
         self.assertTrue(milestone)
 
-    def test_pm_cannot_update_existing_milestone(self):
+    def test_garant_cannot_update_existing_milestone(self):
         milestone = self.env["tenenet.project.milestone"].with_user(self.manager_user).create(
             self._milestone_vals()
         )
         with self.assertRaises(AccessError):
-            milestone.with_user(self.pm_user).write({"name": "Neoprávnená zmena"})
+            milestone.with_user(self.garant_user).write({"name": "Neoprávnená zmena"})

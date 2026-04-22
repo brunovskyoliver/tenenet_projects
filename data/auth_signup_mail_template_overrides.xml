@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="auth_signup.set_password_email" model="mail.template">
+            <field name="name">Nastavenia: Pozvánka pre nového používateľa</field>
+            <field name="subject">{{ object.create_uid.name }} zo spoločnosti {{ object.company_id.name }} vás pozýva na pripojenie</field>
+            <field name="description">Odoslané novému používateľovi po odoslaní pozvánky</field>
+            <field name="body_html" type="html">
+<table border="0" cellpadding="0" cellspacing="0" style="padding-top: 16px; background-color: #FFFFFF; font-family:Verdana, Arial,sans-serif; color: #454748; width: 100%; border-collapse:separate;"><tr><td align="center">
+<table border="0" cellpadding="0" cellspacing="0" width="590" style="padding: 16px; background-color: #FFFFFF; color: #454748; border-collapse:separate;">
+<tbody>
+    <tr>
+        <td align="center" style="min-width: 590px;">
+            <table border="0" cellpadding="0" cellspacing="0" width="590" style="min-width: 590px; background-color: white; padding: 0px 8px 0px 8px; border-collapse:separate;">
+                <tr><td valign="middle">
+                    <span style="font-size: 10px;">Vitajte</span><br/>
+                    <span style="font-size: 20px; font-weight: bold;">
+                        <t t-out="object.name or ''">Marc Demo</t>
+                    </span>
+                </td><td valign="middle" align="right" t-if="not object.company_id.uses_default_logo">
+                    <img t-attf-src="/logo.png?company={{ object.company_id.id }}" style="padding: 0px; margin: 0px; height: auto; width: 80px;" t-att-alt="object.company_id.name"/>
+                </td></tr>
+                <tr><td colspan="2" style="text-align:center;">
+                  <hr width="100%" style="background-color:rgb(204,204,204);border:medium none;clear:both;display:block;font-size:0px;min-height:1px;line-height:0; margin: 16px 0px 16px 0px;"/>
+                </td></tr>
+            </table>
+        </td>
+    </tr>
+    <tr>
+        <td align="center" style="min-width: 590px;">
+            <table border="0" cellpadding="0" cellspacing="0" width="590" style="min-width: 590px; background-color: white; padding: 0px 8px 0px 8px; border-collapse:separate;">
+                <tr><td valign="top" style="font-size: 13px;">
+                    <div>
+                        Dobrý deň, <t t-out="object.name or ''">Marc Demo</t>,<br /><br />
+                        <t t-out="object.create_uid.name or ''">Administrátor</t> zo spoločnosti <t t-out="object.company_id.name or ''">Vaša spoločnosť</t> vás pozýva na pripojenie.
+                        <div style="margin: 16px 0px 16px 0px;">
+                            <a t-att-href="object.partner_id._get_signup_url()"
+                                t-attf-style="background-color: {{object.company_id.email_secondary_color or '#875A7B'}}; padding: 8px 16px 8px 16px; text-decoration: none; color: {{object.company_id.email_primary_color or '#FFFFFF'}}; border-radius: 5px; font-size:13px;">
+                                Prijať pozvánku
+                            </a>
+                        </div>
+                        <b>Tento odkaz bude platný <t t-out="int(int(object.env['ir.config_parameter'].sudo().get_param('auth_signup.signup.validity.hours',144))/24)"></t> dní</b><br/>
+                        <t t-set="website_url" t-value="object.get_base_url()"></t>
+                        Vaša doména je: <b><a t-att-href="website_url" t-out="website_url or ''">http://yourcompany.example.com</a></b><br />
+                        Váš prihlasovací e-mail je: <b><a t-attf-href="/web/login?login={{ object.email }}" target="_blank" t-out="object.email or ''">mark.brown23@example.com</a></b><br /><br />
+                        Prajeme príjemnú prácu.<br />
+                        --<br/>Tím <t t-out="object.company_id.name or ''">Vaša spoločnosť</t>
+                    </div>
+                </td></tr>
+                <tr><td style="text-align:center;">
+                  <hr width="100%" style="background-color:rgb(204,204,204);border:medium none;clear:both;display:block;font-size:0px;min-height:1px;line-height:0; margin: 16px 0px 16px 0px;"/>
+                </td></tr>
+            </table>
+        </td>
+    </tr>
+    <tr>
+        <td align="center" style="min-width: 590px;">
+            <table border="0" cellpadding="0" cellspacing="0" width="590" style="min-width: 590px; background-color: white; font-size: 11px; padding: 0px 8px 0px 8px; border-collapse:separate;">
+                <tr><td valign="middle" align="left">
+                    <t t-out="object.company_id.name or ''">Vaša spoločnosť</t>
+                </td></tr>
+                <tr><td valign="middle" align="left" style="opacity: 0.7;">
+                    <t t-out="object.company_id.phone or ''">+1 650-123-4567</t>
+                    <t t-if="object.company_id.email">
+                        | <a t-att-href="'mailto:%s' % object.company_id.email" style="text-decoration:none; color: #454748;" t-out="object.company_id.email or ''">info@yourcompany.com</a>
+                    </t>
+                    <t t-if="object.company_id.website">
+                        | <a t-att-href="'%s' % object.company_id.website" style="text-decoration:none; color: #454748;" t-out="object.company_id.website or ''">http://www.example.com</a>
+                    </t>
+                </td></tr>
+            </table>
+        </td>
+    </tr>
+</tbody>
+</table>
+</td></tr>
+</table>
+            </field>
+        </record>
+
+        <record id="auth_signup.mail_template_data_unregistered_users" model="mail.template">
+            <field name="name">Nastavenia: Pripomienka neregistrovaným používateľom</field>
+            <field name="subject">Pripomienka pre neregistrovaných používateľov</field>
+            <field name="description">Odoslané automaticky administrátorovi, ak nový používateľ neodpovedal na pozvánku</field>
+            <field name="body_html" type="html">
+<table border="0" cellpadding="0" cellspacing="0" style="background-color: #FFFFFF; font-family:Verdana, Arial,sans-serif; color: #454748; width: 100%; border-collapse:separate;"><tr><td align="center">
+<table border="0" cellpadding="0" cellspacing="0" width="590" style="padding: 16px; background-color: #FFFFFF; color: #454748; border-collapse:separate;">
+<tbody>
+    <tr>
+        <td align="center" style="min-width: 590px;">
+            <table border="0" cellpadding="0" cellspacing="0" width="590" style="min-width: 590px; background-color: white; padding: 0px 8px 0px 8px; border-collapse:separate;">
+                <t t-set="invited_users" t-value="ctx.get('invited_users', [])" />
+                <td style="text-align : left">
+                    <span style="font-size: 20px; font-weight: bold;">
+                        Čakajúce pozvánky
+                    </span><br/><br/>
+                </td>
+                <tr><td valign="top" style="font-size: 13px;">
+                    <div>
+                        Dobrý deň, <t t-out="object.name or ''">Mitchell Admin</t>,<br/> <br/>
+                        Pridali ste nasledujúcich používateľov, ale ešte sa nezaregistrovali:
+                        <ul>
+                            <t t-foreach="invited_users" t-as="invited_user">
+                                <li t-out="invited_user or ''">demo@example.com</li>
+                            </t>
+                        </ul>
+                        Kontaktujte ich, aby získali prístup a mohli začať pracovať.
+                        <br /><br/>
+                        Prajeme pekný deň.<br />
+                        --<br/>Tím <t t-out="object.company_id.name or ''">Vaša spoločnosť</t>
+                    </div>
+                </td></tr>
+                <tr><td style="text-align:center;">
+                  <hr width="100%" style="background-color:rgb(204,204,204);border:medium none;clear:both;display:block;font-size:0px;min-height:1px;line-height:0; margin: 16px 0px 16px 0px;"/>
+                </td></tr>
+            </table>
+        </td>
+    </tr>
+</tbody>
+</table>
+</td></tr>
+</table>
+            </field>
+        </record>
+
+        <record id="auth_signup.mail_template_user_signup_account_created" model="mail.template">
+            <field name="name">Nastavenia: Nová registrácia portálového používateľa</field>
+            <field name="subject">Vitajte v {{ object.company_id.name }}!</field>
+            <field name="description">Odoslané portálovému používateľovi, ktorý sa zaregistroval</field>
+            <field name="body_html" type="html">
+<table border="0" cellpadding="0" cellspacing="0" style="padding-top: 16px; background-color: #FFFFFF; font-family:Verdana, Arial,sans-serif; color: #454748; width: 100%; border-collapse:separate;"><tr><td align="center">
+<table border="0" cellpadding="0" cellspacing="0" width="590" style="padding: 16px; background-color: #FFFFFF; color: #454748; border-collapse:separate;">
+<tbody>
+    <tr>
+        <td align="center" style="min-width: 590px;">
+            <table border="0" cellpadding="0" cellspacing="0" width="590" style="min-width: 590px; background-color: white; padding: 0px 8px 0px 8px; border-collapse:separate;">
+                <tr><td valign="middle">
+                    <span style="font-size: 10px;">Váš účet</span><br/>
+                    <span style="font-size: 20px; font-weight: bold;">
+                        <t t-out="object.name or ''">Marc Demo</t>
+                    </span>
+                </td><td valign="middle" align="right" t-if="not object.company_id.uses_default_logo">
+                    <img t-attf-src="/logo.png?company={{ object.company_id.id }}" style="padding: 0px; margin: 0px; height: auto; width: 80px;" t-att-alt="object.company_id.name"/>
+                </td></tr>
+                <tr><td colspan="2" style="text-align:center;">
+                  <hr width="100%" style="background-color:rgb(204,204,204);border:medium none;clear:both;display:block;font-size:0px;min-height:1px;line-height:0; margin: 16px 0px 16px 0px;"/>
+                </td></tr>
+            </table>
+        </td>
+    </tr>
+    <tr>
+        <td align="center" style="min-width: 590px;">
+            <table border="0" cellpadding="0" cellspacing="0" width="590" style="min-width: 590px; background-color: white; padding: 0px 8px 0px 8px; border-collapse:separate;">
+                <tr><td valign="top" style="font-size: 13px;">
+                    <div>
+                        Dobrý deň, <t t-out="object.name or ''">Marc Demo</t>,<br/><br/>
+                        Váš účet bol úspešne vytvorený.<br/>
+                        Vaše prihlasovacie meno je <strong><t t-out="object.email or ''">mark.brown23@example.com</t></strong><br/>
+                        Na prístup k účtu použite nasledujúci odkaz:
+                        <div style="margin: 16px 0px 16px 0px;">
+                            <a t-attf-href="/web/login?auth_login={{object.email}}"
+                                t-attf-style="background-color: {{object.company_id.email_secondary_color or '#875A7B'}}; padding: 8px 16px 8px 16px; text-decoration: none; color: {{object.company_id.email_primary_color or '#FFFFFF'}}; border-radius: 5px; font-size:13px;">
+                                Prejsť do môjho účtu
+                            </a>
+                        </div>
+                        Ďakujeme,<br/>
+                        <t t-if="user.signature">
+                            <br/>
+                            <div>--<br/><t t-out="user.signature or ''">Mitchell Admin</t></div>
+                        </t>
+                    </div>
+                </td></tr>
+                <tr><td style="text-align:center;">
+                  <hr width="100%" style="background-color:rgb(204,204,204);border:medium none;clear:both;display:block;font-size:0px;min-height:1px;line-height:0; margin: 16px 0px 16px 0px;"/>
+                </td></tr>
+            </table>
+        </td>
+    </tr>
+    <tr>
+        <td align="center" style="min-width: 590px;">
+            <table border="0" cellpadding="0" cellspacing="0" width="590" style="min-width: 590px; background-color: white; font-size: 11px; padding: 0px 8px 0px 8px; border-collapse:separate;">
+                <tr><td valign="middle" align="left">
+                    <t t-out="object.company_id.name or ''">Vaša spoločnosť</t>
+                </td></tr>
+                <tr><td valign="middle" align="left" style="opacity: 0.7;">
+                    <t t-out="object.company_id.phone or ''">+1 650-123-4567</t>
+                    <t t-if="object.company_id.email">
+                        | <a t-attf-href="mailto:{{object.company_id.email}}" style="text-decoration:none; color: #454748;" t-out="object.company_id.email or ''">info@yourcompany.com</a>
+                    </t>
+                    <t t-if="object.company_id.website">
+                        | <a t-att-href="object.company_id.website" style="text-decoration:none; color: #454748;" t-out="object.company_id.website or ''">http://www.example.com</a>
+                    </t>
+                </td></tr>
+            </table>
+        </td>
+    </tr>
+</tbody>
+</table>
+</td></tr>
+</table>
+            </field>
+        </record>
+
+        <record id="auth_signup.portal_set_password_email" model="mail.template">
+            <field name="name">Nastavenia: Pozvánka pre nového portálového používateľa</field>
+            <field name="subject">Váš účet v {{ object.company_id.name }}</field>
+            <field name="description">Odoslané novému portálovému používateľovi po odoslaní pozvánky</field>
+            <field name="body_html" type="html">
+<table border="0" cellpadding="0" cellspacing="0"
+    style="padding-top: 16px; background-color: #F1F1F1; font-family:Verdana, Arial,sans-serif; color: #454748; width: 100%; border-collapse:separate;">
+    <tr><td align="center">
+        <table border="0" cellpadding="0" cellspacing="0" width="590"
+            style="padding: 16px; background-color: white; color: #454748; border-collapse:separate;">
+            <tbody>
+                <tr>
+                    <td align="center" style="min-width: 590px;">
+                        <table border="0" cellpadding="0" cellspacing="0" width="590"
+                            style="min-width: 590px; background-color: white; padding: 0px 8px 0px 8px; border-collapse:separate;">
+                            <tr>
+                                <td valign="middle">
+                                    <span style="font-size: 10px;">Váš účet</span><br/>
+                                    <span style="font-size: 20px; font-weight: bold;" t-out="object.name or ''">Marc Demo</span>
+                                </td>
+                                <td valign="middle" align="right" t-if="not object.company_id.uses_default_logo">
+                                    <img t-attf-src="/logo.png?company={{ object.company_id.id }}" style="padding: 0px; margin: 0px; height: auto; width: 80px;"
+                                        t-att-alt="object.company_id.name"/>
+                                </td>
+                            </tr>
+                            <tr><td colspan="2" style="text-align:center;">
+                                <hr width="100%" style="background-color:rgb(204,204,204);border:medium none;clear:both;display:block;font-size:0px;min-height:1px;line-height:0; margin:16px 0px 16px 0px;"/>
+                            </td></tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td align="center" style="min-width: 590px;">
+                        <table border="0" cellpadding="0" cellspacing="0" width="590"
+                            style="min-width: 590px; background-color: white; padding: 0px 8px 0px 8px; border-collapse:separate;">
+                            <tr><td valign="top" style="font-size: 13px;">
+                                <div>
+                                    Dobrý deň, <t t-out="object.name or ''">Marc Demo</t>,<br/> <br/>
+                                    Vitajte v portáli spoločnosti <t t-out="object.company_id.name">Vaša spoločnosť</t>.<br/><br/>
+                                    Bol vám vytvorený účet s prihlasovacím menom: <t t-out="object.login">demo</t><br/><br/>
+                                    Kliknutím na tlačidlo nižšie si vyberiete heslo a aktivujete účet.
+                                    <div style="margin: 16px 0px 16px 0px; text-align: center;">
+                                        <a t-att-href="object.partner_id._get_signup_url()"
+                                        t-attf-style="display: inline-block; padding: 10px; text-decoration: none; font-size: 12px; background-color: {{object.company_id.email_secondary_color or '#875A7B'}}; color: {{object.company_id.email_primary_color or '#FFFFFF'}}; border-radius: 5px;">
+                                            <strong>Aktivovať účet</strong>
+                                        </a>
+                                    </div>
+                                    <t t-out="ctx.get('welcome_message') or ''">Vitajte v portáli našej spoločnosti.</t>
+                                </div>
+                            </td></tr>
+                            <tr><td style="text-align:center;">
+                                <hr width="100%" style="background-color:rgb(204,204,204);border:medium none;clear:both;display:block;font-size:0px;min-height:1px;line-height:0; margin: 16px 0px 16px 0px;"/>
+                            </td></tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td align="center" style="min-width: 590px;">
+                        <table border="0" cellpadding="0" cellspacing="0" width="590"
+                            style="min-width: 590px; background-color: white; font-size: 11px; padding: 0px 8px 0px 8px; border-collapse:separate;">
+                            <tr><td valign="middle" align="left">
+                                <t t-out="object.company_id.name or ''">Vaša spoločnosť</t>
+                            </td></tr>
+                            <tr><td valign="middle" align="left" style="opacity: 0.7;">
+                                <t t-out="object.company_id.phone or ''">+1 650-123-4567</t>
+                                <t t-if="object.company_id.email">
+                                    | <a t-attf-href="mailto:{{ object.company_id.email }}" style="text-decoration: none; color: #454748;" t-out="object.company_id.email or ''">info@yourcompany.com</a>
+                                </t>
+                                <t t-if="object.company_id.website">
+                                    | <a t-att-href="object.company_id.website" style="text-decoration: none; color: #454748;" t-out="object.company_id.website or ''">http://www.example.com</a>
+                                </t>
+                            </td></tr>
+                        </table>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </td></tr>
+</table>
+            </field>
+        </record>
+    </data>
+</odoo>
