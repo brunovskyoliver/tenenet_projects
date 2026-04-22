@@ -441,6 +441,37 @@ class TestTenenetEmployeeAssets(TransactionCase):
         self.assertEqual(handover.sign_request_id.state, "signed")
         self.assertEqual(handover.helpdesk_ticket_id.stage_id, self.helpdesk_stage_done)
 
+    def test_employee_signer_without_sign_group_gets_public_sign_url(self):
+        employee_user = self.env["res.users"].with_context(no_reset_password=True).create({
+            "name": "Signer Employee",
+            "login": "signer_employee",
+            "email": self.employee.work_email,
+            "company_id": self.company.id,
+            "company_ids": [Command.set([self.company.id])],
+            "group_ids": [Command.set([self.base_user_group.id])],
+        })
+        self.employee.user_id = employee_user
+        asset = self.env["tenenet.employee.asset"].create({
+            "employee_id": self.employee.id,
+            "asset_type_id": self.asset_type_laptop.id,
+            "serial_number": "SN-SIGN-URL-001",
+            "handover_date": "2026-04-14",
+        })
+        handover = self.env["tenenet.employee.asset.handover"].create({
+            "employee_id": self.employee.id,
+            "handover_date": "2026-04-14",
+        })
+        asset.handover_id = handover.id
+
+        with self._patch_handover_pdf():
+            handover.action_send_for_signature()
+
+        action = handover.with_user(employee_user).action_open_sign_request()
+
+        self.assertEqual(action["type"], "ir.actions.act_url")
+        self.assertIn(f"/sign/document/{handover.sign_request_id.id}/", action["url"])
+        self.assertEqual(action["target"], "new")
+
     def test_handover_helpdesk_ticket_is_assigned_to_creator_when_team_member(self):
         hr_user_group = self.env.ref("hr.group_hr_user")
         helpdesk_user_group = self.env.ref("helpdesk.group_helpdesk_user")

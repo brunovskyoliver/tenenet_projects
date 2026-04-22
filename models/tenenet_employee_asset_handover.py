@@ -109,14 +109,39 @@ class TenenetEmployeeAssetHandover(models.Model):
         self.ensure_one()
         if not self.sign_request_id:
             raise UserError(_("Pre tento protokol ešte nebola vytvorená podpisová žiadosť."))
-        return {
-            "type": "ir.actions.act_window",
-            "name": _("Podpisová žiadosť"),
-            "res_model": "sign.request",
-            "view_mode": "kanban,list,form",
-            "domain": [("id", "=", self.sign_request_id.id)],
-            "context": {"create": False},
-        }
+        if self._can_open_sign_request_backend():
+            return {
+                "type": "ir.actions.act_window",
+                "name": _("Podpisová žiadosť"),
+                "res_model": "sign.request",
+                "view_mode": "kanban,list,form",
+                "domain": [("id", "=", self.sign_request_id.id)],
+                "context": {"create": False},
+            }
+        if self._is_sign_request_signer():
+            return {
+                "type": "ir.actions.act_url",
+                "url": self._get_sign_url(),
+                "target": "new",
+            }
+        raise UserError(
+            _(
+                "K tomuto podpisu nemáte interný prístup. "
+                "Použite odkaz z e-mailu alebo požiadajte správcu o prístup do Sign."
+            )
+        )
+
+    def _can_open_sign_request_backend(self):
+        self.ensure_one()
+        return self.env.user.has_group("sign.group_sign_user") or self.env.user.has_group("sign.group_sign_manager")
+
+    def _is_sign_request_signer(self):
+        self.ensure_one()
+        signer_partners = self.sign_request_id.sudo().request_item_ids.partner_id
+        return bool(
+            self.env.user.partner_id in signer_partners
+            or (self.employee_id.user_id and self.employee_id.user_id == self.env.user)
+        )
 
     def action_open_helpdesk_ticket(self):
         self.ensure_one()
