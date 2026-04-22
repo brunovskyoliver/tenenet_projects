@@ -111,6 +111,18 @@ class HrEmployee(models.Model):
         installed_codes = {code for code, _name in self.env["res.lang"].get_installed()}
         return "sk_SK" if "sk_SK" in installed_codes else self.env.lang
 
+    @api.model
+    def _tenenet_default_user_lang(self):
+        installed_codes = {code for code, _name in self.env["res.lang"].get_installed()}
+        return "sk_SK" if "sk_SK" in installed_codes else self.env.lang
+
+    def action_create_user(self):
+        action = super().action_create_user()
+        action_context = dict(action.get("context", {}))
+        action_context.setdefault("default_lang", self._tenenet_default_user_lang())
+        action["context"] = action_context
+        return action
+
     monthly_gross_salary_target = fields.Monetary(
         string="Mesačný cieľ CCP",
         currency_field="salary_currency_id",

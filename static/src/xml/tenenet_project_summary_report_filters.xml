@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<templates>
+    <t t-name="tenenet_projects.TenenetProjectSummaryReportFilters" t-inherit="account_reports.AccountReportFiltersCustomizable">
+        <xpath expr="//div[@id='filter_date']/t[@t-call='account_reports.AccountReportFilterDate']" position="replace">
+            <t t-call="tenenet_projects.TenenetProjectSummaryReportFilterYear"/>
+        </xpath>
+        <xpath expr="//div[@id='filter_rounding_unit']" position="before">
+            <div id="filter_project_summary_scope" class="filter_project_summary_scope">
+                <t t-call="tenenet_projects.TenenetProjectSummaryReportFilterScope"/>
+            </div>
+            <div id="filter_project_summary_type" class="filter_project_summary_type">
+                <t t-call="tenenet_projects.TenenetProjectSummaryReportFilterType"/>
+            </div>
+            <div id="filter_project_summary_programs" class="filter_project_summary_programs">
+                <t t-call="tenenet_projects.TenenetProjectSummaryReportFilterPrograms"/>
+            </div>
+            <div id="filter_project_summary_donors" class="filter_project_summary_donors">
+                <t t-call="tenenet_projects.TenenetProjectSummaryReportFilterDonors"/>
+            </div>
+            <div id="filter_project_summary_semaphore" class="filter_project_summary_semaphore">
+                <t t-call="tenenet_projects.TenenetProjectSummaryReportFilterSemaphore"/>
+            </div>
+        </xpath>
+    </t>
+
+    <t t-name="tenenet_projects.TenenetProjectSummaryReportFilterYear" owl="1">
+        <Dropdown menuClass="'account_report_filter date'" navigationOptions="dateNavigationOptions">
+            <button class="btn btn-secondary">
+                <i class="fa fa-calendar me-1"/>
+                <t t-out="yearFilterLabel"/>
+            </button>
+
+            <t t-set-slot="content">
+                <DropdownItem
+                    tag="'div'"
+                    class="{ 'd-flex justify-content-between date_filter date_filter_year selected': true }"
+                    attrs="{ 'data-period-type': 'year', 'data-mode': 'edit' }"
+                    onSelected="() => this.selectYearPeriod()"
+                    closingMode="'none'"
+                >
+                    <div class="filter_name pe-3">
+                        Rok
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <button
+                            class="btn_previous_date fa fa-caret-left"
+                            t-on-click="() => this.selectPreviousPeriod('year')"
+                        />
+                        <DateTimeInput
+                            type="'date'"
+                            class="'o-navigable text-center border-0 bg-transparent'"
+                            value="selectedYearValue"
+                            format="'yyyy'"
+                            minPrecision="'years'"
+                            maxPrecision="'years'"
+                            showWeekNumbers="false"
+                            onChange="(date) => this.selectYear(date)"
+                        />
+                        <button
+                            class="btn_next_date fa fa-caret-right"
+                            t-on-click="() => this.selectNextPeriod('year')"
+                        />
+                    </div>
+                </DropdownItem>
+            </t>
+        </Dropdown>
+    </t>
+
+    <t t-name="tenenet_projects.TenenetProjectSummaryReportFilterScope" owl="1">
+        <Dropdown menuClass="'account_report_filter project_summary_scope'">
+            <button class="btn btn-secondary">
+                <i class="fa fa-list me-1"/>
+                <t t-out="selectedProjectScopeLabel"/>
+            </button>
+
+            <t t-set-slot="content">
+                <t
+                    t-foreach="controller.cachedFilterOptions.project_scope_selection || []"
+                    t-as="scopeOption"
+                    t-key="scopeOption.id"
+                >
+                    <DropdownItem
+                        class="{ 'selected': scopeOption.selected }"
+                        onSelected="() => this.selectOption('project_scope', scopeOption.id)"
+                        closingMode="'all'"
+                        t-out="scopeOption.name"
+                    />
+                </t>
+            </t>
+        </Dropdown>
+    </t>
+
+    <t t-name="tenenet_projects.TenenetProjectSummaryReportFilterType" owl="1">
+        <Dropdown menuClass="'account_report_filter project_summary_type'">
+            <button class="btn btn-secondary">
+                <i class="fa fa-tags me-1"/>
+                <t t-out="selectedProjectTypeLabel"/>
+            </button>
+
+            <t t-set-slot="content">
+                <t
+                    t-foreach="controller.cachedFilterOptions.project_type_selection || []"
+                    t-as="projectType"
+                    t-key="projectType.id"
+                >
+                    <DropdownItem
+                        class="{ 'selected': projectType.selected }"
+                        onSelected="() => this.selectOption('project_type', projectType.id)"
+                        closingMode="'all'"
+                        t-out="projectType.name"
+                    />
+                </t>
+            </t>
+        </Dropdown>
+    </t>
+
+    <t t-name="tenenet_projects.TenenetProjectSummaryReportFilterPrograms" owl="1">
+        <Dropdown menuClass="'account_report_filter project_summary_programs'">
+            <button class="btn btn-secondary">
+                <i class="fa fa-sitemap me-1"/>
+                <t t-out="selectedProgramLabel"/>
+            </button>
+
+            <t t-set-slot="content">
+                <div class="dropdown-item gap-2 align-items-center">
+                    <label>Programy</label>
+                    <MultiRecordSelector t-props="programSelectorProps"/>
+                </div>
+            </t>
+        </Dropdown>
+    </t>
+
+    <t t-name="tenenet_projects.TenenetProjectSummaryReportFilterDonors" owl="1">
+        <Dropdown menuClass="'account_report_filter project_summary_donors'">
+            <button class="btn btn-secondary">
+                <i class="fa fa-handshake-o me-1"/>
+                <t t-out="selectedDonorLabel"/>
+            </button>
+
+            <t t-set-slot="content">
+                <div class="dropdown-item gap-2 align-items-center">
+                    <label>Donori</label>
+                    <MultiRecordSelector t-props="donorSelectorProps"/>
+                </div>
+            </t>
+        </Dropdown>
+    </t>
+
+    <t t-name="tenenet_projects.TenenetProjectSummaryReportFilterSemaphore" owl="1">
+        <Dropdown menuClass="'account_report_filter project_summary_semaphore'">
+            <button class="btn btn-secondary">
+                <i class="fa fa-circle me-1"/>
+                <t t-out="selectedSemaphoreLabel"/>
+            </button>
+
+            <t t-set-slot="content">
+                <t
+                    t-foreach="controller.cachedFilterOptions.semaphore_selection || []"
+                    t-as="semaphoreOption"
+                    t-key="semaphoreOption.id"
+                >
+                    <DropdownItem
+                        class="{ 'selected': semaphoreOption.selected }"
+                        onSelected="() => this.selectOption('semaphore', semaphoreOption.id)"
+                        closingMode="'all'"
+                        t-out="semaphoreOption.name"
+                    />
+                </t>
+            </t>
+        </Dropdown>
+    </t>
+</templates>

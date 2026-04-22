@@ -1,0 +1,194 @@
+<odoo>
+    <data>
+        <record id="tenenet_project_summary_report" model="account.report">
+            <field name="name">Sumár projektov</field>
+            <field name="load_more_limit">200</field>
+            <field name="search_bar" eval="True"/>
+            <field name="filter_date_range" eval="False"/>
+            <field name="filter_show_draft" eval="False"/>
+            <field name="filter_unreconciled" eval="False"/>
+            <field name="filter_unfold_all" eval="False"/>
+            <field name="filter_hide_0_lines">never</field>
+            <field name="filter_period_comparison" eval="False"/>
+            <field name="filter_growth_comparison" eval="False"/>
+            <field name="filter_journals" eval="False"/>
+            <field name="filter_analytic" eval="False"/>
+            <field name="filter_hierarchy">never</field>
+            <field name="filter_account_type">disabled</field>
+            <field name="filter_partner" eval="False"/>
+            <field name="filter_aml_ir_filters" eval="False"/>
+            <field name="default_opening_date_filter">this_year</field>
+            <field name="custom_handler_model_id" ref="model_tenenet_project_summary_report_handler"/>
+            <field name="column_ids">
+                <record id="tenenet_project_summary_report_column_year" model="account.report.column">
+                    <field name="sequence">10</field>
+                    <field name="name">Rok</field>
+                    <field name="expression_label">year_label</field>
+                    <field name="figure_type">string</field>
+                </record>
+                <record id="tenenet_project_summary_report_column_project_name" model="account.report.column">
+                    <field name="sequence">20</field>
+                    <field name="name">Projekt</field>
+                    <field name="expression_label">project_name</field>
+                    <field name="figure_type">string</field>
+                </record>
+                <record id="tenenet_project_summary_report_column_program" model="account.report.column">
+                    <field name="sequence">30</field>
+                    <field name="name">Program</field>
+                    <field name="expression_label">program</field>
+                    <field name="figure_type">string</field>
+                </record>
+                <record id="tenenet_project_summary_report_column_semaphore" model="account.report.column">
+                    <field name="sequence">40</field>
+                    <field name="name">Semafór</field>
+                    <field name="expression_label">semaphore_label</field>
+                    <field name="figure_type">string</field>
+                </record>
+                <record id="tenenet_project_summary_report_column_duration" model="account.report.column">
+                    <field name="sequence">50</field>
+                    <field name="name">Trvanie</field>
+                    <field name="expression_label">duration_label</field>
+                    <field name="figure_type">string</field>
+                </record>
+                <record id="tenenet_project_summary_report_column_contract_number" model="account.report.column">
+                    <field name="sequence">60</field>
+                    <field name="name">Číslo zmluvy</field>
+                    <field name="expression_label">contract_number</field>
+                    <field name="figure_type">string</field>
+                </record>
+                <record id="tenenet_project_summary_report_column_recipient" model="account.report.column">
+                    <field name="sequence">70</field>
+                    <field name="name">Príjemca</field>
+                    <field name="expression_label">recipient</field>
+                    <field name="figure_type">string</field>
+                </record>
+                <record id="tenenet_project_summary_report_column_project_type" model="account.report.column">
+                    <field name="sequence">80</field>
+                    <field name="name">Typ projektu</field>
+                    <field name="expression_label">project_type_label</field>
+                    <field name="figure_type">string</field>
+                </record>
+                <record id="tenenet_project_summary_report_column_donor" model="account.report.column">
+                    <field name="sequence">90</field>
+                    <field name="name">Donor</field>
+                    <field name="expression_label">donor</field>
+                    <field name="figure_type">string</field>
+                </record>
+                <record id="tenenet_project_summary_report_column_partners" model="account.report.column">
+                    <field name="sequence">110</field>
+                    <field name="name">Partneri</field>
+                    <field name="expression_label">partners</field>
+                    <field name="figure_type">string</field>
+                </record>
+                <record id="tenenet_project_summary_report_column_contract_date" model="account.report.column">
+                    <field name="sequence">120</field>
+                    <field name="name">Dátum zmluvy</field>
+                    <field name="expression_label">contract_date</field>
+                    <field name="figure_type">date</field>
+                </record>
+                <record id="tenenet_project_summary_report_column_project_staff" model="account.report.column">
+                    <field name="sequence">130</field>
+                    <field name="name">Projektový tím</field>
+                    <field name="expression_label">project_staff</field>
+                    <field name="figure_type">string</field>
+                </record>
+                <record id="tenenet_project_summary_report_column_sustainability" model="account.report.column">
+                    <field name="sequence">140</field>
+                    <field name="name">Udržateľnosť / poznámka</field>
+                    <field name="expression_label">sustainability_note</field>
+                    <field name="figure_type">string</field>
+                </record>
+                <record id="tenenet_project_summary_report_column_portal" model="account.report.column">
+                    <field name="sequence">150</field>
+                    <field name="name">Portál</field>
+                    <field name="expression_label">portal</field>
+                    <field name="figure_type">string</field>
+                </record>
+                <record id="tenenet_project_summary_report_column_project_budget" model="account.report.column">
+                    <field name="sequence">160</field>
+                    <field name="name">Rozpočet projektu</field>
+                    <field name="expression_label">project_budget</field>
+                    <field name="figure_type">monetary</field>
+                </record>
+                <record id="tenenet_project_summary_report_column_settlement" model="account.report.column">
+                    <field name="sequence">170</field>
+                    <field name="name">Zúčtovanie</field>
+                    <field name="expression_label">settlement_note</field>
+                    <field name="figure_type">string</field>
+                </record>
+                <record id="tenenet_project_summary_report_column_contractual_total" model="account.report.column">
+                    <field name="sequence">180</field>
+                    <field name="name">Zmluvná suma</field>
+                    <field name="expression_label">contractual_total</field>
+                    <field name="figure_type">monetary</field>
+                </record>
+                <record id="tenenet_project_summary_report_column_date_start" model="account.report.column">
+                    <field name="sequence">190</field>
+                    <field name="name">Začiatok</field>
+                    <field name="expression_label">date_start</field>
+                    <field name="figure_type">date</field>
+                </record>
+                <record id="tenenet_project_summary_report_column_date_end" model="account.report.column">
+                    <field name="sequence">200</field>
+                    <field name="name">Koniec</field>
+                    <field name="expression_label">date_end</field>
+                    <field name="figure_type">date</field>
+                </record>
+                <record id="tenenet_project_summary_report_column_received_year" model="account.report.column">
+                    <field name="sequence">210</field>
+                    <field name="name">Prijaté v roku</field>
+                    <field name="expression_label">received_selected_year</field>
+                    <field name="figure_type">monetary</field>
+                </record>
+                <record id="tenenet_project_summary_report_column_received_total" model="account.report.column">
+                    <field name="sequence">220</field>
+                    <field name="name">Prijaté spolu</field>
+                    <field name="expression_label">received_total</field>
+                    <field name="figure_type">monetary</field>
+                </record>
+                <record id="tenenet_project_summary_report_column_received_diff" model="account.report.column">
+                    <field name="sequence">230</field>
+                    <field name="name">Rozdiel</field>
+                    <field name="expression_label">received_diff</field>
+                    <field name="figure_type">monetary</field>
+                </record>
+                <record id="tenenet_project_summary_report_column_garant" model="account.report.column">
+                    <field name="sequence">240</field>
+                    <field name="name">Odborný garant</field>
+                    <field name="expression_label">odborny_garant</field>
+                    <field name="figure_type">string</field>
+                </record>
+                <record id="tenenet_project_summary_report_column_pm" model="account.report.column">
+                    <field name="sequence">250</field>
+                    <field name="name">Projektový manažér</field>
+                    <field name="expression_label">project_manager</field>
+                    <field name="figure_type">string</field>
+                </record>
+                <record id="tenenet_project_summary_report_column_donor_contact" model="account.report.column">
+                    <field name="sequence">260</field>
+                    <field name="name">Kontakt donor</field>
+                    <field name="expression_label">donor_contact</field>
+                    <field name="figure_type">string</field>
+                </record>
+                <record id="tenenet_project_summary_report_column_partner_contact" model="account.report.column">
+                    <field name="sequence">270</field>
+                    <field name="name">Kontakt partner</field>
+                    <field name="expression_label">partner_contact</field>
+                    <field name="figure_type">string</field>
+                </record>
+            </field>
+        </record>
+
+        <delete
+            id="tenenet_projects.tenenet_project_summary_report_column_project_code"
+            model="account.report.column"
+        />
+
+        <record id="action_tenenet_project_summary_report" model="ir.actions.client">
+            <field name="name">Sumár projektov</field>
+            <field name="tag">account_report</field>
+            <field name="path">tenenet-project-summary-report</field>
+            <field name="context" eval="{'report_id': ref('tenenet_projects.tenenet_project_summary_report')}"/>
+        </record>
+    </data>
+</odoo>

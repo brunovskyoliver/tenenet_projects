@@ -16,12 +16,13 @@ and P&L reporting by program.
     'version': '19.0.5.21.0',
     'license': 'LGPL-3',
 
-    'depends': ['base', 'hr', 'hr_holidays', 'hr_skills', 'hr_expense', 'account_reports', 'mail', 'sign', 'helpdesk', 'auth_signup', 'web_enterprise', 'web_gantt', 'web_grid'],
+    'depends': ['base', 'contacts', 'hr', 'hr_holidays', 'hr_skills', 'hr_expense', 'account_reports', 'mail', 'sign', 'helpdesk', 'auth_signup', 'web_enterprise', 'web_gantt', 'web_grid'],
 
 
     'assets': {
         'web.assets_backend': [
             'tenenet_projects/static/src/js/tenenet_internal_expense_report_filters.js',
+            'tenenet_projects/static/src/js/tenenet_project_summary_report_filters.js',
             'tenenet_projects/static/src/js/tenenet_project_yearly_labor_report_filters.js',
             'tenenet_projects/static/src/js/tenenet_cashflow_report_filters.js',
             'tenenet_projects/static/src/js/tenenet_utilization_report_filters.js',
@@ -40,6 +41,7 @@ and P&L reporting by program.
             'tenenet_projects/static/src/js/tenenet_subtask_done_checkmark.js',
             'tenenet_projects/static/src/xml/tenenet_internal_expense_report_filters.xml',
             'tenenet_projects/static/src/xml/tenenet_internal_expense_report_line_cell.xml',
+            'tenenet_projects/static/src/xml/tenenet_project_summary_report_filters.xml',
             'tenenet_projects/static/src/xml/tenenet_project_yearly_labor_report_filters.xml',
             'tenenet_projects/static/src/xml/tenenet_cashflow_report_filters.xml',
             'tenenet_projects/static/src/xml/tenenet_utilization_report_filters.xml',
@@ -59,6 +61,7 @@ and P&L reporting by program.
             'tenenet_projects/static/src/xml/tenenet_home_menu_utilization.xml',
             'tenenet_projects/static/src/xml/hr_holidays_overrides.xml',
             'tenenet_projects/static/src/scss/tenenet_internal_expense_report.scss',
+            'tenenet_projects/static/src/scss/tenenet_project_summary_report.scss',
             'tenenet_projects/static/src/scss/tenenet_project_yearly_labor_report.scss',
             'tenenet_projects/static/src/scss/tenenet_cashflow_report.scss',
             'tenenet_projects/static/src/scss/tenenet_utilization_report.scss',
@@ -117,6 +120,7 @@ and P&L reporting by program.
         'views/tenenet_project_milestone_views.xml',
         'views/tenenet_allocation_views.xml',
         'views/tenenet_utilization_views.xml',
+        'views/tenenet_project_summary_report_views.xml',
         'views/tenenet_project_yearly_labor_report_views.xml',
         'views/tenenet_allocation_report_views.xml',
         'views/tenenet_utilization_report_views.xml',

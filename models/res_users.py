@@ -14,6 +14,7 @@ class ResUsers(models.Model):
     _TENENET_HELPDESK_USER_XMLID = "tenenet_projects.group_tenenet_helpdesk_user"
     _TENENET_HELPDESK_EDITOR_XMLID = "tenenet_projects.group_tenenet_helpdesk_editor"
     _TENENET_HELPDESK_MANAGER_XMLID = "tenenet_projects.group_tenenet_helpdesk_manager"
+    _TENENET_DEFAULT_LANG = "sk_SK"
 
     bio = fields.Html(
         related="employee_id.bio",
@@ -232,6 +233,9 @@ class ResUsers(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        installed_lang_codes = {code for code, _name in self.env["res.lang"].get_installed()}
+        default_lang = self._TENENET_DEFAULT_LANG if self._TENENET_DEFAULT_LANG in installed_lang_codes else self.env.lang
+        vals_list = [dict(vals, lang=vals.get("lang") or default_lang) for vals in vals_list]
         users = super().create(vals_list)
         users._tenenet_sync_hr_project_admin_group_membership()
         users._tenenet_sync_hr_card_admin_application_groups()
@@ -257,7 +261,10 @@ class ResUsers(models.Model):
     def default_get(self, fields_list):
         defaults = super().default_get(fields_list)
         if "lang" in fields_list and "lang" not in defaults:
-            defaults["lang"] = "sk_SK"
+            installed_lang_codes = {code for code, _name in self.env["res.lang"].get_installed()}
+            defaults["lang"] = (
+                self._TENENET_DEFAULT_LANG if self._TENENET_DEFAULT_LANG in installed_lang_codes else self.env.lang
+            )
         return defaults
 
     @api.model

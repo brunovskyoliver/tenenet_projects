@@ -27,6 +27,7 @@ from . import test_project_sites
 from . import test_project_contacts
 from . import test_hr_expense_project_pairing
 from . import test_internal_expense_report
+from . import test_project_summary_report
 from . import test_cashflow_distribute_wizard
 from . import test_project_finance_monthly_graph
 from . import test_project_assignment_wizard
@@ -35,3 +36,4 @@ from . import test_budget_line_planner
 from . import test_organizational_units
 from . import test_employee_import_scripts
 from . import test_onboarding
+from . import test_res_users_lang

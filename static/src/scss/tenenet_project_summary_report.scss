@@ -1,0 +1,47 @@
+.account_report.tenenet_project_summary_report {
+    .o_account_reports_page {
+        overflow-x: auto;
+    }
+
+    .o_account_reports_table {
+        th,
+        td {
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .line_cell > .wrapper,
+        .line_cell.numeric > .wrapper {
+            justify-content: center;
+            text-align: center;
+        }
+    }
+
+    .o_account_report_line {
+        td {
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .line_cell > .wrapper,
+        .line_cell.numeric > .wrapper {
+            justify-content: center;
+            text-align: center;
+        }
+    }
+
+    .filter_project_summary_programs,
+    .filter_project_summary_donors {
+        .dropdown-menu {
+            min-width: 320px;
+        }
+    }
+
+    .filter_project_summary_scope,
+    .filter_project_summary_type,
+    .filter_project_summary_semaphore {
+        .dropdown-menu {
+            min-width: 180px;
+        }
+    }
+}
