@@ -14,6 +14,11 @@ class HrEmployee(models.Model):
     _inherit = "hr.employee"
 
     CCP_MULTIPLIER = 1.362
+    DISABILITY_TYPE_MULTIPLIERS = {
+        "none": CCP_MULTIPLIER,
+        "zps": 1.307,
+        "tzp": 1.302,
+    }
     SK_PUBLIC_HOLIDAY_NAMES = {
         "den vzniku slovenskej republiky",
         "zjavenie pana",
@@ -128,6 +133,22 @@ class HrEmployee(models.Model):
         string="Počet rokov praxe",
         digits=(10, 2),
         default=0.0,
+    )
+    tenenet_payroll_contribution_multiplier = fields.Float(
+        string="Mzdový koeficient odvodov",
+        digits=(10, 4),
+        default=CCP_MULTIPLIER,
+        help="Koeficient pre výpočet CCP z hrubej mzdy. Bežný stav je 1,362; pri ZPS/ŤZP môže byť nižší.",
+    )
+    tenenet_disability_type = fields.Selection(
+        [
+            ("none", "Bez znevýhodnenia"),
+            ("zps", "ZPS"),
+            ("tzp", "ŤZP"),
+        ],
+        string="Typ znevýhodnenia",
+        default="none",
+        help="Typ znevýhodnenia používaný pre predvolený mzdový koeficient odvodov.",
     )
     salary_currency_id = fields.Many2one(
         "res.currency",
@@ -853,18 +874,21 @@ class HrEmployee(models.Model):
             key=lambda rec: (rec.week_type or "", rec.dayofweek or "", rec.hour_from or 0.0, rec.id)
         ):
             duration = max(0.0, (attendance.hour_to or 0.0) - (attendance.hour_from or 0.0))
-            attendance_commands.append(fields.Command.create({
+            attendance_vals = {
                 "name": attendance.name,
                 "dayofweek": attendance.dayofweek,
                 "hour_from": attendance.hour_from,
                 "hour_to": round((attendance.hour_from or 0.0) + duration * factor, 4),
                 "week_type": attendance.week_type,
-                "date_from": attendance.date_from,
-                "date_to": attendance.date_to,
                 "day_period": attendance.day_period,
                 "work_entry_type_id": attendance.work_entry_type_id.id,
                 "sequence": attendance.sequence,
-            }))
+            }
+            if "date_from" in attendance._fields:
+                attendance_vals["date_from"] = attendance.date_from
+            if "date_to" in attendance._fields:
+                attendance_vals["date_to"] = attendance.date_to
+            attendance_commands.append(fields.Command.create(attendance_vals))
 
         calendar = Calendar.create({
             "name": calendar_name,
@@ -1453,10 +1477,38 @@ class HrEmployee(models.Model):
             rec.work_hours = hours_per_day
             rec.monthly_capacity_hours = 160.0 * ratio / 100.0
 
-    @api.depends("monthly_gross_salary_target")
+    @api.model
+    def _get_tenenet_disability_multiplier(self, disability_type):
+        return self.DISABILITY_TYPE_MULTIPLIERS.get(disability_type or "none", self.CCP_MULTIPLIER)
+
+    @api.onchange("tenenet_disability_type")
+    def _onchange_tenenet_disability_type(self):
+        for rec in self:
+            disability_type = rec.tenenet_disability_type or "none"
+            rec.disabled = disability_type != "none"
+            rec.tenenet_payroll_contribution_multiplier = rec._get_tenenet_disability_multiplier(disability_type)
+
+    @api.onchange("disabled")
+    def _onchange_tenenet_disabled(self):
+        for rec in self:
+            if not rec.disabled:
+                rec.tenenet_disability_type = "none"
+                rec.tenenet_payroll_contribution_multiplier = rec._get_tenenet_disability_multiplier("none")
+            elif rec.tenenet_disability_type == "none":
+                rec.tenenet_disability_type = "zps"
+                rec.tenenet_payroll_contribution_multiplier = rec._get_tenenet_disability_multiplier("zps")
+
+    def _get_payroll_contribution_multiplier(self):
+        self.ensure_one()
+        return self.tenenet_payroll_contribution_multiplier or self.CCP_MULTIPLIER
+
+    @api.depends("monthly_gross_salary_target", "tenenet_payroll_contribution_multiplier")
     def _compute_monthly_gross_salary_target_hm(self):
         for rec in self:
-            rec.monthly_gross_salary_target_hm = (rec.monthly_gross_salary_target or 0.0) / self.CCP_MULTIPLIER
+            rec.monthly_gross_salary_target_hm = (
+                (rec.monthly_gross_salary_target or 0.0)
+                / rec._get_payroll_contribution_multiplier()
+            )
 
     @api.model
     def _get_target_period(self, period=None):
@@ -1546,10 +1598,11 @@ class HrEmployee(models.Model):
 
     def _get_effective_monthly_gross_salary_target_hm(self, period=None):
         self.ensure_one()
-        return self._get_effective_monthly_gross_salary_target(period) / self.CCP_MULTIPLIER
+        return self._get_effective_monthly_gross_salary_target(period) / self._get_payroll_contribution_multiplier()
 
     @api.depends(
         "monthly_gross_salary_target",
+        "tenenet_payroll_contribution_multiplier",
         "resource_calendar_id",
         "resource_calendar_id.attendance_ids",
         "resource_calendar_id.leave_ids",

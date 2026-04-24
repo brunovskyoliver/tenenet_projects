@@ -57,6 +57,35 @@ class TestMonthAdjustedSalaryTarget(TransactionCase):
         self.assertEqual(metrics["effective_workdays"], 21)
         self.assertAlmostEqual(effective, 2100.0, places=2)
 
+    def test_monthly_gross_salary_target_hm_uses_employee_contribution_multiplier(self):
+        self.employee.write({
+            "monthly_gross_salary_target": 1307.0,
+            "tenenet_disability_type": "zps",
+            "tenenet_payroll_contribution_multiplier": 1.307,
+        })
+
+        self.assertAlmostEqual(self.employee.monthly_gross_salary_target_hm, 1000.0, places=2)
+
+        normal_employee = self.env["hr.employee"].create({
+            "name": "Normal Multiplier Employee",
+            "monthly_gross_salary_target": 1362.0,
+        })
+
+        self.assertAlmostEqual(normal_employee.monthly_gross_salary_target_hm, 1000.0, places=2)
+
+    def test_disability_type_onchange_sets_disabled_and_multiplier(self):
+        self.employee.tenenet_disability_type = "tzp"
+        self.employee._onchange_tenenet_disability_type()
+
+        self.assertTrue(self.employee.disabled)
+        self.assertAlmostEqual(self.employee.tenenet_payroll_contribution_multiplier, 1.302, places=4)
+
+        self.employee.disabled = False
+        self.employee._onchange_tenenet_disabled()
+
+        self.assertEqual(self.employee.tenenet_disability_type, "none")
+        self.assertAlmostEqual(self.employee.tenenet_payroll_contribution_multiplier, 1.362, places=4)
+
     def test_weekend_holiday_does_not_reduce_target(self):
         self._create_public_holiday("2030-08-03", name="Sviatok Všetkých svätých")
         self._create_public_holiday("2030-08-29", name="Výročie Slovenského národného povstania")

@@ -164,6 +164,16 @@
                     <attribute name="groups"/>
                 </xpath>
 
+                <xpath expr="//page[@name='personal_information']//field[@name='sex']" position="after">
+                    <field name="disabled" readonly="not can_manage_services" groups="hr_payroll.group_hr_payroll_user" />
+                    <field
+                        name="tenenet_disability_type"
+                        readonly="not can_manage_services"
+                        groups="hr_payroll.group_hr_payroll_user"
+                        invisible="not disabled"
+                    />
+                </xpath>
+
                 <xpath expr="//page[@name='payroll_information']" position="attributes">
                     <attribute name="invisible">1</attribute>
                 </xpath>
@@ -312,8 +322,16 @@
                             <group string="Profil">
                                 <field name="work_ratio" string="Úväzok (%)" readonly="not can_manage_services" />
                                 <field name="experience_years_total" readonly="not can_manage_services" />
+                                <field name="disabled" readonly="not can_manage_services" groups="hr_payroll.group_hr_payroll_user" />
+                                <field
+                                    name="tenenet_disability_type"
+                                    readonly="not can_manage_services"
+                                    groups="hr_payroll.group_hr_payroll_user"
+                                    invisible="not disabled"
+                                />
                             </group>
                             <group string="Mzdové nastavenie - base">
+                                <field name="tenenet_payroll_contribution_multiplier" readonly="not can_manage_services" />
                                 <field name="monthly_gross_salary_target" string="Base mesačný cieľ CCP" readonly="not can_manage_services" />
                                 <field name="monthly_gross_salary_target_hm" readonly="1" string="Base mesačný cieľ HM (brutto)" />
                                 <field name="hourly_rate" readonly="1" string="Reziduálna hodinová sadzba CCP" />
