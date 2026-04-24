@@ -61,6 +61,11 @@ class HelpdeskTicket(models.Model):
         string="Dokončené čiastkové úlohy",
         export_string_translation=False,
     )
+    tenenet_can_view_subtask_seen_info = fields.Boolean(
+        compute="_compute_tenenet_can_view_subtask_seen_info",
+        string="Môže vidieť videnia čiastkových úloh",
+        export_string_translation=False,
+    )
     tenenet_followup_user_id = fields.Many2one(
         "res.users",
         string="Follow-up používateľ",
@@ -259,6 +264,19 @@ class HelpdeskTicket(models.Model):
             done_subtasks = ticket.tenenet_subtask_ids.filtered("is_done")
             ticket.tenenet_done_subtask_count = len(done_subtasks)
             ticket.tenenet_open_subtask_count = len(ticket.tenenet_subtask_ids - done_subtasks)
+
+    @api.depends("tenenet_requested_by_user_id", "tenenet_subtask_ids", "tenenet_subtask_ids.create_uid")
+    @api.depends_context("uid")
+    def _compute_tenenet_can_view_subtask_seen_info(self):
+        current_user = self.env.user
+        is_manager = self._user_has_tenenet_helpdesk_manager_role(current_user)
+        for ticket in self:
+            ticket.tenenet_can_view_subtask_seen_info = bool(
+                self.env.is_superuser()
+                or is_manager
+                or ticket.tenenet_requested_by_user_id == current_user
+                or current_user in ticket.tenenet_subtask_ids.mapped("create_uid")
+            )
 
     @api.depends(
         "team_id",

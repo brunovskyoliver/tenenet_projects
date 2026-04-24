@@ -4,9 +4,10 @@
             <field name="name">hr.employee.tenenet.list</field>
             <field name="model">hr.employee</field>
             <field name="arch" type="xml">
-                <list string="Zamestnanci" default_order="main_site_id,tenenet_number,last_name,first_name,tenenet_list_name">
+                <list string="Zamestnanci" default_order="main_site_id,tenenet_number,tenenet_list_last_name,tenenet_list_first_name">
                     <field name="title_academic" string="Titul" optional="show" />
-                    <field name="tenenet_list_name" />
+                    <field name="tenenet_list_first_name" />
+                    <field name="tenenet_list_last_name" />
                     <field name="organizational_unit_id" optional="show" />
                     <field name="main_site_id" optional="show" />
                     <field name="all_job_names" string="Pozície" optional="show" />
@@ -295,7 +296,7 @@
                 />
 
                 <xpath expr="//notebook" position="inside">
-                    <page string="TENENET">
+                    <page string="MZDY">
                         <group>
                             <group string="HR karta">
                                 <field name="tenenet_hr_card_role" readonly="1"/>
@@ -827,5 +828,6 @@
 
         <function model="hr.employee" name="_remove_tenenet_employee_search_override" />
         <function model="hr.employee" name="_sync_tenenet_display_names" />
+        <function model="hr.employee" name="_sync_tenenet_list_name_parts" />
     </data>
 </odoo>

@@ -94,6 +94,8 @@ class TestTenenetPlan01(TransactionCase):
         self.assertEqual(employee.last_name, "Zamestnanec")
         self.assertEqual(employee.name, "Mgr. Test Zamestnanec")
         self.assertEqual(employee.legal_name, "Test Zamestnanec")
+        self.assertEqual(employee.tenenet_list_first_name, "Test")
+        self.assertEqual(employee.tenenet_list_last_name, "Zamestnanec")
         self.assertEqual(employee.position, "Sociálny pracovník")
         self.assertEqual(employee.position_catalog_id.name, "Sociálny pracovník")
         self.assertEqual(employee.job_id.name, "Sociálny pracovník")
@@ -108,12 +110,47 @@ class TestTenenetPlan01(TransactionCase):
         })
         self.assertEqual(employee.name, "Bc. Novy Zamestnanec")
         self.assertEqual(employee.legal_name, "Novy Zamestnanec")
+        self.assertEqual(employee.tenenet_list_first_name, "Novy")
+        self.assertEqual(employee.tenenet_list_last_name, "Zamestnanec")
 
         second_employee = self.env["hr.employee"].create({
             "name": "Druhy Zamestnanec",
             "position": "Sociálny pracovník",
         })
         self.assertEqual(second_employee.position_catalog_id, employee.position_catalog_id)
+
+    def test_hr_employee_list_name_parts(self):
+        structured_employee = self.env["hr.employee"].create({
+            "name": "Adam Martin Zamestnanec",
+            "first_name": "Adam Martin",
+            "last_name": "Zamestnanec",
+        })
+        structured_employee_with_split_surname = self.env["hr.employee"].create({
+            "name": "Jana Budinská Veličová",
+            "first_name": "Jana",
+            "last_name": "Budinská Veličová",
+        })
+        combined_employee = self.env["hr.employee"].create({
+            "name": "Adam Martin Zamestnanec",
+        })
+        single_name_employee = self.env["hr.employee"].create({
+            "name": "Administrator",
+        })
+
+        self.assertEqual(structured_employee.tenenet_list_first_name, "Adam Martin")
+        self.assertEqual(structured_employee.tenenet_list_last_name, "Zamestnanec")
+        self.assertEqual(structured_employee_with_split_surname.tenenet_list_first_name, "Jana Budinská")
+        self.assertEqual(structured_employee_with_split_surname.tenenet_list_last_name, "Veličová")
+        self.assertEqual(combined_employee.tenenet_list_first_name, "Adam Martin")
+        self.assertEqual(combined_employee.tenenet_list_last_name, "Zamestnanec")
+        self.assertEqual(single_name_employee.tenenet_list_first_name, "Administrator")
+        self.assertFalse(single_name_employee.tenenet_list_last_name)
+
+    def test_hr_employee_tenenet_page_is_renamed_to_mzdy(self):
+        view = self.env.ref("tenenet_projects.view_hr_employee_form_tenenet")
+
+        self.assertIn('string="MZDY"', view.arch_db)
+        self.assertNotIn('page string="TENENET"', view.arch_db)
 
     def test_program_delete_detaches_linked_projects(self):
         partner = self.env["res.partner"].create({"name": "Donor Partner"})

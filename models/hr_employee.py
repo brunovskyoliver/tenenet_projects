@@ -50,6 +50,16 @@ class HrEmployee(models.Model):
         compute="_compute_tenenet_list_name",
         store=True,
     )
+    tenenet_list_first_name = fields.Char(
+        string="Meno",
+        compute="_compute_tenenet_list_name_parts",
+        store=True,
+    )
+    tenenet_list_last_name = fields.Char(
+        string="Priezvisko",
+        compute="_compute_tenenet_list_name_parts",
+        store=True,
+    )
     position = fields.Char(string="Pozícia", translate=False)
     contract_position = fields.Char(string="Pozícia podľa pracovnej zmluvy", translate=False)
     organizational_unit_id = fields.Many2one(
@@ -425,6 +435,19 @@ class HrEmployee(models.Model):
         parts = [part.strip() for part in [first_name, last_name] if part and part.strip()]
         return " ".join(parts)
 
+    @api.model
+    def _split_tenenet_list_name_parts(self, name, title_academic=False):
+        name = (name or "").strip()
+        title = (title_academic or "").strip()
+        if title and name.startswith(title):
+            name = name[len(title):].strip()
+        parts = name.split()
+        if not parts:
+            return "", ""
+        if len(parts) == 1:
+            return parts[0], ""
+        return " ".join(parts[:-1]), parts[-1]
+
     @api.depends("first_name", "last_name", "name", "title_academic")
     def _compute_tenenet_list_name(self):
         for employee in self:
@@ -435,6 +458,35 @@ class HrEmployee(models.Model):
                 if title and list_name.startswith(title):
                     list_name = list_name[len(title):].strip()
             employee.tenenet_list_name = list_name
+
+    @api.depends("first_name", "last_name", "name", "title_academic")
+    def _compute_tenenet_list_name_parts(self):
+        for employee in self:
+            first_name = (employee.first_name or "").strip()
+            last_name = (employee.last_name or "").strip()
+            if last_name:
+                last_name_parts = last_name.split()
+                if len(last_name_parts) > 1:
+                    first_name = " ".join(
+                        part
+                        for part in [first_name, " ".join(last_name_parts[:-1])]
+                        if part
+                    )
+                    last_name = last_name_parts[-1]
+            elif not first_name:
+                first_name, last_name = employee._split_tenenet_list_name_parts(
+                    employee.name,
+                    employee.title_academic,
+                )
+            employee.tenenet_list_first_name = first_name
+            employee.tenenet_list_last_name = last_name
+
+    @api.model
+    def _sync_tenenet_list_name_parts(self):
+        employees = self.sudo().with_context(active_test=False).search([])
+        self.env.add_to_compute(self._fields["tenenet_list_first_name"], employees)
+        self.env.add_to_compute(self._fields["tenenet_list_last_name"], employees)
+        employees._recompute_recordset()
 
     def _get_site_sequence(self):
         self.ensure_one()

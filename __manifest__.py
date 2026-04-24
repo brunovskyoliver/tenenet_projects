@@ -160,7 +160,6 @@ and P&L reporting by program.
         'views/tenenet_employee_asset_handover_views.xml',
         'views/tenenet_employee_update_request_wizard_views.xml',
         'views/hr_employee_views.xml',
-        'views/tenenet_wage_views.xml',
         'views/hr_holidays_overrides.xml',
         'views/hr_expense_views.xml',
         'data/tenenet_sk_holidays_cron.xml',
@@ -169,6 +168,7 @@ and P&L reporting by program.
         'views/tenenet_onboarding_task_template_views.xml',
         'views/tenenet_onboarding_task_views.xml',
         'views/menu.xml',
+        'views/tenenet_wage_views.xml',
     ],
     'demo': [
         'demo/demo.xml',

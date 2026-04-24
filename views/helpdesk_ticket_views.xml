@@ -1,5 +1,84 @@
 <odoo>
     <data>
+        <record id="view_tenenet_helpdesk_subtask_form" model="ir.ui.view">
+            <field name="name">tenenet.helpdesk.subtask.form</field>
+            <field name="model">tenenet.helpdesk.subtask</field>
+            <field name="arch" type="xml">
+                <form string="Čiastková úloha">
+                    <header>
+                        <field
+                            name="is_done"
+                            widget="tenenet_subtask_done_checkmark"
+                            class="oe_inline"
+                        />
+                    </header>
+                    <sheet>
+                        <group>
+                            <field name="ticket_id" readonly="1"/>
+                            <field name="company_id" invisible="1"/>
+                            <field name="show_seen_display" invisible="1"/>
+                            <field name="show_seen_button" invisible="1"/>
+                            <field name="can_view_seen_info" invisible="1"/>
+                            <field name="name"/>
+                            <field name="priority" widget="priority"/>
+                            <field
+                                name="employee_ids"
+                                widget="many2many_avatar_employee"
+                                context="{'active_test': True}"
+                                domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]"
+                            />
+                            <field name="date_deadline"/>
+                            <field
+                                name="single_seen_display"
+                                string="Videné"
+                                readonly="1"
+                                invisible="not show_seen_display"
+                            />
+                        </group>
+                        <field
+                            name="seen_detail_html"
+                            string="Videné"
+                            widget="html"
+                            readonly="1"
+                            nolabel="1"
+                            invisible="not can_view_seen_info"
+                        />
+                        <notebook>
+                            <page name="description" string="Popis">
+                                <field name="description" type="html" options="{'collaborative': true, 'resizable': false}"/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_tenenet_helpdesk_subtask_seen_wizard_form" model="ir.ui.view">
+            <field name="name">tenenet.helpdesk.subtask.seen.wizard.form</field>
+            <field name="model">tenenet.helpdesk.subtask.seen.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Kto videl">
+                    <sheet>
+                        <group>
+                            <field name="subtask_id" readonly="1"/>
+                        </group>
+                        <field name="line_ids" nolabel="1" readonly="1">
+                            <list create="0" edit="0" delete="0" decoration-success="has_seen" decoration-muted="not has_user">
+                                <field name="employee_id" widget="many2one_avatar_employee"/>
+                                <field name="user_id" widget="many2one_avatar_user"/>
+                                <field name="has_seen" string="Videl" widget="boolean"/>
+                                <field name="seen_at" string="Čas videnia"/>
+                            </list>
+                        </field>
+                    </sheet>
+                    <footer>
+                        <button string="Zavrieť" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+
         <record id="view_helpdesk_ticket_quick_create_tenenet" model="ir.ui.view">
             <field name="name">helpdesk.ticket.quick.create.tenenet</field>
             <field name="model">helpdesk.ticket</field>
@@ -35,6 +114,7 @@
                     <field name="tenenet_mass_assigned_user_ids" invisible="1"/>
                     <field name="tenenet_open_subtask_count" invisible="1"/>
                     <field name="tenenet_done_subtask_count" invisible="1"/>
+                    <field name="tenenet_can_view_subtask_seen_info" invisible="1"/>
                     <field name="tenenet_can_confirm_followup" invisible="1"/>
                     <field name="tenenet_can_confirm_control" invisible="1"/>
                     <field name="tenenet_onboarding_id" invisible="1"/>
@@ -143,10 +223,17 @@
                             mode="list"
                             context="{
                                 'default_ticket_id': id,
+                                'tenenet_mark_seen_on_subtask_tab_open': True,
                             }"
                         >
-                            <list editable="bottom" decoration-muted="is_done" open_form_view="True">
+                            <list editable="bottom" decoration-muted="is_done">
                                 <field name="sequence" widget="handle"/>
+                                <button
+                                    name="action_tenenet_open_subtask_form"
+                                    type="object"
+                                    icon="fa-external-link"
+                                    title="Otvoriť"
+                                />
                                 <field name="priority" widget="priority" optional="show" width="70px"/>
                                 <field
                                     name="is_done"
@@ -166,6 +253,17 @@
                                     optional="show"
                                     decoration-danger="date_deadline and date_deadline &lt; current_date and not is_done"
                                 />
+                                <field name="can_view_seen_info" column_invisible="True"/>
+                                <field name="show_seen_display" column_invisible="True"/>
+                                <field name="show_seen_button" column_invisible="True"/>
+                                <field name="assigned_employee_count" column_invisible="True"/>
+                                <field
+                                    name="single_seen_display"
+                                    string="Videné"
+                                    readonly="1"
+                                    column_invisible="not parent.tenenet_can_view_subtask_seen_info"
+                                    invisible="not show_seen_display"
+                                />
                                 <field name="activity_ids" string="Next Activity" widget="list_activity" optional="hide"/>
                                 <field name="done_by_user_id" optional="hide" readonly="1"/>
                                 <field name="done_date" optional="hide" readonly="1"/>
@@ -182,6 +280,8 @@
                                     <group>
                                         <field name="ticket_id" readonly="1"/>
                                         <field name="company_id" invisible="1"/>
+                                        <field name="can_view_seen_info" invisible="1"/>
+                                        <field name="show_seen_display" invisible="1"/>
                                         <field name="name"/>
                                         <field name="priority" widget="priority"/>
                                         <field
@@ -191,7 +291,21 @@
                                             domain="['|', ('company_id', '=', False), ('company_id', '=', company_id)]"
                                         />
                                         <field name="date_deadline"/>
+                                        <field
+                                            name="single_seen_display"
+                                            string="Videné"
+                                            readonly="1"
+                                            invisible="not show_seen_display"
+                                        />
                                     </group>
+                                    <field
+                                        name="seen_detail_html"
+                                        string="Videné"
+                                        widget="html"
+                                        readonly="1"
+                                        nolabel="1"
+                                        invisible="not can_view_seen_info"
+                                    />
                                     <notebook>
                                         <page name="description" string="Popis">
                                             <field name="description" type="html" options="{'collaborative': true, 'resizable': false}"/>

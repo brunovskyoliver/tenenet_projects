@@ -1,4 +1,4 @@
-from odoo import Command
+from odoo import Command, fields
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
@@ -445,6 +445,137 @@ class TestTenenetInternalHelpdesk(TransactionCase):
 
         self.assertFalse(subtask.done_by_user_id)
         self.assertFalse(subtask.done_date)
+
+    def test_subtask_tab_read_marks_assigned_user_seen(self):
+        ticket = self._create_ticket(self.requester_user)
+        subtask = self._create_subtask(ticket, self.requester_user)
+
+        subtask.with_user(self.manager_user).with_context(
+            tenenet_mark_seen_on_subtask_tab_open=True
+        ).read(["name"])
+
+        seen = self.env["tenenet.helpdesk.subtask.seen"].sudo().search([
+            ("subtask_id", "=", subtask.id),
+            ("user_id", "=", self.manager_user.id),
+        ])
+        self.assertTrue(seen)
+        self.assertTrue(seen.seen_at)
+
+    def test_subtask_open_action_does_not_mark_assigned_user_seen(self):
+        ticket = self._create_ticket(self.requester_user)
+        subtask = self._create_subtask(ticket, self.requester_user)
+
+        action = subtask.with_user(self.manager_user).action_tenenet_open_subtask_form()
+
+        self.assertFalse(self.env["tenenet.helpdesk.subtask.seen"].sudo().search([
+            ("subtask_id", "=", subtask.id),
+            ("user_id", "=", self.manager_user.id),
+        ]))
+        self.assertEqual(action["res_model"], "tenenet.helpdesk.subtask")
+        self.assertEqual(action["res_id"], subtask.id)
+        self.assertEqual(action["target"], "new")
+
+    def test_subtask_tab_read_preserves_first_seen_timestamp(self):
+        ticket = self._create_ticket(self.requester_user)
+        subtask = self._create_subtask(ticket, self.requester_user)
+
+        subtask.with_user(self.manager_user).with_context(
+            tenenet_mark_seen_on_subtask_tab_open=True
+        ).read(["name"])
+        seen = self.env["tenenet.helpdesk.subtask.seen"].sudo().search([
+            ("subtask_id", "=", subtask.id),
+            ("user_id", "=", self.manager_user.id),
+        ], limit=1)
+        first_seen_at = fields.Datetime.to_datetime("2026-04-24 08:15:00")
+        seen.write({"seen_at": first_seen_at})
+
+        subtask.with_user(self.manager_user).with_context(
+            tenenet_mark_seen_on_subtask_tab_open=True
+        ).read(["name"])
+
+        self.assertEqual(seen.seen_at, first_seen_at)
+
+    def test_subtask_tab_read_does_not_mark_unassigned_user_seen(self):
+        ticket = self._create_ticket(self.requester_user)
+        subtask = self._create_subtask(ticket, self.requester_user)
+
+        subtask.with_user(self.requester_user).with_context(
+            tenenet_mark_seen_on_subtask_tab_open=True
+        ).read(["name"])
+
+        self.assertFalse(self.env["tenenet.helpdesk.subtask.seen"].sudo().search([
+            ("subtask_id", "=", subtask.id),
+            ("user_id", "=", self.requester_user.id),
+        ]))
+
+    def test_subtask_single_assignee_seen_display(self):
+        ticket = self._create_ticket(self.requester_user)
+        subtask = self._create_subtask(ticket, self.requester_user)
+
+        requester_subtask = subtask.with_user(self.requester_user)
+        self.assertTrue(requester_subtask.can_view_seen_info)
+        self.assertEqual(requester_subtask.single_seen_display, "Nevidené")
+
+        subtask.with_user(self.manager_user).with_context(
+            tenenet_mark_seen_on_subtask_tab_open=True
+        ).read(["name"])
+
+        requester_subtask.invalidate_recordset()
+        self.assertTrue(requester_subtask.single_seen_display)
+        self.assertNotEqual(requester_subtask.single_seen_display, "Nevidené")
+
+    def test_subtask_multi_assignee_summary_and_inline_detail(self):
+        ticket = self._create_ticket(self.requester_user)
+        subtask = self._create_subtask(
+            ticket,
+            self.requester_user,
+            employee_ids=[Command.set([
+                self.manager_employee.id,
+                self.grand_manager_employee.id,
+                self.extra_employee.id,
+            ])],
+        )
+        requester_subtask = subtask.with_user(self.requester_user)
+        self.assertEqual(requester_subtask.single_seen_display, "Nikto nevidel (0/2)")
+
+        subtask.with_user(self.grand_manager_user).with_context(
+            tenenet_mark_seen_on_subtask_tab_open=True
+        ).read(["name"])
+        requester_subtask.invalidate_recordset()
+
+        self.assertEqual(requester_subtask.single_seen_display, "Čiastočne videné (1/2)")
+        self.assertIn("Direct Manager", requester_subtask.seen_detail_html)
+        self.assertIn("Grand Manager", requester_subtask.seen_detail_html)
+        self.assertIn("Extra Employee", requester_subtask.seen_detail_html)
+        self.assertIn("Bez používateľa", requester_subtask.seen_detail_html)
+
+        subtask.with_user(self.manager_user).with_context(
+            tenenet_mark_seen_on_subtask_tab_open=True
+        ).read(["name"])
+        requester_subtask.invalidate_recordset()
+
+        self.assertEqual(requester_subtask.single_seen_display, "Všetci videli (2/2)")
+
+    def test_subtask_seen_info_access_is_limited_to_requester_creator_and_manager(self):
+        ticket = self._create_ticket(self.requester_user)
+        subtask = self._create_subtask(ticket, self.requester_user)
+        subtask.with_user(self.manager_user).with_context(
+            tenenet_mark_seen_on_subtask_tab_open=True
+        ).read(["name"])
+        seen = self.env["tenenet.helpdesk.subtask.seen"].sudo().search([
+            ("subtask_id", "=", subtask.id),
+            ("user_id", "=", self.manager_user.id),
+        ], limit=1)
+
+        self.assertTrue(subtask.with_user(self.requester_user).action_open_seen_wizard())
+        self.assertTrue(subtask.with_user(self.helpdesk_manager_user).action_open_seen_wizard())
+
+        with self.assertRaises(AccessError):
+            subtask.with_user(self.manager_user).action_open_seen_wizard()
+        with self.assertRaises(AccessError):
+            subtask.with_user(self.outsider_user).action_open_seen_wizard()
+        with self.assertRaises(AccessError):
+            seen.with_user(self.manager_user).read(["seen_at"])
 
     def test_mass_ticket_wizard_creates_ticket_for_department_employees(self):
         wizard = self.env["tenenet.helpdesk.mass.ticket.wizard"].with_user(self.helpdesk_manager_user).create({
