@@ -235,6 +235,6 @@ class TenenetProjectCashflow(models.Model):
             handler = self.env["tenenet.cashflow.report.handler"]
             override_model = self.env["tenenet.cashflow.global.override"]
             for year in affected_years:
-                override_model.sync_year_rows(year, handler._get_effective_editable_rows(year))
+                override_model.sync_year_rows(year, handler._get_effective_editable_rows(year, {}))
         self.env["tenenet.project"]._sync_finance_monthly_comparison_pairs(affected_pairs)
         return result

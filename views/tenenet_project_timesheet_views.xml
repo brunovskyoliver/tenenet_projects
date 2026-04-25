@@ -24,6 +24,7 @@
                     <field name="hours_total" readonly="1"/>
                     <field name="wage_hm" optional="hide" readonly="1"/>
                     <field name="wage_ccp" optional="hide" readonly="1"/>
+                    <field name="labor_cost_override" optional="hide"/>
                     <field name="gross_salary" readonly="1" optional="show"/>
                     <field name="total_labor_cost" readonly="1" optional="show"/>
                     <field name="currency_id" column_invisible="1"/>
@@ -85,6 +86,7 @@
                             <page string="Náklady">
                                 <group>
                                     <field name="hours_total" readonly="1"/>
+                                    <field name="labor_cost_override"/>
                                     <field name="gross_salary" readonly="1"/>
                                     <field name="deductions" readonly="1"/>
                                     <field name="total_labor_cost" readonly="1"/>

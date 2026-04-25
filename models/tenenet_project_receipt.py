@@ -94,7 +94,10 @@ class TenenetProjectReceipt(models.Model):
         }
         had_cashflow = {record.id: bool(record.cashflow_ids) for record in self}
         result = super().write(vals)
-        if "amount" in vals or "date_received" in vals:
+        if (
+            ("amount" in vals or "date_received" in vals)
+            and not self.env.context.get("skip_tenenet_receipt_auto_cashflow")
+        ):
             for rec in self:
                 if had_cashflow.get(rec.id):
                     rec._generate_equal_cashflow()

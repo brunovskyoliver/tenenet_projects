@@ -200,6 +200,11 @@ class TenenetProjectTimesheet(models.Model):
         compute="_compute_costs",
         store=True,
     )
+    labor_cost_override = fields.Monetary(
+        string="Celková cena práce override",
+        currency_field="currency_id",
+        help="Voliteľná mesačná CCP suma. Keď je vyplnená, náklady sa počítajú z tejto sumy namiesto hodiny × hodinová sadzba.",
+    )
 
     _unique_assignment_period = models.Constraint(
         "UNIQUE(assignment_id, period)",
@@ -466,9 +471,16 @@ class TenenetProjectTimesheet(models.Model):
                 for field_name in HOUR_FIELD_META
             })
 
-    @api.depends("hours_total", "wage_hm", "wage_ccp")
+    @api.depends("hours_total", "wage_hm", "wage_ccp", "labor_cost_override")
     def _compute_costs(self):
         for rec in self:
+            if rec.labor_cost_override and rec.labor_cost_override > 0.0:
+                total_labor_cost = rec.labor_cost_override
+                gross = total_labor_cost / (rec.assignment_id.CCP_MULTIPLIER or 1.362)
+                rec.gross_salary = gross
+                rec.deductions = total_labor_cost - gross
+                rec.total_labor_cost = total_labor_cost
+                continue
             hm = rec.wage_hm or 0.0
             ccp = rec.wage_ccp or 0.0
             total = rec.hours_total or 0.0

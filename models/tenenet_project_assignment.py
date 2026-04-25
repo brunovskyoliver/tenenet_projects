@@ -636,6 +636,8 @@ class TenenetProjectAssignment(models.Model):
         return {period for period in periods if period}
 
     def _check_capacity_for_periods(self, extra_periods=None):
+        if self.env.context.get("skip_tenenet_assignment_capacity_check"):
+            return
         extra_periods = {fields.Date.to_date(period).replace(day=1) for period in (extra_periods or []) if period}
         for rec in self:
             if not rec.active or not rec.employee_id:
@@ -681,6 +683,8 @@ class TenenetProjectAssignment(models.Model):
             if rec.allocation_ratio <= 0.0 or rec.allocation_ratio > 100.0:
                 raise ValidationError("Úväzok na projekte musí byť v rozsahu 0 až 100 %.")
             if not rec.active or not rec.employee_id:
+                continue
+            if self.env.context.get("skip_tenenet_assignment_capacity_check"):
                 continue
 
             start, end = rec._get_effective_date_range()
