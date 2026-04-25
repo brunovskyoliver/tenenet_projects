@@ -34,6 +34,51 @@ class TenenetEmployeeTenenetCost(models.Model):
         currency_field="currency_id",
         help="Celková cena práce zamestnanca za daný mesiac (z mzdovej agendy)",
     )
+    imported_from_migration_workbook = fields.Boolean(
+        string="Importované z migračného workbooku",
+        default=False,
+        help="Technický príznak, že mesačné sumáre/hodiny boli prepísané priamo z migračného workbooku.",
+    )
+    imported_capacity_hours_incl = fields.Float(
+        string="Importované hodiny za mesiac vrátane sviatkov",
+        digits=(10, 2),
+    )
+    imported_capacity_hours = fields.Float(
+        string="Importované hodiny za mesiac",
+        digits=(10, 2),
+    )
+    imported_total_gross_salary = fields.Monetary(
+        string="Importovaná hrubá mzda",
+        currency_field="currency_id",
+    )
+    imported_total_labor_cost = fields.Monetary(
+        string="Importovaná celková cena práce",
+        currency_field="currency_id",
+    )
+    imported_worked_hours = fields.Float(
+        string="Importované odpracované hodiny",
+        digits=(10, 2),
+    )
+    imported_holidays_hours = fields.Float(
+        string="Importované platené sviatky",
+        digits=(10, 2),
+    )
+    imported_vacation_hours = fields.Float(
+        string="Importovaná dovolenka",
+        digits=(10, 2),
+    )
+    imported_doctor_hours = fields.Float(
+        string="Importovaný lekár",
+        digits=(10, 2),
+    )
+    imported_internal_gross_salary = fields.Monetary(
+        string="Importovaná interná hrubá mzda",
+        currency_field="currency_id",
+    )
+    imported_internal_labor_cost = fields.Monetary(
+        string="Importovaná interná celková cena práce",
+        currency_field="currency_id",
+    )
     monthly_gross_salary_target = fields.Monetary(
         string="Cieľ CCP za obdobie",
         currency_field="currency_id",
@@ -195,8 +240,10 @@ class TenenetEmployeeTenenetCost(models.Model):
 
     @api.model
     def _normalize_monthly_contributions_to_target(self, contributions, target_ccp, target_hm):
-        fixed_rows = [row for row in contributions if row["mode"] == "fixed_ratio"]
-        hours_rows = [row for row in contributions if row["mode"] == "hours"]
+        passthrough_rows = [row for row in contributions if row.get("skip_salary_target_normalization")]
+        scalable_rows = [row for row in contributions if not row.get("skip_salary_target_normalization")]
+        fixed_rows = [row for row in scalable_rows if row["mode"] == "fixed_ratio"]
+        hours_rows = [row for row in scalable_rows if row["mode"] == "hours"]
 
         def _scaled_rows(rows, scale):
             scaled = []
@@ -208,9 +255,11 @@ class TenenetEmployeeTenenetCost(models.Model):
                 })
             return scaled
 
-        normalized = []
+        normalized = list(passthrough_rows)
+        remaining_target_ccp = max(0.0, target_ccp - sum(row["ccp"] for row in normalized))
+        remaining_target_hm = max(0.0, target_hm - sum(row["hm"] for row in normalized))
         fixed_total_ccp = sum(row["ccp"] for row in fixed_rows)
-        fixed_scale = min(1.0, (target_ccp / fixed_total_ccp)) if target_ccp > 0.0 and fixed_total_ccp > 0.0 else 1.0
+        fixed_scale = min(1.0, (remaining_target_ccp / fixed_total_ccp)) if target_ccp > 0.0 and fixed_total_ccp > 0.0 else 1.0
         normalized.extend(_scaled_rows(fixed_rows, fixed_scale))
 
         remaining_ccp = max(0.0, target_ccp - sum(row["ccp"] for row in normalized))
@@ -220,13 +269,16 @@ class TenenetEmployeeTenenetCost(models.Model):
             hours_scale = 1.0
         normalized.extend(_scaled_rows(hours_rows, hours_scale))
 
-        if target_hm > 0.0:
-            fixed_total_hm = sum(row["hm"] for row in normalized if row["mode"] == "fixed_ratio")
-            hours_total_hm = sum(row["hm"] for row in normalized if row["mode"] == "hours")
+        if remaining_target_hm > 0.0:
+            fixed_total_hm = sum(row["hm"] for row in normalized if row["mode"] == "fixed_ratio" and not row.get("skip_salary_target_normalization"))
+            hours_total_hm = sum(row["hm"] for row in normalized if row["mode"] == "hours" and not row.get("skip_salary_target_normalization"))
             total_hm = fixed_total_hm + hours_total_hm
-            if total_hm > target_hm > 0.0:
-                hm_scale = target_hm / total_hm
-                normalized = _scaled_rows(normalized, hm_scale)
+            if total_hm > remaining_target_hm > 0.0:
+                hm_scale = remaining_target_hm / total_hm
+                normalized = passthrough_rows + _scaled_rows(
+                    [row for row in normalized if not row.get("skip_salary_target_normalization")],
+                    hm_scale,
+                )
         return normalized
 
     @api.model
@@ -335,6 +387,7 @@ class TenenetEmployeeTenenetCost(models.Model):
                 "hm": hm,
                 "ccp": ccp,
                 "settlement_only": bool(assignment.settlement_only),
+                "skip_salary_target_normalization": bool(share.get("has_labor_cost_override")),
             })
 
         target_ccp = employee._get_effective_monthly_gross_salary_target(normalized_period)
@@ -375,7 +428,8 @@ class TenenetEmployeeTenenetCost(models.Model):
                     existing.unlink()
                 continue
 
-            gap_hm = rec.tenenet_residual_hm or (gap_ccp / self.CCP_MULTIPLIER)
+            multiplier = rec.employee_id._get_payroll_contribution_multiplier() if rec.employee_id else self.CCP_MULTIPLIER
+            gap_hm = rec.tenenet_residual_hm or (gap_ccp / multiplier)
             hourly_ccp = rec.employee_id.with_context(tenenet_period=rec.period).hourly_rate or 0.0
             vals = {
                 "employee_id": rec.employee_id.id,
@@ -384,7 +438,7 @@ class TenenetEmployeeTenenetCost(models.Model):
                 "source_project_id": internal_project.id,
                 "tenenet_cost_id": rec.id,
                 "cost_hm": gap_hm,
-                "wage_hm": hourly_ccp / self.CCP_MULTIPLIER if hourly_ccp else 0.0,
+                "wage_hm": hourly_ccp / multiplier if hourly_ccp else 0.0,
                 "note": "Nepokrytá časť mesačnej mzdy podľa live projektového krytia. Automaticky presunuté do Admin TENENET.",
             }
             if existing:

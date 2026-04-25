@@ -20,6 +20,10 @@ class TenenetExpenseTypeConfig(models.Model):
         string="HR kategória výdavku",
         domain=[("can_be_expensed", "=", True)],
     )
+    cashflow_row_key = fields.Char(
+        string="Cashflow riadok",
+        help="Voliteľný kľúč cashflow riadku, do ktorého sa tento typ výdavku mapuje ako skutočnosť.",
+    )
 
     @api.onchange("hr_expense_product_id")
     def _onchange_hr_expense_product_id(self):

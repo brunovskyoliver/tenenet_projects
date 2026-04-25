@@ -51,6 +51,12 @@ CF_MONTH_COLUMNS = {
     32: 11,
     33: 12,
 }
+CF_PLAN_INCOME_ROWS = range(3, 48)
+CF_PLAN_EXPENSE_ROWS = range(50, 79)
+CF_PLAN_SUBTOTAL_LABELS = {
+    "cash-in, bank statement",
+    "cash-out bank statement",
+}
 APZ_PROJECT_NAME = "APZ_2N"
 APZ_SPECIAL_MONTH_COLUMNS = {
     9: 1,
@@ -148,6 +154,25 @@ class EmployeeMatch:
 
 
 @dataclass
+class EmployeeMonthlySummaryPreview:
+    sheet: str
+    employee_name: str
+    employee_id: int | bool
+    employee_match_status: str
+    employee_source_ref: str
+    capacity_hours_incl: dict[int, float] = field(default_factory=dict)
+    capacity_hours: dict[int, float] = field(default_factory=dict)
+    total_gross_salary: dict[int, float] = field(default_factory=dict)
+    total_labor_cost: dict[int, float] = field(default_factory=dict)
+    worked_hours: dict[int, float] = field(default_factory=dict)
+    holidays_hours: dict[int, float] = field(default_factory=dict)
+    vacation_hours: dict[int, float] = field(default_factory=dict)
+    doctor_hours: dict[int, float] = field(default_factory=dict)
+    internal_gross_salary: dict[int, float] = field(default_factory=dict)
+    internal_labor_cost: dict[int, float] = field(default_factory=dict)
+
+
+@dataclass
 class ProjectProgramBinding:
     project_name: str
     program_raw: str = ""
@@ -194,6 +219,7 @@ class AssignmentPreview:
     total_ccp: float
     wage_ccp: float
     wage_hm: float
+    contribution_multiplier: float
     allocation_ratio: float
     date_start: date
     date_end: date
@@ -222,6 +248,20 @@ class CashflowPreview:
     receipt_date: date
     receipt_amount: float
     receipt_note: str
+    month_amounts: dict[int, float] = field(default_factory=dict)
+
+
+@dataclass
+class CashflowPlanPreview:
+    source_row: int
+    source_sheet: str
+    row_key: str
+    row_label: str
+    row_type: str
+    section_label: str
+    program_label: str
+    sequence: int
+    actual_mapping_key: str
     month_amounts: dict[int, float] = field(default_factory=dict)
 
 
@@ -256,6 +296,11 @@ def project_key(value: Any) -> str:
     text = text.replace("_", " ")
     text = re.sub(r"[^a-z0-9]+", " ", text)
     return " ".join(text.split())
+
+
+def cashflow_row_slug(value: Any) -> str:
+    text = re.sub(r"[^a-z0-9]+", "-", project_key(value))
+    return text.strip("-") or "row"
 
 
 def parse_amount(value: Any) -> float:
@@ -331,6 +376,26 @@ def row_has_2026_scope(row: tuple[Any, ...]) -> bool:
 def is_non_project_cashflow(label: str, amount: float) -> bool:
     key = fold_text(label)
     return amount <= 0.0 or any(pattern in key for pattern in NON_PROJECT_CASHFLOW_PATTERNS)
+
+
+def is_cashflow_plan_row(row_idx: int, label: str) -> bool:
+    key = fold_text(label)
+    if key in CF_PLAN_SUBTOTAL_LABELS:
+        return True
+    return row_idx in CF_PLAN_INCOME_ROWS or row_idx in CF_PLAN_EXPENSE_ROWS
+
+
+def cashflow_plan_row_type(row_idx: int, label: str) -> str:
+    key = fold_text(label)
+    if row_idx in CF_PLAN_EXPENSE_ROWS and key.startswith("mzdy"):
+        return "salary"
+    if row_idx in CF_PLAN_EXPENSE_ROWS:
+        return "expense"
+    return "income"
+
+
+def cashflow_plan_row_key(row_type: str, label: str) -> str:
+    return f"workbook:{row_type}:{cashflow_row_slug(label)}"
 
 
 def employee_aliases(value: str) -> set[str]:
@@ -797,6 +862,179 @@ def load_expected_hours(workbook) -> dict[int, float]:
     return expected
 
 
+def read_employee_sheet_multiplier(sheet) -> float | None:
+    for row_idx in range(1, min(sheet.max_row, 40) + 1):
+        label = fold_text(sheet.cell(row=row_idx, column=2).value)
+        if "updatnut podla skutocnosti" not in label:
+            continue
+        values = [
+            parse_amount(sheet.cell(row=row_idx, column=col_idx).value)
+            for col_idx in MONTH_BY_COLUMN
+        ]
+        non_zero = [value for value in values if value > 0.0]
+        if non_zero:
+            return round(non_zero[0], 4)
+    return None
+
+
+def load_employee_contribution_multipliers(
+    workbook,
+    employee_index: dict[str, EmployeeMatch],
+) -> dict[str, float]:
+    ignored_sheets = {
+        "Meno Priezvisko - template",
+        "Zoznam projektov",
+        "Zoznam zamestnancov",
+        "Sheet6",
+        "uprava macra",
+    }
+    multipliers: dict[str, float] = {}
+    for sheet_name in workbook.sheetnames:
+        if sheet_name in ignored_sheets or sheet_name.startswith("summary_"):
+            continue
+        multiplier = read_employee_sheet_multiplier(workbook[sheet_name])
+        if not multiplier:
+            continue
+        match = resolve_employee(employee_index, sheet_name)
+        if match and match.employee_id:
+            multipliers[f"employee:{int(match.employee_id)}"] = multiplier
+        for alias in employee_aliases(sheet_name):
+            multipliers[f"alias:{alias}"] = multiplier
+    return multipliers
+
+
+def read_month_values(sheet, row_idx: int) -> dict[int, float]:
+    return {
+        month: parse_amount(sheet.cell(row=row_idx, column=col_idx).value)
+        for col_idx, month in MONTH_BY_COLUMN.items()
+    }
+
+
+def find_sheet_row(
+    sheet,
+    *,
+    col1_contains: str | None = None,
+    col2_contains: str | None = None,
+    col1_equals: str | None = None,
+    col2_equals: str | None = None,
+    max_row: int | None = None,
+) -> int | None:
+    limit = min(sheet.max_row, max_row or sheet.max_row)
+    for row_idx in range(1, limit + 1):
+        col1 = fold_text(sheet.cell(row=row_idx, column=1).value)
+        col2 = fold_text(sheet.cell(row=row_idx, column=2).value)
+        if col1_equals and col1 != col1_equals:
+            continue
+        if col2_equals and col2 != col2_equals:
+            continue
+        if col1_contains and col1_contains not in col1:
+            continue
+        if col2_contains and col2_contains not in col2:
+            continue
+        return row_idx
+    return None
+
+
+def parse_employee_monthly_summaries(
+    env,
+    workbook_path: Path,
+    unmatched: list[UnmatchedRow],
+) -> list[EmployeeMonthlySummaryPreview]:
+    workbook = load_workbook(workbook_path, read_only=True, data_only=True)
+    employee_index = build_employee_index(env, workbook)
+    ignored_sheets = {
+        "Meno Priezvisko - template",
+        "Zoznam projektov",
+        "Zoznam zamestnancov",
+        "Sheet6",
+        "uprava macra",
+    }
+    summaries: list[EmployeeMonthlySummaryPreview] = []
+
+    for sheet_name in workbook.sheetnames:
+        if sheet_name in ignored_sheets or sheet_name.startswith("summary_"):
+            continue
+        sheet = workbook[sheet_name]
+        employee_match = resolve_employee(employee_index, sheet_name)
+        if not employee_match:
+            unmatched.append(UnmatchedRow(
+                "Employee monthly summary",
+                sheet_name,
+                "employee",
+                sheet_name,
+                "Employee sheet not matched",
+            ))
+            continue
+
+        capacity_incl_row = find_sheet_row(sheet, col1_equals="hours/month (incl holidays)", max_row=20)
+        capacity_row = find_sheet_row(sheet, col1_equals="hours/month", max_row=20)
+        total_gross_row = find_sheet_row(sheet, col2_contains="hruba mzda", max_row=20)
+        total_labor_row = find_sheet_row(sheet, col2_contains="celkova cena prace", max_row=20)
+        worked_row = find_sheet_row(sheet, col2_contains="odpracovane hodiny", max_row=20)
+        holidays_row = find_sheet_row(sheet, col2_contains="platene sviatky", max_row=20)
+        vacation_row = find_sheet_row(sheet, col2_contains="dovolenka hodiny", max_row=20)
+        doctor_row = find_sheet_row(sheet, col2_contains="lekar", max_row=20)
+        internal_gross_row = find_sheet_row(sheet, col1_contains="tenenet", col2_contains="hruba mzda")
+        internal_labor_row = find_sheet_row(sheet, col1_contains="tenenet", col2_contains="celkova cena prace")
+
+        summary = EmployeeMonthlySummaryPreview(
+            sheet=sheet_name,
+            employee_name=sheet_name,
+            employee_id=employee_match.employee_id if employee_match else False,
+            employee_match_status=employee_match.match_status if employee_match else "missing",
+            employee_source_ref=employee_match.source_ref if employee_match else "",
+            capacity_hours_incl=read_month_values(sheet, capacity_incl_row) if capacity_incl_row else {},
+            capacity_hours=read_month_values(sheet, capacity_row) if capacity_row else {},
+            total_gross_salary=read_month_values(sheet, total_gross_row) if total_gross_row else {},
+            total_labor_cost=read_month_values(sheet, total_labor_row) if total_labor_row else {},
+            worked_hours=read_month_values(sheet, worked_row) if worked_row else {},
+            holidays_hours=read_month_values(sheet, holidays_row) if holidays_row else {},
+            vacation_hours=read_month_values(sheet, vacation_row) if vacation_row else {},
+            doctor_hours=read_month_values(sheet, doctor_row) if doctor_row else {},
+            internal_gross_salary=read_month_values(sheet, internal_gross_row) if internal_gross_row else {},
+            internal_labor_cost=read_month_values(sheet, internal_labor_row) if internal_labor_row else {},
+        )
+        if any(
+            any(abs(value or 0.0) > 0.00001 for value in values.values())
+            for values in (
+                summary.capacity_hours_incl,
+                summary.capacity_hours,
+                summary.total_gross_salary,
+                summary.total_labor_cost,
+                summary.worked_hours,
+                summary.holidays_hours,
+                summary.vacation_hours,
+                summary.doctor_hours,
+                summary.internal_gross_salary,
+                summary.internal_labor_cost,
+            )
+        ):
+            summaries.append(summary)
+
+    return summaries
+
+
+def get_assignment_contribution_multiplier(
+    env,
+    multiplier_index: dict[str, float],
+    employee_match: EmployeeMatch | None,
+    employee_name: str,
+) -> float:
+    if employee_match and employee_match.employee_id:
+        multiplier = multiplier_index.get(f"employee:{int(employee_match.employee_id)}")
+        if multiplier:
+            return multiplier
+    for alias in employee_aliases(employee_name):
+        multiplier = multiplier_index.get(f"alias:{alias}")
+        if multiplier:
+            return multiplier
+    if env and employee_match and employee_match.employee_id:
+        employee = env["hr.employee"].browse(employee_match.employee_id).exists()
+        if employee and hasattr(employee, "_get_payroll_contribution_multiplier"):
+            return employee._get_payroll_contribution_multiplier()
+    return CCP_MULTIPLIER
+
+
 def read_assignment_pair(sheet, row_idx: int) -> tuple[str, dict[int, float], dict[int, float]]:
     name = normalize_text(sheet.cell(row=row_idx, column=1).value)
     costs = {}
@@ -816,6 +1054,7 @@ def parse_assignments(
 ) -> tuple[list[AssignmentPreview], list[TimesheetPreview]]:
     workbook = load_workbook(workbook_path, read_only=True, data_only=True)
     employee_index = build_employee_index(env, workbook)
+    employee_multiplier_index = load_employee_contribution_multipliers(workbook, employee_index)
     expected_hours = load_expected_hours(workbook)
     assignments = []
     timesheets = []
@@ -844,6 +1083,12 @@ def parse_assignments(
             employee_match = resolve_employee(employee_index, employee_name)
             if not employee_match:
                 unmatched.append(UnmatchedRow("Assignments", f"{sheet_name}:{row_idx}", "employee", employee_name, "Employee not found"))
+            contribution_multiplier = get_assignment_contribution_multiplier(
+                env,
+                employee_multiplier_index,
+                employee_match,
+                employee_name,
+            )
 
             total_hours = round(sum(hours.values()), 2)
             total_ccp = round(sum(costs.values()), 2)
@@ -854,7 +1099,7 @@ def parse_assignments(
                 warnings.append(MigrationWarning("Assignments", f"{sheet_name}:{row_idx}", "warning", "CCP exists with zero hours", employee_name))
 
             wage_ccp = round(total_ccp / total_hours, 4) if total_hours else 0.0
-            wage_hm = round(wage_ccp / CCP_MULTIPLIER, 4) if wage_ccp else 0.0
+            wage_hm = round(wage_ccp / contribution_multiplier, 4) if wage_ccp and contribution_multiplier else 0.0
             monthly_ratios = {}
             active_months = []
             for month in range(1, 13):
@@ -890,6 +1135,7 @@ def parse_assignments(
                     total_ccp=total_ccp,
                     wage_ccp=wage_ccp,
                     wage_hm=wage_hm,
+                    contribution_multiplier=contribution_multiplier,
                     allocation_ratio=max(monthly_ratios.values() or [0.0]),
                     date_start=date(YEAR, min(active_months), 1),
                     date_end=project.date_end if project and project.date_end else date(YEAR, max(active_months), 1),
@@ -997,6 +1243,7 @@ def parse_apz_special_assignments(
             total_ccp=0.0,
             wage_ccp=0.0,
             wage_hm=0.0,
+            contribution_multiplier=CCP_MULTIPLIER,
             allocation_ratio=max(capped_ratios.values() or [0.0]),
             date_start=date(YEAR, min(active_months), 1),
             date_end=project.date_end if project.date_end else date(YEAR, max(active_months), monthrange(YEAR, max(active_months))[1]),
@@ -1046,7 +1293,13 @@ def parse_cashflows(
             warnings.append(MigrationWarning("Cashflows", row_idx, "warning", "Monthly cashflow total differs from AH total", f"{label}: {monthly_total} != {receipt_amount}"))
 
         if is_non_project_cashflow(label, receipt_amount):
-            unmatched.append(UnmatchedRow("Cashflows", row_idx, "cashflow", label, "Non-project, negative, zero, or balance cashflow row", str(receipt_amount)))
+            handled_plan_row = (
+                fold_text(label) in CF_PLAN_SUBTOTAL_LABELS
+                or row_idx in CF_PLAN_EXPENSE_ROWS
+                or (row_idx in CF_PLAN_INCOME_ROWS and not re.match(r"^\d+", label))
+            )
+            if not handled_plan_row:
+                unmatched.append(UnmatchedRow("Cashflows", row_idx, "cashflow", label, "Non-project, negative, zero, or balance cashflow row", str(receipt_amount)))
             continue
         negative_months = {
             month: amount
@@ -1083,6 +1336,76 @@ def parse_cashflows(
         ))
 
     return cashflows
+
+
+def parse_cashflow_plan_rows(
+    env,
+    workbook_path: Path,
+    sheet_name: str,
+    projects_by_key: dict[str, ProjectPreview],
+    warnings: list[MigrationWarning],
+) -> list[CashflowPlanPreview]:
+    workbook = load_workbook(workbook_path, read_only=True, data_only=True)
+    if sheet_name not in workbook.sheetnames:
+        if sheet_name == DEFAULT_CASHFLOW_SHEET and CASHFLOW_SHEET_FALLBACK in workbook.sheetnames:
+            sheet_name = CASHFLOW_SHEET_FALLBACK
+        else:
+            raise ValueError(f"Cashflow sheet not found: {sheet_name}")
+    sheet = workbook[sheet_name]
+    rows = []
+
+    for row_idx in list(CF_PLAN_INCOME_ROWS) + list(CF_PLAN_EXPENSE_ROWS):
+        row = [sheet.cell(row_idx, column).value for column in range(1, 36)]
+        right_label = normalize_text(row[20])
+        fallback_label = normalize_text(row[1])
+        label = right_label or fallback_label
+        if not label:
+            continue
+        if fold_text(label) in CF_PLAN_SUBTOTAL_LABELS:
+            continue
+
+        row_type = cashflow_plan_row_type(row_idx, label)
+        month_amounts = {
+            month: parse_amount(row[col_idx - 1])
+            for col_idx, month in CF_MONTH_COLUMNS.items()
+        }
+        if not any(month_amounts.values()):
+            continue
+
+        if row_type == "income":
+            total_amount = parse_amount(row[33])
+            project = resolve_project_preview(projects_by_key, label)
+            if project and total_amount > 0.0:
+                continue
+            if total_amount > 0.0 and re.match(r"^\d+", label):
+                continue
+
+        monthly_total = round(sum(month_amounts.values()), 2)
+        total_amount = parse_amount(row[33])
+        if abs(monthly_total - round(total_amount, 2)) > 0.05:
+            warnings.append(MigrationWarning(
+                "Cashflow plan",
+                row_idx,
+                "warning",
+                "Monthly cashflow plan total differs from AH total",
+                f"{label}: {monthly_total} != {total_amount}",
+            ))
+
+        row_key = cashflow_plan_row_key(row_type, label)
+        rows.append(CashflowPlanPreview(
+            source_row=row_idx,
+            source_sheet=sheet_name,
+            row_key=row_key,
+            row_label=label,
+            row_type=row_type,
+            section_label="Príjmy" if row_type == "income" else "Výdavky",
+            program_label=normalize_text(row[0]),
+            sequence=100 + row_idx,
+            actual_mapping_key=row_key,
+            month_amounts=month_amounts,
+        ))
+
+    return rows
 
 
 def as_date_text(value: date | None) -> str:
@@ -1171,6 +1494,8 @@ def write_preview_workbook(report_path: Path, result: dict[str, Any]) -> None:
     assignments = result["assignments"]
     timesheets = result["timesheets"]
     cashflows = result["cashflows"]
+    cashflow_plan_rows = result.get("cashflow_plan_rows", [])
+    employee_monthly_summaries = result.get("employee_monthly_summaries", [])
     unmatched = result["unmatched"]
     warnings = result["warnings"]
     import_actions = result.get("import_actions", [])
@@ -1180,6 +1505,8 @@ def write_preview_workbook(report_path: Path, result: dict[str, Any]) -> None:
         ["Assignments", len(assignments)],
         ["Timesheets", len(timesheets)],
         ["Cashflows", len(cashflows)],
+        ["Cashflow plan rows", len(cashflow_plan_rows)],
+        ["Employee monthly summaries", len(employee_monthly_summaries)],
         ["Unmatched", len(unmatched)],
         ["Warnings", len(warnings)],
         ["Import actions", len(import_actions)],
@@ -1202,20 +1529,55 @@ def write_preview_workbook(report_path: Path, result: dict[str, Any]) -> None:
     write_sheet(workbook, "Assignments", [
         "sheet", "project_name", "project_id", "employee_name", "employee_id", "employee_user_id", "employee_user_login",
         "employee_work_email", "employee_match_status", "employee_source_ref", "total_hours", "total_ccp",
-        "wage_ccp", "wage_hm", "allocation_ratio", "date_start", "date_end",
+        "wage_ccp", "wage_hm", "contribution_multiplier", "allocation_ratio", "date_start", "date_end",
         "ratio_01", "ratio_02", "ratio_03", "ratio_04", "ratio_05", "ratio_06",
         "ratio_07", "ratio_08", "ratio_09", "ratio_10", "ratio_11", "ratio_12",
     ], [[
         item.sheet, item.project_name, item.project_id, item.employee_name, item.employee_id, item.employee_user_id,
         item.employee_user_login, item.employee_work_email, item.employee_match_status, item.employee_source_ref,
         item.total_hours, item.total_ccp,
-        item.wage_ccp, item.wage_hm, item.allocation_ratio, as_date_text(item.date_start), as_date_text(item.date_end),
+        item.wage_ccp, item.wage_hm, item.contribution_multiplier, item.allocation_ratio, as_date_text(item.date_start), as_date_text(item.date_end),
         *[item.monthly_ratios.get(month, 0.0) for month in range(1, 13)],
     ] for item in assignments])
     write_sheet(workbook, "Employee Matches", [
         "employee_name", "employee_id", "employee_user_id", "employee_user_login", "employee_work_email",
         "employee_match_status", "employee_source_ref", "assignment_count", "project_names", "sheets",
     ], build_employee_match_report(assignments))
+    write_sheet(workbook, "Employee Monthly Summaries", [
+        "sheet", "employee_name", "employee_id", "employee_match_status", "employee_source_ref",
+        "capacity_incl_01", "capacity_incl_02", "capacity_incl_03", "capacity_incl_04", "capacity_incl_05", "capacity_incl_06",
+        "capacity_incl_07", "capacity_incl_08", "capacity_incl_09", "capacity_incl_10", "capacity_incl_11", "capacity_incl_12",
+        "capacity_01", "capacity_02", "capacity_03", "capacity_04", "capacity_05", "capacity_06",
+        "capacity_07", "capacity_08", "capacity_09", "capacity_10", "capacity_11", "capacity_12",
+        "gross_01", "gross_02", "gross_03", "gross_04", "gross_05", "gross_06",
+        "gross_07", "gross_08", "gross_09", "gross_10", "gross_11", "gross_12",
+        "ccp_01", "ccp_02", "ccp_03", "ccp_04", "ccp_05", "ccp_06",
+        "ccp_07", "ccp_08", "ccp_09", "ccp_10", "ccp_11", "ccp_12",
+        "worked_01", "worked_02", "worked_03", "worked_04", "worked_05", "worked_06",
+        "worked_07", "worked_08", "worked_09", "worked_10", "worked_11", "worked_12",
+        "holidays_01", "holidays_02", "holidays_03", "holidays_04", "holidays_05", "holidays_06",
+        "holidays_07", "holidays_08", "holidays_09", "holidays_10", "holidays_11", "holidays_12",
+        "vacation_01", "vacation_02", "vacation_03", "vacation_04", "vacation_05", "vacation_06",
+        "vacation_07", "vacation_08", "vacation_09", "vacation_10", "vacation_11", "vacation_12",
+        "doctor_01", "doctor_02", "doctor_03", "doctor_04", "doctor_05", "doctor_06",
+        "doctor_07", "doctor_08", "doctor_09", "doctor_10", "doctor_11", "doctor_12",
+        "internal_gross_01", "internal_gross_02", "internal_gross_03", "internal_gross_04", "internal_gross_05", "internal_gross_06",
+        "internal_gross_07", "internal_gross_08", "internal_gross_09", "internal_gross_10", "internal_gross_11", "internal_gross_12",
+        "internal_ccp_01", "internal_ccp_02", "internal_ccp_03", "internal_ccp_04", "internal_ccp_05", "internal_ccp_06",
+        "internal_ccp_07", "internal_ccp_08", "internal_ccp_09", "internal_ccp_10", "internal_ccp_11", "internal_ccp_12",
+    ], [[
+        item.sheet, item.employee_name, item.employee_id, item.employee_match_status, item.employee_source_ref,
+        *[item.capacity_hours_incl.get(month, 0.0) for month in range(1, 13)],
+        *[item.capacity_hours.get(month, 0.0) for month in range(1, 13)],
+        *[item.total_gross_salary.get(month, 0.0) for month in range(1, 13)],
+        *[item.total_labor_cost.get(month, 0.0) for month in range(1, 13)],
+        *[item.worked_hours.get(month, 0.0) for month in range(1, 13)],
+        *[item.holidays_hours.get(month, 0.0) for month in range(1, 13)],
+        *[item.vacation_hours.get(month, 0.0) for month in range(1, 13)],
+        *[item.doctor_hours.get(month, 0.0) for month in range(1, 13)],
+        *[item.internal_gross_salary.get(month, 0.0) for month in range(1, 13)],
+        *[item.internal_labor_cost.get(month, 0.0) for month in range(1, 13)],
+    ] for item in employee_monthly_summaries])
     write_sheet(workbook, "Timesheets", [
         "sheet", "project_name", "employee_name", "period", "hours_pp", "expected_hours", "allocation_ratio", "ccp_amount",
     ], [[
@@ -1231,6 +1593,16 @@ def write_preview_workbook(report_path: Path, result: dict[str, Any]) -> None:
         item.receipt_amount, item.receipt_note,
         *[item.month_amounts.get(month, 0.0) for month in range(1, 13)],
     ] for item in cashflows])
+    write_sheet(workbook, "Cashflow Plan", [
+        "source_sheet", "source_row", "row_key", "row_label", "row_type", "section_label", "program_label",
+        "sequence", "actual_mapping_key",
+        "month_01", "month_02", "month_03", "month_04", "month_05", "month_06",
+        "month_07", "month_08", "month_09", "month_10", "month_11", "month_12",
+    ], [[
+        item.source_sheet, item.source_row, item.row_key, item.row_label, item.row_type, item.section_label,
+        item.program_label, item.sequence, item.actual_mapping_key,
+        *[item.month_amounts.get(month, 0.0) for month in range(1, 13)],
+    ] for item in cashflow_plan_rows])
     write_sheet(workbook, "Unmatched", ["source", "row", "kind", "key", "reason", "context"], [
         [item.source, item.row, item.kind, item.key, item.reason, item.context]
         for item in unmatched
@@ -1272,6 +1644,7 @@ def build_migration_preview(
     append_assignment_project_previews(env, assignments_path, project_program_bindings_path, projects, warnings)
     projects_by_key = build_project_index(projects)
     assignments, timesheets = parse_assignments(env, assignments_path, projects_by_key, unmatched, warnings)
+    employee_monthly_summaries = parse_employee_monthly_summaries(env, assignments_path, unmatched)
     if apz_assignments_path:
         assignments.extend(parse_apz_special_assignments(
             env,
@@ -1282,19 +1655,24 @@ def build_migration_preview(
             warnings,
         ))
     cashflows = parse_cashflows(env, cashflow_path, cashflow_sheet, projects_by_key, unmatched, warnings)
+    cashflow_plan_rows = parse_cashflow_plan_rows(env, cashflow_path, cashflow_sheet, projects_by_key, warnings)
 
     result = {
         "projects": projects,
         "assignments": assignments,
         "timesheets": timesheets,
+        "employee_monthly_summaries": employee_monthly_summaries,
         "cashflows": cashflows,
+        "cashflow_plan_rows": cashflow_plan_rows,
         "unmatched": unmatched,
         "warnings": warnings,
         "summary": Counter({
             "projects": len(projects),
             "assignments": len(assignments),
             "timesheets": len(timesheets),
+            "employee_monthly_summaries": len(employee_monthly_summaries),
             "cashflows": len(cashflows),
+            "cashflow_plan_rows": len(cashflow_plan_rows),
             "unmatched": len(unmatched),
             "warnings": len(warnings),
         }),
@@ -1381,6 +1759,87 @@ def assignment_values(assignment: AssignmentPreview, project_record) -> dict[str
     if program:
         values["program_id"] = program.id
     return values
+
+
+def apply_employee_multipliers(env, assignments: list[AssignmentPreview], actions: list[ImportAction]) -> None:
+    Employee = env["hr.employee"].sudo().with_context(active_test=False)
+    multipliers_by_employee: dict[int, float] = {}
+    for assignment in assignments:
+        if assignment.employee_id and assignment.contribution_multiplier:
+            multipliers_by_employee[int(assignment.employee_id)] = assignment.contribution_multiplier
+
+    for employee_id, multiplier in sorted(multipliers_by_employee.items()):
+        employee = Employee.browse(employee_id).exists()
+        if not employee:
+            continue
+        current = employee._get_payroll_contribution_multiplier() if hasattr(employee, "_get_payroll_contribution_multiplier") else CCP_MULTIPLIER
+        if math.isclose(current, multiplier, rel_tol=0.0, abs_tol=0.0001):
+            continue
+        employee.write({"tenenet_payroll_contribution_multiplier": multiplier})
+        actions.append(ImportAction(
+            "Employees",
+            "update",
+            "hr.employee",
+            employee.id,
+            employee.display_name,
+            "ok",
+            f"tenenet_payroll_contribution_multiplier={multiplier}",
+        ))
+
+
+def apply_employee_monthly_summaries(env, summaries: list[EmployeeMonthlySummaryPreview], actions: list[ImportAction]) -> None:
+    Cost = env["tenenet.employee.tenenet.cost"].sudo().with_context(active_test=False)
+    for summary in summaries:
+        if not summary.employee_id:
+            actions.append(ImportAction(
+                "Employee monthly summary",
+                "skip",
+                "tenenet.employee.tenenet.cost",
+                False,
+                summary.employee_name,
+                "skipped",
+                "Employee not matched",
+            ))
+            continue
+
+        touched = 0
+        for month in range(1, 13):
+            period = date(YEAR, month, 1)
+            record = Cost.search([
+                ("employee_id", "=", summary.employee_id),
+                ("period", "=", period),
+            ], limit=1)
+            if not record:
+                record = Cost.create({
+                    "employee_id": summary.employee_id,
+                    "period": period,
+                })
+            values = {
+                "imported_from_migration_workbook": True,
+                "imported_capacity_hours_incl": summary.capacity_hours_incl.get(month, 0.0),
+                "imported_capacity_hours": summary.capacity_hours.get(month, 0.0),
+                "imported_total_gross_salary": summary.total_gross_salary.get(month, 0.0),
+                "imported_total_labor_cost": summary.total_labor_cost.get(month, 0.0),
+                "imported_worked_hours": summary.worked_hours.get(month, 0.0),
+                "imported_holidays_hours": summary.holidays_hours.get(month, 0.0),
+                "imported_vacation_hours": summary.vacation_hours.get(month, 0.0),
+                "imported_doctor_hours": summary.doctor_hours.get(month, 0.0),
+                "imported_internal_gross_salary": summary.internal_gross_salary.get(month, 0.0),
+                "imported_internal_labor_cost": summary.internal_labor_cost.get(month, 0.0),
+            }
+            if any(record[field_name] != value for field_name, value in values.items()):
+                record.write(values)
+                touched += 1
+
+        actions.append(ImportAction(
+            "Employee monthly summary",
+            "upsert",
+            "tenenet.employee.tenenet.cost",
+            False,
+            summary.employee_name,
+            "ok",
+            f"{touched} monthly rows updated",
+        ))
 
 
 def find_existing_assignment(env, assignment: AssignmentPreview, project_record):
@@ -1587,11 +2046,65 @@ def apply_cashflows(env, result: dict[str, Any], project_records: dict[str, Any]
         actions.append(ImportAction("Cashflows", action, "tenenet.project.receipt", receipt.id, key_text, "ok", detail))
 
 
+def apply_cashflow_plan_rows(env, result: dict[str, Any], actions: list[ImportAction]) -> None:
+    Override = env["tenenet.cashflow.global.override"].sudo()
+    for plan_row in result.get("cashflow_plan_rows", []):
+        key_text = f"{plan_row.source_sheet} row {plan_row.source_row}: {plan_row.row_label}"
+        action = "noop"
+        for month in range(1, 13):
+            period = date(YEAR, month, 1)
+            values = {
+                "period": period,
+                "row_key": plan_row.row_key,
+                "row_label": plan_row.row_label,
+                "row_type": plan_row.row_type,
+                "section_label": plan_row.section_label,
+                "program_label": plan_row.program_label,
+                "project_label": plan_row.row_label,
+                "sequence": plan_row.sequence,
+                "amount": plan_row.month_amounts.get(month, 0.0),
+                "currency_id": env.company.currency_id.id,
+                "source_kind": "workbook",
+                "source_sheet": plan_row.source_sheet,
+                "source_row": plan_row.source_row,
+                "actual_mapping_key": plan_row.actual_mapping_key,
+            }
+            existing = Override.search([
+                ("period", "=", period),
+                ("row_key", "=", plan_row.row_key),
+            ], limit=1)
+            if existing:
+                existing.with_context(
+                    _cashflow_override_adjusting=True,
+                    _skip_finance_monthly_comparison_sync=True,
+                ).write(values)
+                action = "update"
+            else:
+                Override.with_context(
+                    _cashflow_override_adjusting=True,
+                    _skip_finance_monthly_comparison_sync=True,
+                ).create(values)
+                if action == "noop":
+                    action = "create"
+        actions.append(ImportAction(
+            "Cashflow plan",
+            action,
+            "tenenet.cashflow.global.override",
+            False,
+            key_text,
+            "ok",
+            "12 monthly rows",
+        ))
+
+
 def apply_migration_preview(env, result: dict[str, Any]) -> dict[str, Any]:
     actions: list[ImportAction] = []
     project_records = apply_projects(env, result["projects"], actions)
+    apply_employee_multipliers(env, result["assignments"], actions)
+    apply_employee_monthly_summaries(env, result.get("employee_monthly_summaries", []), actions)
     apply_assignments(env, result, project_records, actions)
     apply_cashflows(env, result, project_records, actions)
+    apply_cashflow_plan_rows(env, result, actions)
     result["import_actions"] = actions
     result["summary"].update({
         "import_actions": len(actions),

@@ -426,14 +426,86 @@ class TestTenenetPlan15CashflowReport(TransactionCase):
         self.assertAlmostEqual(residual.cost_ccp, 13.8, places=2)
 
         cashflow_salary = self._column_map(self._find_named_line(self._get_lines(year), "Mzdy"))
+        allocation_total = self._column_map(self._find_allocation_line(self._get_allocation_lines(year), "Celkové rozúčtovanie"))
         allocation_ccp = self._column_map(self._find_allocation_line(self._get_allocation_lines(year), "CCP"))
         allocation_internal_wage = self._column_map(
             self._find_allocation_line(self._get_allocation_lines(year), "Interné náklady - mzda (CCP)")
         )
 
         self.assertAlmostEqual(cashflow_salary["month_03"], -150.0, places=2)
+        self.assertAlmostEqual(allocation_total["month_03"], 150.0, places=2)
         self.assertAlmostEqual(allocation_ccp["month_03"], 136.2, places=2)
         self.assertAlmostEqual(allocation_internal_wage["month_03"], 13.8, places=2)
+
+    def test_assignment_and_override_use_employee_multiplier(self):
+        year = fields.Date.context_today(self).year + 1
+        self.employee.write({"tenenet_payroll_contribution_multiplier": 1.3045})
+        self.assignment.write({"wage_hm": 10.0})
+
+        timesheet = self.env["tenenet.project.timesheet"].create({
+            "assignment_id": self.assignment.id,
+            "period": f"{year}-03-01",
+            "hours_pp": 10.0,
+        })
+        override_sheet = self.env["tenenet.project.timesheet"].create({
+            "assignment_id": self.assignment.id,
+            "period": f"{year}-04-01",
+            "hours_pp": 0.0,
+            "labor_cost_override": 130.45,
+        })
+
+        self.assertAlmostEqual(self.assignment.wage_ccp, 13.045, places=4)
+        self.assertAlmostEqual(timesheet.total_labor_cost, 130.45, places=2)
+        self.assertAlmostEqual(timesheet.deductions, 30.45, places=2)
+        self.assertAlmostEqual(override_sheet.gross_salary, 100.0, places=2)
+        self.assertAlmostEqual(override_sheet.deductions, 30.45, places=2)
+
+    def test_allocation_report_prefers_imported_workbook_summary_when_present(self):
+        year = fields.Date.context_today(self).year + 1
+        self.employee.write({"monthly_gross_salary_target": 150.0})
+        self.env["tenenet.project.timesheet"].create({
+            "assignment_id": self.assignment.id,
+            "period": f"{year}-03-01",
+            "hours_pp": 10.0,
+        })
+        self.env["tenenet.employee.tenenet.cost"]._sync_for_employee_period(self.employee.id, f"{year}-03-01").write({
+            "imported_from_migration_workbook": True,
+            "imported_capacity_hours_incl": 176.0,
+            "imported_capacity_hours": 160.0,
+            "imported_total_gross_salary": 100.0,
+            "imported_total_labor_cost": 130.0,
+            "imported_worked_hours": 80.0,
+            "imported_holidays_hours": 8.0,
+            "imported_vacation_hours": 16.0,
+            "imported_doctor_hours": 4.0,
+            "imported_internal_gross_salary": 20.0,
+            "imported_internal_labor_cost": 26.0,
+        })
+
+        lines = self._get_allocation_lines(year)
+        allocation_total = self._column_map(self._find_allocation_line(lines, "Celkové rozúčtovanie"))
+        capacity_incl = self._column_map(self._find_allocation_line(lines, "Hodiny za mesiac (vrátane sviatkov)"))
+        capacity_net = self._column_map(self._find_allocation_line(lines, "Hodiny za mesiac"))
+        gross = self._column_map(self._find_allocation_line(lines, "Hrubá mzda"))
+        deductions = self._column_map(self._find_allocation_line(lines, "Odvody"))
+        ccp = self._column_map(self._find_allocation_line(lines, "CCP"))
+        worked = self._column_map(self._find_allocation_line(lines, "Odpracované hodiny"))
+        holidays = self._column_map(self._find_allocation_line(lines, "Platené sviatky"))
+        vacation = self._column_map(self._find_allocation_line(lines, "Dovolenka"))
+        doctor = self._column_map(self._find_allocation_line(lines, "Lekár"))
+        internal_wage = self._column_map(self._find_allocation_line(lines, "Interné náklady - mzda (CCP)"))
+
+        self.assertAlmostEqual(allocation_total["month_03"], 130.0, places=2)
+        self.assertAlmostEqual(capacity_incl["month_03"], 176.0, places=2)
+        self.assertAlmostEqual(capacity_net["month_03"], 160.0, places=2)
+        self.assertAlmostEqual(gross["month_03"], 100.0, places=2)
+        self.assertAlmostEqual(deductions["month_03"], 30.0, places=2)
+        self.assertAlmostEqual(ccp["month_03"], 130.0, places=2)
+        self.assertAlmostEqual(worked["month_03"], 80.0, places=2)
+        self.assertAlmostEqual(holidays["month_03"], 8.0, places=2)
+        self.assertAlmostEqual(vacation["month_03"], 16.0, places=2)
+        self.assertAlmostEqual(doctor["month_03"], 4.0, places=2)
+        self.assertAlmostEqual(internal_wage["month_03"], 26.0, places=2)
 
     def test_fixed_ratio_project_hits_allocation_report_without_timesheet_hours(self):
         year = fields.Date.context_today(self).year + 1
@@ -570,3 +642,98 @@ class TestTenenetPlan15CashflowReport(TransactionCase):
         self.assertAlmostEqual(expense_columns["month_01"], -80.0, places=2)
         self.assertAlmostEqual(cash_out_columns["month_01"], -330.0, places=2)
         self.assertAlmostEqual(balance_columns["month_01"], -230.0, places=2)
+
+    def test_workbook_cashflow_plan_rows_survive_grid_sync_and_report(self):
+        year = fields.Date.context_today(self).year + 1
+        row_key = "workbook:expense:prevadzkove-n-psc"
+        self.env["tenenet.cashflow.global.override"].create({
+            "period": f"{year}-03-01",
+            "row_key": row_key,
+            "row_label": "Prevadzkove N - PSC",
+            "row_type": "expense",
+            "section_label": "Výdavky",
+            "project_label": "Prevadzkove N - PSC",
+            "sequence": 365,
+            "amount": -5782.4,
+            "source_kind": "workbook",
+            "source_sheet": "CF 2026 (rolling)",
+            "source_row": 65,
+            "actual_mapping_key": row_key,
+        })
+
+        self.env["tenenet.cashflow.global.override"].with_context(
+            grid_anchor=f"{year}-01-01"
+        ).action_prepare_grid_year()
+
+        override = self.env["tenenet.cashflow.global.override"].search([
+            ("year", "=", year),
+            ("row_key", "=", row_key),
+            ("month", "=", 3),
+        ], limit=1)
+        lines = self._get_lines(year)
+        plan_line = self._find_expense_line(lines, "Prevadzkove N - PSC")
+
+        self.assertTrue(override)
+        self.assertAlmostEqual(self._column_map(plan_line)["month_03"], -5782.4, places=2)
+
+    def test_mapped_internal_expense_replaces_workbook_plan_month(self):
+        year = fields.Date.context_today(self).year + 1
+        row_key = "workbook:expense:prevadzkove-n-najom"
+        rent_type = self.env["tenenet.expense.type.config"].create({
+            "name": "Nájom",
+            "cashflow_row_key": row_key,
+        })
+        self.env["tenenet.cashflow.global.override"].create({
+            "period": f"{year}-03-01",
+            "row_key": row_key,
+            "row_label": "Prevadzkove N - najom",
+            "row_type": "expense",
+            "section_label": "Výdavky",
+            "project_label": "Prevadzkove N - najom",
+            "sequence": 360,
+            "amount": -100.0,
+            "source_kind": "workbook",
+            "actual_mapping_key": row_key,
+        })
+        self.env["tenenet.internal.expense"].create({
+            "employee_id": self.employee.id,
+            "period": f"{year}-03-01",
+            "category": "expense",
+            "source_project_id": self.project_a.id,
+            "expense_type_config_id": rent_type.id,
+            "expense_amount": 55.0,
+        })
+
+        lines = self._get_lines(year)
+        rent_line = self._find_expense_line(lines, "Prevadzkove N - najom")
+
+        self.assertAlmostEqual(self._column_map(rent_line)["month_03"], -55.0, places=2)
+
+    def test_salary_cashout_splits_by_project_organizational_unit(self):
+        year = fields.Date.context_today(self).year + 1
+        kalia_program = self.env["tenenet.program"].with_context(active_test=False).search([
+            ("code", "=", "NAS_A_VAZ"),
+        ], limit=1)
+        kalia_project = self.env["tenenet.project"].create({
+            "name": "Kalia projekt",
+            "program_ids": [(6, 0, kalia_program.ids)],
+        })
+        kalia_employee = self.env["hr.employee"].create({
+            "name": "Kalia Zamestnanec",
+            "work_ratio": 100.0,
+        })
+        assignment = self.env["tenenet.project.assignment"].create({
+            "employee_id": kalia_employee.id,
+            "project_id": kalia_project.id,
+            "wage_hm": 10.0,
+        })
+        self.env["tenenet.project.timesheet"].create({
+            "assignment_id": assignment.id,
+            "period": f"{year}-03-01",
+            "hours_pp": 10.0,
+        })
+
+        lines = self._get_lines(year)
+        kalia_line = self._find_expense_line(lines, "Mzdy, stravne, CP a odvody - Kalia")
+
+        self.assertAlmostEqual(self._column_map(kalia_line)["month_03"], -136.2, places=2)

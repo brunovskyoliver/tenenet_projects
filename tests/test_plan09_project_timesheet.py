@@ -209,6 +209,26 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
         self.assertAlmostEqual(cost.project_billed_gross, 1600.0, places=2)
         self.assertAlmostEqual(cost.tenenet_residual_hm, expected_target_hm - 1600.0, places=2)
 
+    def test_imported_labor_cost_override_is_not_capped_by_salary_target(self):
+        self.employee.write({"monthly_gross_salary_target": 1000.0})
+        self.env["tenenet.project.timesheet"].create(self._timesheet_vals(
+            period="2026-08-01",
+            hours_pp=144.0,
+            hours_np=0.0,
+            hours_vacation=0.0,
+            labor_cost_override=1500.0,
+        ))
+
+        cost = self.env["tenenet.employee.tenenet.cost"].search([
+            ("employee_id", "=", self.employee.id),
+            ("period", "=", "2026-08-01"),
+        ], limit=1)
+
+        self.assertTrue(cost)
+        self.assertAlmostEqual(cost.project_billed_ccp, 1500.0, places=2)
+        self.assertAlmostEqual(cost.project_billed_gross, 1500.0 / 1.362, places=2)
+        self.assertAlmostEqual(cost.tenenet_residual_ccp, 0.0, places=2)
+
     def test_residual_record_updates_when_lines_change(self):
         ts = self.env["tenenet.project.timesheet"].create({
             "assignment_id": self.assignment.id,

@@ -165,10 +165,17 @@ class TenenetInternalExpense(models.Model):
 
     CCP_MULTIPLIER = 1.362
 
-    @api.depends("wage_hm")
+    def _get_ccp_multiplier(self):
+        self.ensure_one()
+        employee = self.source_assignment_id.employee_id or self.employee_id
+        if employee and hasattr(employee, "_get_payroll_contribution_multiplier"):
+            return employee._get_payroll_contribution_multiplier()
+        return self.CCP_MULTIPLIER
+
+    @api.depends("wage_hm", "employee_id.tenenet_payroll_contribution_multiplier", "source_assignment_id.employee_id.tenenet_payroll_contribution_multiplier")
     def _compute_wage_ccp(self):
         for rec in self:
-            rec.wage_ccp = (rec.wage_hm or 0.0) * self.CCP_MULTIPLIER
+            rec.wage_ccp = (rec.wage_hm or 0.0) * rec._get_ccp_multiplier()
 
     @api.depends("hours", "wage_hm", "category")
     def _compute_costs(self):
@@ -179,13 +186,13 @@ class TenenetInternalExpense(models.Model):
                 rec.cost_hm = rec.expense_amount or 0.0
             # For "wage" category, cost_hm is written directly by _check_wage_cap().
 
-    @api.depends("cost_hm", "expense_amount", "category")
+    @api.depends("cost_hm", "expense_amount", "category", "employee_id.tenenet_payroll_contribution_multiplier", "source_assignment_id.employee_id.tenenet_payroll_contribution_multiplier")
     def _compute_cost_ccp(self):
         for rec in self:
             if rec.category == "expense":
                 rec.cost_ccp = rec.expense_amount or 0.0
             else:
-                rec.cost_ccp = (rec.cost_hm or 0.0) * self.CCP_MULTIPLIER
+                rec.cost_ccp = (rec.cost_hm or 0.0) * rec._get_ccp_multiplier()
 
     @api.onchange("source_assignment_id")
     def _onchange_source_assignment_id(self):

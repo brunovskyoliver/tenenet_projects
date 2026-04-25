@@ -8,6 +8,7 @@
                     <field name="sequence" widget="handle"/>
                     <field name="name"/>
                     <field name="hr_expense_product_id"/>
+                    <field name="cashflow_row_key" optional="show"/>
                     <field name="description"/>
                     <field name="active"/>
                 </list>
@@ -25,6 +26,7 @@
                             <field name="sequence"/>
                             <field name="active"/>
                             <field name="hr_expense_product_id" readonly="1"/>
+                            <field name="cashflow_row_key"/>
                         </group>
                         <group string="Popis">
                             <field name="description" nolabel="1"/>

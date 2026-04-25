@@ -45,6 +45,9 @@ class TenenetAllocationReportHandler(models.AbstractModel):
         timesheets = self._get_employee_year_timesheets(employee, year)
         coverage_rows = self._get_employee_year_salary_coverage(employee, year)
         utilizations = self._get_employee_year_utilizations(employee, year)
+        monthly_costs = self._get_employee_year_costs(employee, year)
+        cost_by_month = {cost.period.month: cost for cost in monthly_costs}
+        has_imported_workbook_summary = any(cost.imported_from_migration_workbook for cost in monthly_costs)
 
         util_by_month = {util.period.month: util for util in utilizations}
 
@@ -66,6 +69,70 @@ class TenenetAllocationReportHandler(models.AbstractModel):
 
         gross_by_month = self._aggregate_contribution_field_by_month(coverage_rows, "hm")
         ccp_by_month = self._aggregate_contribution_field_by_month(coverage_rows, "ccp")
+        internal_expenses = self._get_employee_year_internal_expenses(employee, year)
+        internal_ccp_by_month = defaultdict(float)
+        expense_internal_ccp_by_month = defaultdict(float)
+        for expense in internal_expenses:
+            internal_ccp_by_month[expense.period.month] += expense.cost_ccp or 0.0
+            if expense.category == "expense":
+                expense_internal_ccp_by_month[expense.period.month] += expense.cost_ccp or 0.0
+
+        if has_imported_workbook_summary:
+            capacity_by_month = defaultdict(float, {
+                month: cost_by_month.get(month).imported_capacity_hours_incl or 0.0
+                for month in range(1, 13)
+                if cost_by_month.get(month)
+            })
+            net_capacity_by_month = defaultdict(float, {
+                month: cost_by_month.get(month).imported_capacity_hours or 0.0
+                for month in range(1, 13)
+                if cost_by_month.get(month)
+            })
+            gross_by_month = defaultdict(float, {
+                month: cost_by_month.get(month).imported_total_gross_salary or 0.0
+                for month in range(1, 13)
+                if cost_by_month.get(month)
+            })
+            total_allocated_by_month = defaultdict(float, {
+                month: (cost_by_month.get(month).imported_total_labor_cost or 0.0) + expense_internal_ccp_by_month.get(month, 0.0)
+                for month in range(1, 13)
+                if cost_by_month.get(month) or expense_internal_ccp_by_month.get(month)
+            })
+            ccp_by_month = defaultdict(float, {
+                month: cost_by_month.get(month).imported_total_labor_cost or 0.0
+                for month in range(1, 13)
+                if cost_by_month.get(month)
+            })
+            hours_proj_by_month = defaultdict(float, {
+                month: cost_by_month.get(month).imported_worked_hours or 0.0
+                for month in range(1, 13)
+                if cost_by_month.get(month)
+            })
+            hours_holidays_by_month = defaultdict(float, {
+                month: cost_by_month.get(month).imported_holidays_hours or 0.0
+                for month in range(1, 13)
+                if cost_by_month.get(month)
+            })
+            hours_vacation_by_month = defaultdict(float, {
+                month: cost_by_month.get(month).imported_vacation_hours or 0.0
+                for month in range(1, 13)
+                if cost_by_month.get(month)
+            })
+            hours_doctor_by_month = defaultdict(float, {
+                month: cost_by_month.get(month).imported_doctor_hours or 0.0
+                for month in range(1, 13)
+                if cost_by_month.get(month)
+            })
+        else:
+            total_allocated_by_month = defaultdict(float, {
+                month: ccp_by_month.get(month, 0.0) + internal_ccp_by_month.get(month, 0.0)
+                for month in range(1, 13)
+            })
+            hours_proj_by_month = self._aggregate_field_by_month(timesheets, "hours_project_total")
+            hours_holidays_by_month = self._aggregate_field_by_month(timesheets, "hours_holidays")
+            hours_vacation_by_month = self._aggregate_field_by_month(timesheets, "hours_vacation")
+            hours_doctor_by_month = self._aggregate_field_by_month(timesheets, "hours_doctor")
+
         deductions_by_month = defaultdict(float, {
             month: ccp_by_month.get(month, 0.0) - gross_by_month.get(month, 0.0)
             for month in range(1, 13)
@@ -74,7 +141,7 @@ class TenenetAllocationReportHandler(models.AbstractModel):
         lines.append((0, self._build_report_line(
             report, options,
             "Celkové rozúčtovanie",
-            ccp_by_month, "monetary", 1,
+            total_allocated_by_month, "monetary", 1,
             f"alloc_{emp_id}_summary_header",
         )))
 
@@ -90,11 +157,6 @@ class TenenetAllocationReportHandler(models.AbstractModel):
             net_capacity_by_month, "float", 2,
             f"alloc_{emp_id}_capacity_net",
         )))
-        hours_proj_by_month = self._aggregate_field_by_month(timesheets, "hours_project_total")
-        hours_holidays_by_month = self._aggregate_field_by_month(timesheets, "hours_holidays")
-        hours_vacation_by_month = self._aggregate_field_by_month(timesheets, "hours_vacation")
-        hours_doctor_by_month = self._aggregate_field_by_month(timesheets, "hours_doctor")
-
         lines.append((0, self._build_report_line(
             report, options, "Hrubá mzda", gross_by_month, "monetary", 2,
             f"alloc_{emp_id}_gross_salary",
@@ -125,7 +187,6 @@ class TenenetAllocationReportHandler(models.AbstractModel):
         )))
 
         # ── Project sections (collapsible) ───────────────────────────────────
-        internal_expenses = self._get_employee_year_internal_expenses(employee, year)
         project_groups = self._group_contributions_by_project(coverage_rows)
         project_ids = {
             project.id
@@ -181,9 +242,17 @@ class TenenetAllocationReportHandler(models.AbstractModel):
 
         ie_wage_hm = defaultdict(float)
         ie_wage_ccp = defaultdict(float)
-        for exp in wage_expenses:
-            ie_wage_hm[exp.period.month] += exp.cost_hm or 0.0
-            ie_wage_ccp[exp.period.month] += exp.cost_ccp or 0.0
+        if has_imported_workbook_summary:
+            for month in range(1, 13):
+                cost = cost_by_month.get(month)
+                if not cost:
+                    continue
+                ie_wage_hm[month] += cost.imported_internal_gross_salary or 0.0
+                ie_wage_ccp[month] += cost.imported_internal_labor_cost or 0.0
+        else:
+            for exp in wage_expenses:
+                ie_wage_hm[exp.period.month] += exp.cost_hm or 0.0
+                ie_wage_ccp[exp.period.month] += exp.cost_ccp or 0.0
 
         ie_travel = self._aggregate_internal_expense_bucket_by_month(
             expense_expenses,
@@ -412,6 +481,15 @@ class TenenetAllocationReportHandler(models.AbstractModel):
         year_start = date(year, 1, 1)
         year_end = date(year, 12, 31)
         return self.env["tenenet.internal.expense"].sudo().search([
+            ("employee_id", "=", employee.id),
+            ("period", ">=", year_start),
+            ("period", "<=", year_end),
+        ])
+
+    def _get_employee_year_costs(self, employee, year):
+        year_start = date(year, 1, 1)
+        year_end = date(year, 12, 31)
+        return self.env["tenenet.employee.tenenet.cost"].search([
             ("employee_id", "=", employee.id),
             ("period", ">=", year_start),
             ("period", "<=", year_end),

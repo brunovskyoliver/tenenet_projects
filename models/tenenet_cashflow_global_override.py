@@ -61,6 +61,24 @@ class TenenetCashflowGlobalOverride(models.Model):
         currency_field="currency_id",
         default=0.0,
     )
+    source_kind = fields.Selection(
+        [
+            ("forecast", "Forecast"),
+            ("workbook", "Workbook"),
+            ("workbook_actual", "Workbook + skutočnosť"),
+            ("manual", "Manual"),
+        ],
+        string="Zdroj",
+        default="forecast",
+        readonly=True,
+    )
+    source_sheet = fields.Char(string="Zdrojový hárok", readonly=True)
+    source_row = fields.Integer(string="Zdrojový riadok", readonly=True)
+    actual_mapping_key = fields.Char(
+        string="Mapovanie skutočnosti",
+        readonly=True,
+        help="Technický kľúč použitý na nahradenie plánovanej hodnoty skutočnosťou.",
+    )
     note = fields.Char(string="Poznámka")
     currency_id = fields.Many2one(
         "res.currency",
@@ -212,6 +230,10 @@ class TenenetCashflowGlobalOverride(models.Model):
                     "program": record.program_label or "",
                     "project_label": record.project_label or record.row_label,
                     "sequence": record.sequence,
+                    "source_kind": record.source_kind or "forecast",
+                    "source_sheet": record.source_sheet or "",
+                    "source_row": record.source_row or 0,
+                    "actual_mapping_key": record.actual_mapping_key or "",
                     "values": {},
                 },
             )
@@ -245,9 +267,16 @@ class TenenetCashflowGlobalOverride(models.Model):
                     "sequence": row.get("sequence", 100),
                     "amount": row["values"].get(month, 0.0),
                     "currency_id": self.env.company.currency_id.id,
+                    "source_kind": row.get("source_kind") or "forecast",
+                    "source_sheet": row.get("source_sheet") or "",
+                    "source_row": row.get("source_row") or 0,
+                    "actual_mapping_key": row.get("actual_mapping_key") or row["row_key"],
                 }
                 existing = records_by_key_month.get((row["row_key"], month))
                 if existing:
+                    if existing.source_kind == "workbook" and row.get("source_kind") == "workbook_actual":
+                        values["amount"] = existing.amount
+                        values["source_kind"] = "workbook"
                     existing.with_context(
                         _cashflow_override_adjusting=True,
                         _skip_finance_monthly_comparison_sync=True,
@@ -261,7 +290,10 @@ class TenenetCashflowGlobalOverride(models.Model):
                     synced_record_ids.add(created.id)
 
         stale_records = existing_records.filtered(
-            lambda rec: rec.row_key not in valid_row_keys or rec.id not in synced_record_ids
+            lambda rec: (
+                (rec.row_key not in valid_row_keys or rec.id not in synced_record_ids)
+                and rec.source_kind != "workbook"
+            )
         )
         if stale_records:
             stale_records.with_context(_skip_finance_monthly_comparison_sync=True).unlink()

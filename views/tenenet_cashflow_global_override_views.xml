@@ -9,6 +9,7 @@
                     <field name="project_label"/>
                     <field name="row_label"/>
                     <field name="row_type"/>
+                    <field name="source_kind" optional="show"/>
                     <field name="program_label"/>
                     <field name="period"/>
                     <field name="year" readonly="1" options="{'enable_formatting': False}"/>
@@ -30,6 +31,7 @@
                             <field name="project_label"/>
                             <field name="row_label"/>
                             <field name="row_type"/>
+                            <field name="source_kind"/>
                             <field name="program_label"/>
                             <field name="period"/>
                             <field name="year" readonly="1" options="{'enable_formatting': False}"/>
@@ -76,6 +78,7 @@
                     <field name="row_label"/>
                     <field name="row_type"/>
                     <field name="program_label"/>
+                    <field name="source_kind"/>
                     <field name="period"/>
                     <field name="year" options="{'enable_formatting': False}"/>
                     <filter string="Aktuálny rok" name="current_year"

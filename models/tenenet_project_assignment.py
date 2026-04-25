@@ -175,11 +175,19 @@ class TenenetProjectAssignment(models.Model):
                 "current_year": current_year,
             }
 
-    @api.depends("wage_hm", "max_monthly_wage_hm")
+    def _get_ccp_multiplier(self):
+        self.ensure_one()
+        employee = self.employee_id
+        if employee and hasattr(employee, "_get_payroll_contribution_multiplier"):
+            return employee._get_payroll_contribution_multiplier()
+        return self.CCP_MULTIPLIER
+
+    @api.depends("wage_hm", "max_monthly_wage_hm", "employee_id.tenenet_payroll_contribution_multiplier")
     def _compute_ccp_fields(self):
         for rec in self:
-            rec.wage_ccp = (rec.wage_hm or 0.0) * self.CCP_MULTIPLIER
-            rec.max_monthly_wage_ccp = (rec.max_monthly_wage_hm or 0.0) * self.CCP_MULTIPLIER
+            multiplier = rec._get_ccp_multiplier()
+            rec.wage_ccp = (rec.wage_hm or 0.0) * multiplier
+            rec.max_monthly_wage_ccp = (rec.max_monthly_wage_hm or 0.0) * multiplier
 
     @api.depends("timesheet_ids")
     def _compute_timesheet_count(self):
@@ -413,6 +421,7 @@ class TenenetProjectAssignment(models.Model):
         timesheets = self.timesheet_ids.filtered(lambda timesheet: timesheet.period == normalized_period)
         gross_salary = sum(timesheets.mapped("gross_salary"))
         total_labor_cost = sum(timesheets.mapped("total_labor_cost"))
+        has_labor_cost_override = any(timesheets.mapped("labor_cost_override"))
         wage_internal = self.env["tenenet.internal.expense"].sudo().search([
             ("source_assignment_id", "=", self.id),
             ("period", "=", normalized_period),
@@ -424,6 +433,7 @@ class TenenetProjectAssignment(models.Model):
         return {
             "hm": gross_salary,
             "ccp": total_labor_cost,
+            "has_labor_cost_override": has_labor_cost_override,
         }
 
     def _sync_precreated_timesheets(self):
@@ -457,7 +467,8 @@ class TenenetProjectAssignment(models.Model):
             avg_ccp = sum(assignments.mapped("wage_ccp")) / count
             return avg_hm, avg_ccp
         hourly_ccp = employee.hourly_rate or 0.0
-        return hourly_ccp / self.CCP_MULTIPLIER, hourly_ccp
+        multiplier = employee._get_payroll_contribution_multiplier() if hasattr(employee, "_get_payroll_contribution_multiplier") else self.CCP_MULTIPLIER
+        return hourly_ccp / multiplier if hourly_ccp else 0.0, hourly_ccp
 
     @api.model
     def _get_or_create_internal_assignment(self, employee):

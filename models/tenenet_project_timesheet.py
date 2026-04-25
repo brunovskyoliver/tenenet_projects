@@ -474,9 +474,10 @@ class TenenetProjectTimesheet(models.Model):
     @api.depends("hours_total", "wage_hm", "wage_ccp", "labor_cost_override")
     def _compute_costs(self):
         for rec in self:
+            multiplier = rec.assignment_id._get_ccp_multiplier() if rec.assignment_id else 1.362
             if rec.labor_cost_override and rec.labor_cost_override > 0.0:
                 total_labor_cost = rec.labor_cost_override
-                gross = total_labor_cost / (rec.assignment_id.CCP_MULTIPLIER or 1.362)
+                gross = total_labor_cost / (multiplier or 1.362)
                 rec.gross_salary = gross
                 rec.deductions = total_labor_cost - gross
                 rec.total_labor_cost = total_labor_cost
@@ -486,7 +487,7 @@ class TenenetProjectTimesheet(models.Model):
             total = rec.hours_total or 0.0
             gross = total * hm
             rec.gross_salary = gross
-            rec.deductions = gross * 0.362
+            rec.deductions = (total * ccp) - gross
             rec.total_labor_cost = total * ccp
 
 

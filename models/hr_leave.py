@@ -349,7 +349,7 @@ class HrLeave(models.Model):
         if source_assignment:
             wage_hm = source_assignment.wage_hm or 0.0
         elif employee.with_context(tenenet_period=period).hourly_rate:
-            wage_hm = employee.with_context(tenenet_period=period).hourly_rate / 1.362
+            wage_hm = employee.with_context(tenenet_period=period).hourly_rate / employee._get_payroll_contribution_multiplier()
         else:
             wage_hm = 0.0
 
