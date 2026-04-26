@@ -24,56 +24,55 @@ MONTH_COLUMN_LABELS = {
 SALARY_ROW_SPECS = [
     (
         "tnnt",
-        "Mzdy, stravne,CP a odvody - TNNT, odstupne, rekreacne, rocne zuctovanie (maj)",
+        "Mzdy, stravné, CP a odvody - TNNT, odstupné, rekreačné, ročné zúčtovanie (máj)",
     ),
-    ("kalia", "Mzdy, stravne, CP a odvody - Kalia"),
-    ("scpp", "Mzdy, stravne, CP a odvody - SCPP"),
-    ("wellnea", "Mzdy, stravne, CP a odvody - Wellnea, IDA tim"),
-    ("pas_psc", "Mzdy stravne, CP a odvody - nove PAS a PSC"),
+    ("kalia", "Mzdy, stravné, CP a odvody - Kalia"),
+    ("scpp", "Mzdy, stravné, CP a odvody - SCPP"),
+    ("wellnea", "Mzdy, stravné, CP a odvody - Wellnea, IDA tím"),
+    ("pas_psc", "Mzdy, stravné, CP a odvody - nové PAS a PSC"),
 ]
 
 WORKBOOK_EXPENSE_PREFIX_SEQUENCE = {
     "Stravne": 250,
-    "Projektovy naklad": 300,
-    "Projektove naklady": 300,
-    "Prevadzkove N": 350,
-    "Prevadzkova N": 350,
-    "Investicne N": 400,
-    "Financny N": 450,
+    "Projektový náklad": 300,
+    "Projektové náklady": 300,
+    "Prevádzkové náklady": 350,
+    "Investičné náklady": 400,
+    "Finančné náklady": 450,
 }
 
 EXPENSE_MAPPING_TOKENS = [
-    ("najom", "Prevadzkove N - najom"),
-    ("prenajom", "Prevadzkove N - najom"),
-    ("energie", "Prevadzkove N - energie"),
-    ("tel", "Prevadzkove N - Tel a internet"),
-    ("internet", "Prevadzkove N - Tel a internet"),
-    ("it", "Prevadzkove N - IT slu & tlaciarne (DV)"),
-    ("tlac", "Prevadzkove N - IT slu & tlaciarne (DV)"),
-    ("prav", "Prevadzkove N - Pravne sluzby (CLS), audit (JP)"),
-    ("audit", "Prevadzkove N - Pravne sluzby (CLS), audit (JP)"),
-    ("hr", "Prevadzkova N - HR costs - vzdelavanie (superv. a SK)"),
-    ("vzdel", "Prevadzkova N - HR costs - vzdelavanie (superv. a SK)"),
-    ("market", "Prevadzkova N - Market, PR costs (TT)"),
-    ("pr", "Prevadzkova N - Market, PR costs (TT)"),
-    ("auto", "Prevadzkove N - Auta (poistenie, opravy), poistenie budov"),
-    ("poisten", "Prevadzkove N - Auta (poistenie, opravy), poistenie budov"),
-    ("staveb", "Prevadzkove N - Stavebne, architekt"),
-    ("architekt", "Prevadzkove N - Stavebne, architekt"),
-    ("vo", "Prevadzkove N - One-off items, VO, dane"),
-    ("dan", "Prevadzkove N - One-off items, VO, dane"),
-    ("kart", "Prevadzkove N - Platby kartou, vyber kartou"),
-    ("ostat", "Prevadzkove N - Other general costs (n/m)"),
-    ("cest", "Projektovy naklad -Guide, Stem, MinM, EASY"),
-    ("guide", "Projektovy naklad -Guide, Stem, MinM, EASY"),
-    ("stem", "Projektovy naklad -Guide, Stem, MinM, EASY"),
-    ("minm", "Projektovy naklad -Guide, Stem, MinM, EASY"),
-    ("easy", "Projektovy naklad -Guide, Stem, MinM, EASY"),
-    ("icm", "Projektove naklady - ICM"),
-    ("pas", "Investicne N - PAS Presov"),
-    ("invest", "Investicne N - vybavenie"),
-    ("uver", "Financny N - Uver SLSP, kontokorent urok, transakcna dan - W"),
-    ("financ", "Financny N - Uver SLSP, kontokorent urok, transakcna dan - W"),
+    ("najom", "Prevádzkové náklady - nájom"),
+    ("prenajom", "Prevádzkové náklady - nájom"),
+    ("energie", "Prevádzkové náklady - energie"),
+    ("tel", "Prevádzkové náklady - telekomunikácie a internet"),
+    ("internet", "Prevádzkové náklady - telekomunikácie a internet"),
+    ("it", "Prevádzkové náklady - IT služby a tlačiarne (DV)"),
+    ("tlac", "Prevádzkové náklady - IT služby a tlačiarne (DV)"),
+    ("prav", "Prevádzkové náklady - právne služby (CLS) a audit (JP)"),
+    ("audit", "Prevádzkové náklady - právne služby (CLS) a audit (JP)"),
+    ("hr", "Prevádzkové náklady - HR, vzdelávanie a supervízia"),
+    ("vzdel", "Prevádzkové náklady - HR, vzdelávanie a supervízia"),
+    ("market", "Prevádzkové náklady - marketing a PR"),
+    ("pr", "Prevádzkové náklady - marketing a PR"),
+    ("auto", "Prevádzkové náklady - poistenie a opravy, poistenie budov"),
+    ("poisten", "Prevádzkové náklady - poistenie a opravy, poistenie budov"),
+    ("staveb", "Prevádzkové náklady - stavebné práce a architekt"),
+    ("architekt", "Prevádzkové náklady - stavebné práce a architekt"),
+    ("vo", "Prevádzkové náklady - dane, poplatky a jednorazové položky"),
+    ("dan", "Prevádzkové náklady - dane, poplatky a jednorazové položky"),
+    ("kart", "Prevádzkové náklady - platby a výbery kartou"),
+    ("ostat", "Prevádzkové náklady - ostatné všeobecné náklady"),
+    ("cest", "Projektový náklad - Guide, Stem, MinM, EASY"),
+    ("guide", "Projektový náklad - Guide, Stem, MinM, EASY"),
+    ("stem", "Projektový náklad - Guide, Stem, MinM, EASY"),
+    ("minm", "Projektový náklad - Guide, Stem, MinM, EASY"),
+    ("easy", "Projektový náklad - Guide, Stem, MinM, EASY"),
+    ("icm", "Projektové náklady - ICM"),
+    ("pas", "Investičné náklady - PAS Prešov"),
+    ("invest", "Investičné náklady - vybavenie"),
+    ("uver", "Finančné náklady - úver SLSP, kontokorent, úrok, transakčná daň - W"),
+    ("financ", "Finančné náklady - úver SLSP, kontokorent, úrok, transakčná daň - W"),
 ]
 
 
@@ -92,6 +91,9 @@ class TenenetCashflowReportHandler(models.AbstractModel):
     _name = "tenenet.cashflow.report.handler"
     _inherit = ["account.report.custom.handler", "tenenet.pl.reporting.support"]
     _description = "TENENET CashFlow Report Handler"
+    _SALARY_GROUP_MARKUP = "cashflow_salary_group"
+    _PROJECT_EXPENSE_GROUP_MARKUP = "cashflow_project_expenses_group"
+    _OPERATING_EXPENSE_GROUP_MARKUP = "cashflow_operating_expenses_group"
 
     def _custom_options_initializer(self, report, options, previous_options=None):
         super()._custom_options_initializer(report, options, previous_options=previous_options)
@@ -117,6 +119,8 @@ class TenenetCashflowReportHandler(models.AbstractModel):
         income_rows = [row for row in editable_rows if row["row_type"] == "income"]
         salary_rows = [row for row in editable_rows if row["row_type"] == "salary"]
         project_expense_rows = [row for row in editable_rows if row["row_type"] == "expense"]
+        salary_total_row = next((row for row in salary_rows if row["row_key"] == "salary:mzdy"), None)
+        salary_detail_rows = [row for row in salary_rows if row["row_key"] != "salary:mzdy"]
         cash_out_salary_rows = [row for row in salary_rows if row["row_key"] != "salary:mzdy"] or salary_rows
         cash_in_by_month = self._sum_rows_by_month(income_rows)
         cash_out_by_month = self._sum_rows_by_month(cash_out_salary_rows + project_expense_rows)
@@ -138,22 +142,48 @@ class TenenetCashflowReportHandler(models.AbstractModel):
             )))
 
         lines.append((0, self._build_report_line(
-            report, options, "", "Cash-IN", cash_in_by_month, markup="cashflow_cash_in", level=1
+            report, options, "", "Príjmy", cash_in_by_month, markup="cashflow_cash_in", level=1
         )))
         lines.append((0, self._build_spacer_line(report, options, "cashflow_spacer_after_cash_in")))
-        for index, salary_row in enumerate(salary_rows, 1):
-            lines.append((0, self._build_report_line(
+        if salary_total_row:
+            lines.append((0, self._build_group_line(
                 report,
                 options,
-                salary_row["program"],
-                salary_row["row_label"],
-                salary_row["values"],
-                markup=f"cashflow_salary_{index}",
-                level=1 if salary_row["row_key"] == "salary:mzdy" else 2,
-                is_expense=True,
+                "Mzdy",
+                salary_total_row["values"],
+                self._SALARY_GROUP_MARKUP,
+                "_report_expand_unfoldable_line_cashflow_salary_group",
+                level=1,
+                unfoldable=bool(salary_detail_rows),
             )))
 
-        for index, expense_row in enumerate(project_expense_rows, 1):
+        grouped_project_expense_rows, grouped_operating_expense_rows, other_expense_rows = self._split_expense_rows(
+            project_expense_rows
+        )
+        if grouped_project_expense_rows:
+            lines.append((0, self._build_group_line(
+                report,
+                options,
+                "Projektové náklady",
+                self._sum_rows_by_month(grouped_project_expense_rows),
+                self._PROJECT_EXPENSE_GROUP_MARKUP,
+                "_report_expand_unfoldable_line_cashflow_project_expenses",
+                level=1,
+                unfoldable=True,
+            )))
+        if grouped_operating_expense_rows:
+            lines.append((0, self._build_group_line(
+                report,
+                options,
+                "Prevádzkové náklady",
+                self._sum_rows_by_month(grouped_operating_expense_rows),
+                self._OPERATING_EXPENSE_GROUP_MARKUP,
+                "_report_expand_unfoldable_line_cashflow_operating_expenses",
+                level=1,
+                unfoldable=True,
+            )))
+
+        for index, expense_row in enumerate(other_expense_rows, 1):
             lines.append((0, self._build_report_line(
                 report,
                 options,
@@ -166,18 +196,82 @@ class TenenetCashflowReportHandler(models.AbstractModel):
             )))
 
         lines.append((0, self._build_report_line(
-            report, options, "", "Cash-OUT", cash_out_by_month, markup="cashflow_cash_out", level=1, is_expense=True
+            report, options, "", "Výdavky", cash_out_by_month, markup="cashflow_cash_out", level=1, is_expense=True
         )))
         lines.append((0, self._build_report_line(
             report,
             options,
             "",
-            "Balance per actual month",
+            "Mesačný zostatok",
             balance_by_month,
             markup="cashflow_balance",
             level=1,
         )))
         return lines
+
+    def _report_expand_unfoldable_line_cashflow_salary_group(
+        self, line_dict_id, groupby, options, progress, offset, unfold_all_batch_data=None
+    ):
+        report = self.env["account.report"].browse(options["report_id"])
+        selected_year = self._get_selected_year(options)
+        editable_rows = self._get_effective_editable_rows(selected_year, options)
+        rows = [row for row in editable_rows if row["row_type"] == "salary" and row["row_key"] != "salary:mzdy"]
+        lines = []
+        for index, salary_row in enumerate(rows, 1):
+            lines.append(self._build_report_line(
+                report,
+                options,
+                "Mzdy",
+                salary_row["row_label"],
+                salary_row["values"],
+                markup=f"cashflow_salary_detail_{index}",
+                level=2,
+                is_expense=True,
+                parent_line_id=line_dict_id,
+            ))
+        return self._build_expand_result(lines, progress)
+
+    def _report_expand_unfoldable_line_cashflow_project_expenses(
+        self, line_dict_id, groupby, options, progress, offset, unfold_all_batch_data=None
+    ):
+        report = self.env["account.report"].browse(options["report_id"])
+        rows = self._get_grouped_expense_rows(options)[0]
+        lines = []
+        for index, expense_row in enumerate(rows, 1):
+            program_name, project_name = self._split_cashflow_expense_label(expense_row["row_label"])
+            lines.append(self._build_report_line(
+                report,
+                options,
+                program_name,
+                project_name,
+                expense_row["values"],
+                markup=f"cashflow_project_expense_detail_{index}",
+                level=2,
+                is_expense=True,
+                parent_line_id=line_dict_id,
+            ))
+        return self._build_expand_result(lines, progress)
+
+    def _report_expand_unfoldable_line_cashflow_operating_expenses(
+        self, line_dict_id, groupby, options, progress, offset, unfold_all_batch_data=None
+    ):
+        report = self.env["account.report"].browse(options["report_id"])
+        rows = self._get_grouped_expense_rows(options)[1]
+        lines = []
+        for index, expense_row in enumerate(rows, 1):
+            program_name, project_name = self._split_cashflow_expense_label(expense_row["row_label"])
+            lines.append(self._build_report_line(
+                report,
+                options,
+                program_name,
+                project_name,
+                expense_row["values"],
+                markup=f"cashflow_operating_expense_detail_{index}",
+                level=2,
+                is_expense=True,
+                parent_line_id=line_dict_id,
+            ))
+        return self._build_expand_result(lines, progress)
 
     def _get_effective_editable_rows(self, selected_year, options=None):
         forecast_rows = self._get_forecast_editable_rows(selected_year, options)
@@ -213,6 +307,13 @@ class TenenetCashflowReportHandler(models.AbstractModel):
                     **override_row,
                     "values": defaultdict(float, override_row["values"]),
                 })
+
+        explicit_selected_ids = set(((options or {}).get("project_ids") or [])[:1])
+        if explicit_selected_ids:
+            effective_rows = [
+                row for row in effective_rows
+                if row["row_type"] != "expense" or row.get("project_id") in explicit_selected_ids
+            ]
 
         return sorted(
             effective_rows,
@@ -356,10 +457,18 @@ class TenenetCashflowReportHandler(models.AbstractModel):
             ("category", "=", "expense"),
         ])
         for expense in internal_expenses:
+            mapped = self._get_expense_cashflow_mapping(expense.expense_type_config_id)
             project = expense.source_project_id or expense.source_assignment_id.project_id
+            if not project and mapped:
+                row_key, row_label = mapped
+                bucket = row_buckets.setdefault(row_key, {
+                    "row_label": row_label,
+                    "values": defaultdict(float),
+                })
+                bucket["values"][expense.period.month] -= expense.expense_amount or 0.0
+                continue
             if not project or project.id not in (selected_project_ids or []):
                 continue
-            mapped = self._get_expense_cashflow_mapping(expense.expense_type_config_id)
             if mapped:
                 row_key, row_label = mapped
                 bucket = row_buckets.setdefault(row_key, {
@@ -392,11 +501,19 @@ class TenenetCashflowReportHandler(models.AbstractModel):
         if not config:
             return False
         if config.cashflow_row_key:
-            return config.cashflow_row_key, self._label_from_cashflow_row_key(config.cashflow_row_key, config.display_name)
+            fallback = config.cashflow_row_label or config.display_name
+            return config.cashflow_row_key, self._label_from_cashflow_row_key(config.cashflow_row_key, fallback)
         key = _fold(f"{config.name or ''} {config.description or ''}")
         for token, label in EXPENSE_MAPPING_TOKENS:
             if token in key:
                 return f"workbook:expense:{_slug(label)}", label
+        other_config = self.env["tenenet.expense.type.config"].with_context(active_test=False).search(
+            [("seed_key", "=", "operating_other")],
+            limit=1,
+        )
+        if other_config and other_config.cashflow_row_key:
+            fallback = other_config.cashflow_row_label or other_config.display_name
+            return other_config.cashflow_row_key, self._label_from_cashflow_row_key(other_config.cashflow_row_key, fallback)
         return False
 
     def _label_from_cashflow_row_key(self, row_key, fallback):
@@ -423,11 +540,11 @@ class TenenetCashflowReportHandler(models.AbstractModel):
     def _make_project_expense_row(self, project, values):
         return {
             "row_key": f"expense:{project.id}",
-            "row_label": f"Projektove naklady - {project.display_name}",
+            "row_label": project.display_name,
             "row_type": "expense",
             "section_label": "Výdavky",
             "program": self._get_program_label(project),
-            "project_label": f"Projektove naklady - {project.display_name}",
+            "project_label": project.display_name,
             "sequence": 300,
             "values": defaultdict(float, values),
         }
@@ -458,19 +575,118 @@ class TenenetCashflowReportHandler(models.AbstractModel):
             result[month] = sum(row["values"].get(month, 0.0) for row in rows)
         return result
 
-    def _get_program_label(self, project):
-        return ", ".join(project.program_ids.mapped("name"))
+    def _split_expense_rows(self, expense_rows):
+        project_rows = []
+        operating_rows = []
+        other_rows = []
+        for row in expense_rows:
+            label = row["row_label"]
+            if row["row_key"].startswith("expense:") or self._is_project_expense_label(label):
+                project_rows.append(row)
+            elif self._is_operating_expense_label(label):
+                operating_rows.append(row)
+            else:
+                other_rows.append(row)
+        return project_rows, operating_rows, other_rows
 
-    def _build_report_line(self, report, options, program_name, project_name, monthly_values, markup, level, is_expense=False):
+    def _split_cashflow_expense_label(self, label):
+        if label.startswith("Projektový náklad - "):
+            return "Projektový náklad", label.removeprefix("Projektový náklad - ")
+        if label.startswith("Projektové náklady - "):
+            return "Projektové náklady", label.removeprefix("Projektové náklady - ")
+        if label.startswith("Projektovy naklad - "):
+            return "Projektový náklad", label.removeprefix("Projektovy naklad - ")
+        if label.startswith("Projektove naklady - "):
+            return "Projektové náklady", label.removeprefix("Projektove naklady - ")
+        if label.startswith("Prevádzkové náklady - "):
+            return "Prevádzkové náklady", label.removeprefix("Prevádzkové náklady - ")
+        if label.startswith("Prevadzkove N - "):
+            return "Prevádzkové náklady", label.removeprefix("Prevadzkove N - ")
+        if label.startswith("Prevadzkova N - "):
+            return "Prevádzkové náklady", label.removeprefix("Prevadzkova N - ")
+        return "", label
+
+    def _is_project_expense_label(self, label):
+        return label.startswith(("Projektový náklad", "Projektové náklady", "Projektovy naklad", "Projektove naklady"))
+
+    def _is_operating_expense_label(self, label):
+        return label.startswith(("Prevádzkové náklady", "Prevadzkove N", "Prevadzkova N"))
+
+    def _get_grouped_expense_rows(self, options):
+        selected_year = self._get_selected_year(options)
+        effective_rows = self._get_effective_editable_rows(selected_year, options)
+        expense_rows = [row for row in effective_rows if row["row_type"] == "expense"]
+        return self._split_expense_rows(expense_rows)
+
+    def _get_program_label(self, project):
+        if not project:
+            return ""
+        admin_program = project._get_admin_tenenet_program()
+        program = project._get_primary_visible_program()
+        if program:
+            return program.display_name or program.name or ""
+        if project.primary_program_id and project.primary_program_id != admin_program:
+            return project.primary_program_id.display_name or project.primary_program_id.name or ""
+        if project.reporting_program_id and project.reporting_program_id != admin_program:
+            return project.reporting_program_id.display_name or project.reporting_program_id.name or ""
+        fallback = project.program_ids.filtered(lambda rec: rec != admin_program)[:1] or project.program_ids[:1]
+        return fallback.display_name or fallback.name or ""
+
+    def _build_report_line(
+        self,
+        report,
+        options,
+        program_name,
+        project_name,
+        monthly_values,
+        markup,
+        level,
+        is_expense=False,
+        parent_line_id=None,
+    ):
         line = {
-            "id": report._get_generic_line_id(None, None, markup=markup),
+            "id": report._get_generic_line_id(None, None, parent_line_id=parent_line_id, markup=markup),
             "name": program_name or "",
             "columns": self._build_columns(report, options, project_name, monthly_values),
             "level": level,
         }
+        if parent_line_id:
+            line["parent_id"] = parent_line_id
         if is_expense:
             line["class"] = "cashflow_expense_line"
         return line
+
+    def _build_group_line(
+        self, report, options, group_name, monthly_values, markup, expand_function, level, unfoldable=True
+    ):
+        line = self._build_report_line(
+            report,
+            options,
+            group_name,
+            "",
+            monthly_values,
+            markup=markup,
+            level=level,
+            is_expense=True,
+        )
+        line["unfoldable"] = unfoldable
+        line["unfolded"] = bool(
+            unfoldable
+            and (
+                options.get("unfold_all")
+                or line["id"] in (options.get("unfolded_lines") or [])
+            )
+        )
+        line["expand_function"] = expand_function if unfoldable else None
+        return line
+
+    def _build_expand_result(self, lines, progress):
+        return {
+            "lines": lines,
+            "offset_increment": len(lines),
+            "has_more": False,
+            "progress": progress,
+        }
 
     def _build_spacer_line(self, report, options, markup):
         columns = [

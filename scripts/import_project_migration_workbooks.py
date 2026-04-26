@@ -1766,13 +1766,23 @@ def apply_employee_multipliers(env, assignments: list[AssignmentPreview], action
     multipliers_by_employee: dict[int, float] = {}
     for assignment in assignments:
         if assignment.employee_id and assignment.contribution_multiplier:
-            multipliers_by_employee[int(assignment.employee_id)] = assignment.contribution_multiplier
+            employee_id = int(assignment.employee_id)
+            existing = multipliers_by_employee.get(employee_id)
+            incoming = assignment.contribution_multiplier
+            if existing is None:
+                multipliers_by_employee[employee_id] = incoming
+            elif math.isclose(existing, CCP_MULTIPLIER, rel_tol=0.0, abs_tol=0.0001) and not math.isclose(incoming, CCP_MULTIPLIER, rel_tol=0.0, abs_tol=0.0001):
+                multipliers_by_employee[employee_id] = incoming
+            elif not math.isclose(existing, CCP_MULTIPLIER, rel_tol=0.0, abs_tol=0.0001) and math.isclose(incoming, CCP_MULTIPLIER, rel_tol=0.0, abs_tol=0.0001):
+                continue
+            else:
+                multipliers_by_employee[employee_id] = incoming
 
     for employee_id, multiplier in sorted(multipliers_by_employee.items()):
         employee = Employee.browse(employee_id).exists()
         if not employee:
             continue
-        current = employee._get_payroll_contribution_multiplier() if hasattr(employee, "_get_payroll_contribution_multiplier") else CCP_MULTIPLIER
+        current = employee.tenenet_payroll_contribution_multiplier or CCP_MULTIPLIER
         if math.isclose(current, multiplier, rel_tol=0.0, abs_tol=0.0001):
             continue
         employee.write({"tenenet_payroll_contribution_multiplier": multiplier})

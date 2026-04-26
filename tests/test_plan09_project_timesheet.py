@@ -447,6 +447,24 @@ class TestTenenetPlan09ProjectTimesheet(TransactionCase):
         self.assertAlmostEqual(row_pp.month_01, 11.0)
         self.assertAlmostEqual(row_np.month_01, 4.0)
 
+    def test_timesheet_create_refreshes_matrix_without_opening_matrix_ui(self):
+        matrix = self.env["tenenet.project.timesheet.matrix"].create({
+            "assignment_id": self.assignment.id,
+            "year": 2026,
+        })
+
+        self.env["tenenet.project.timesheet"].create({
+            "assignment_id": self.assignment.id,
+            "period": "2026-01-01",
+            "hours_pp": 12.0,
+            "hours_np": 3.0,
+        })
+
+        row_pp = matrix.line_ids.filtered(lambda line: line.hour_type == "pp")[:1]
+        row_np = matrix.line_ids.filtered(lambda line: line.hour_type == "np")[:1]
+        self.assertAlmostEqual(row_pp.month_01, 12.0)
+        self.assertAlmostEqual(row_np.month_01, 3.0)
+
     def test_monthly_matrix_applies_hours_to_timesheets(self):
         matrix = self.env["tenenet.project.timesheet.matrix"].create({
             "assignment_id": self.assignment.id,

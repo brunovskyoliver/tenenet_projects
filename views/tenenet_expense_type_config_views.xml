@@ -7,8 +7,12 @@
                 <list string="Typy projektových nákladov" editable="bottom">
                     <field name="sequence" widget="handle"/>
                     <field name="name"/>
+                    <field name="tenenet_usage"/>
                     <field name="hr_expense_product_id"/>
                     <field name="cashflow_row_key" optional="show"/>
+                    <field name="cashflow_row_label" optional="hide"/>
+                    <field name="admin_pl_row_key" optional="hide"/>
+                    <field name="admin_pl_row_label" optional="hide"/>
                     <field name="description"/>
                     <field name="active"/>
                 </list>
@@ -23,10 +27,15 @@
                     <sheet>
                         <group>
                             <field name="name"/>
+                            <field name="seed_key" readonly="1"/>
                             <field name="sequence"/>
+                            <field name="tenenet_usage"/>
                             <field name="active"/>
-                            <field name="hr_expense_product_id" readonly="1"/>
+                            <field name="hr_expense_product_id"/>
                             <field name="cashflow_row_key"/>
+                            <field name="cashflow_row_label"/>
+                            <field name="admin_pl_row_key"/>
+                            <field name="admin_pl_row_label"/>
                         </group>
                         <group string="Popis">
                             <field name="description" nolabel="1"/>

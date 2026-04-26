@@ -32,14 +32,40 @@ class TestTenenetPlan15CashflowReport(TransactionCase):
         }
 
     def _get_lines(self, year):
-        options = self.report.get_options({
+        return self._get_lines_with_options({
             "date": {
                 "mode": "single",
                 "filter": "custom",
                 "date_to": f"{year}-12-31",
             },
         })
+
+    def _get_lines_for_project(self, year, project):
+        return self._get_lines_with_options({
+            "date": {
+                "mode": "single",
+                "filter": "custom",
+                "date_to": f"{year}-12-31",
+            },
+            "project_ids": [project.id],
+        })
+
+    def _get_lines_with_options(self, options):
+        options = self.report.get_options(options)
+        self._last_cashflow_options = options
         return self.report._get_lines(options)
+
+    def _get_expanded_cashflow_lines(self, line):
+        options = self._last_cashflow_options
+        return self.report.get_expanded_lines(
+            options,
+            line["id"],
+            line.get("groupby"),
+            line["expand_function"],
+            line.get("progress"),
+            0,
+            line.get("horizontal_split_side"),
+        )
 
     def _get_allocation_lines(self, year):
         report = self.env.ref("tenenet_projects.tenenet_allocation_report")
@@ -79,15 +105,35 @@ class TestTenenetPlan15CashflowReport(TransactionCase):
         return next(line for line in lines if self._column_map(line).get("project_label") == project_name)
 
     def _find_expense_line(self, lines, project_name):
-        return next(
+        direct = next((
             line
             for line in lines
             if self._column_map(line).get("project_label") == project_name
             and line.get("class") == "cashflow_expense_line"
-        )
+        ), None)
+        if direct:
+            return direct
+        for group_name in ("Projektové náklady", "Prevádzkové náklady"):
+            group_line = next((line for line in lines if self._column_map(line).get("project_label") == group_name), None)
+            if not group_line or not group_line.get("expand_function"):
+                continue
+            expanded = self._get_expanded_cashflow_lines(group_line)
+            match = next((
+                line
+                for line in expanded
+                if self._column_map(line).get("project_label") == project_name
+                and line.get("class") == "cashflow_expense_line"
+            ), None)
+            if match:
+                return match
+        raise StopIteration(project_name)
 
     def _find_named_line(self, lines, name):
-        return next(line for line in lines if self._column_map(line).get("project_label") == name)
+        return next(
+            line
+            for line in lines
+            if self._column_map(line).get("project_label") == name or line.get("name") == name
+        )
 
     def _find_allocation_line(self, lines, name):
         return next(line for line in lines if line["name"] == name)
@@ -228,8 +274,18 @@ class TestTenenetPlan15CashflowReport(TransactionCase):
         self.assertAlmostEqual(project_a_columns["month_02"], 700.0, places=2)
         self.assertAlmostEqual(project_b_columns["month_02"], 200.0, places=2)
         self.assertAlmostEqual(cash_in_columns["month_02"], 900.0, places=2)
-        self.assertEqual(project_b_line["name"], "Program A, Program B")
+        self.assertEqual(project_b_line["name"], "Program A")
         self.assertTrue(any(line.get("class") == "cashflow_spacer_line" for line in lines))
+
+    def test_program_column_shows_single_reporting_program_without_admin_tenenet_noise(self):
+        admin_program = self.env["tenenet.program"].search([("code", "=", "ADMIN_TENENET")], limit=1)
+        visible_program = self.env["tenenet.program"].create({"name": "Visible Program", "code": "PLAN15_VISIBLE"})
+        project = self.env["tenenet.project"].create({
+            "name": "Projekt Program",
+            "program_ids": [(6, 0, (visible_program | admin_program).ids)],
+        })
+
+        self.assertEqual(self.report.custom_handler_model_id._get_program_label(project), "Visible Program")
 
     def test_report_uses_project_cashflow_for_future_year(self):
         selected_year = fields.Date.context_today(self).year + 1
@@ -708,6 +764,126 @@ class TestTenenetPlan15CashflowReport(TransactionCase):
         rent_line = self._find_expense_line(lines, "Prevadzkove N - najom")
 
         self.assertAlmostEqual(self._column_map(rent_line)["month_03"], -55.0, places=2)
+
+    def test_projectless_operating_internal_expense_lands_in_canonical_cashflow_row(self):
+        year = fields.Date.context_today(self).year + 1
+        row_key = "workbook:expense:prevadzkove-n-other-general-costs-n-m"
+        other_type = self.env["tenenet.expense.type.config"].create({
+            "name": "Ostatné prevádzkové",
+            "tenenet_usage": "operating",
+            "cashflow_row_key": row_key,
+            "cashflow_row_label": "Prevadzkove N - Other general costs (n/m)",
+        })
+        self.env["tenenet.cashflow.global.override"].create({
+            "period": f"{year}-03-01",
+            "row_key": row_key,
+            "row_label": "Prevadzkove N - Other general costs (n/m)",
+            "row_type": "expense",
+            "section_label": "Výdavky",
+            "project_label": "Prevadzkove N - Other general costs (n/m)",
+            "sequence": 390,
+            "amount": -100.0,
+            "source_kind": "workbook",
+            "actual_mapping_key": row_key,
+        })
+        self.env["tenenet.internal.expense"].create({
+            "employee_id": self.employee.id,
+            "period": f"{year}-03-01",
+            "category": "expense",
+            "expense_type_config_id": other_type.id,
+            "expense_amount": 44.0,
+        })
+
+        lines = self._get_lines(year)
+        other_line = self._find_expense_line(lines, "Prevadzkove N - Other general costs (n/m)")
+
+        self.assertAlmostEqual(self._column_map(other_line)["month_03"], -44.0, places=2)
+
+    def test_cashflow_groups_project_and_operating_expense_rows_under_unfoldables(self):
+        year = fields.Date.context_today(self).year + 1
+        rent_type = self.env["tenenet.expense.type.config"].create({
+            "name": "Nájom",
+            "cashflow_row_key": "workbook:expense:prevadzkove-n-najom",
+            "cashflow_row_label": "Prevádzkové náklady - nájom",
+        })
+        self.env["tenenet.project.expense"].create({
+            "project_id": self.project_a.id,
+            "allowed_type_id": self.env["tenenet.project.allowed.expense.type"].create({
+                "project_id": self.project_a.id,
+                "name": "Materiál",
+                "max_amount": 0.0,
+            }).id,
+            "date": f"{year}-03-15",
+            "amount": 50.0,
+            "description": "Projektové",
+        })
+        self.env["tenenet.internal.expense"].create({
+            "employee_id": self.employee.id,
+            "period": f"{year}-03-01",
+            "category": "expense",
+            "expense_type_config_id": rent_type.id,
+            "expense_amount": 44.0,
+        })
+
+        lines = self._get_lines(year)
+        project_group = self._find_named_line(lines, "Projektové náklady")
+        operating_group = self._find_named_line(lines, "Prevádzkové náklady")
+
+        self.assertTrue(project_group.get("unfoldable"))
+        self.assertTrue(operating_group.get("unfoldable"))
+        self.assertFalse(any(self._column_map(line).get("project_label") == "Projekt A" for line in lines))
+        self.assertFalse(any(self._column_map(line).get("project_label") == "Prevádzkové náklady - nájom" for line in lines))
+        self.assertAlmostEqual(self._column_map(project_group)["month_03"], -50.0, places=2)
+        self.assertAlmostEqual(self._column_map(operating_group)["month_03"], -44.0, places=2)
+
+        project_children = self._get_expanded_cashflow_lines(project_group)
+        operating_children = self._get_expanded_cashflow_lines(operating_group)
+
+        self.assertTrue(any(self._column_map(line).get("project_label") == "Projekt A" for line in project_children))
+        self.assertTrue(any(self._column_map(line).get("project_label") == "Prevádzkové náklady - nájom" for line in operating_children))
+
+    def test_project_hr_expense_is_visible_in_cashflow_project_filter(self):
+        year = fields.Date.context_today(self).year + 1
+        icm_project = self.env["tenenet.project"].create({
+            "name": "ICM",
+            "program_ids": [(6, 0, self.program_b.ids)],
+        })
+        self.env["tenenet.project.assignment"].create({
+            "employee_id": self.employee.id,
+            "project_id": icm_project.id,
+            "wage_hm": 10.0,
+            "wage_ccp": 20.0,
+        })
+        product = self.env["product.product"].create({
+            "name": "Projektový náklad",
+            "type": "service",
+            "can_be_expensed": True,
+        })
+        config = self.env["tenenet.expense.type.config"].create({
+            "name": "ICM import",
+            "tenenet_usage": "project",
+            "cashflow_row_key": "workbook:expense:projektove-naklady-icm",
+            "cashflow_row_label": "Projektové náklady - ICM",
+            "hr_expense_product_id": product.id,
+        })
+        self.env["hr.expense"].create({
+            "name": "ICM výdavok",
+            "employee_id": self.employee.id,
+            "date": f"{year}-05-15",
+            "total_amount_currency": 725.0,
+            "tenenet_cost_flow": "project",
+            "tenenet_project_id": icm_project.id,
+            "tenenet_expense_type_config_id": config.id,
+            "tenenet_add_allowed_type": True,
+        })
+
+        lines = self._get_lines_for_project(year, icm_project)
+        project_group = self._find_named_line(lines, "Projektové náklady")
+        project_children = self._get_expanded_cashflow_lines(project_group)
+
+        icm_line = next(line for line in project_children if self._column_map(line).get("project_label") == "ICM")
+        self.assertEqual(icm_line["name"], self.program_b.name)
+        self.assertAlmostEqual(self._column_map(icm_line)["month_05"], -725.0, places=2)
 
     def test_salary_cashout_splits_by_project_organizational_unit(self):
         year = fields.Date.context_today(self).year + 1

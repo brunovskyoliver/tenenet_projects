@@ -156,6 +156,53 @@ class TestProjectMigrationImportPreview(TransactionCase):
             self.assertAlmostEqual(assignment.wage_ccp, 50.0, places=2)
             self.assertAlmostEqual(assignment.wage_hm, 50.0 / 1.3045, places=4)
 
+    def test_apply_employee_multipliers_prefers_custom_over_default_ratio_only_row(self):
+        custom_row = self.import_script.AssignmentPreview(
+            sheet="summary_EASE-Y",
+            project_name="EASPD GUIDE",
+            project_id=self.existing_project.id,
+            employee_name=self.employee.name,
+            employee_id=self.employee.id,
+            employee_user_id=False,
+            employee_user_login="",
+            employee_work_email="",
+            employee_match_status="odoo",
+            employee_source_ref=f"hr.employee:{self.employee.id}",
+            total_hours=12.0,
+            total_ccp=600.0,
+            wage_ccp=50.0,
+            wage_hm=50.0 / 1.3045,
+            contribution_multiplier=1.3045,
+            allocation_ratio=2.5,
+            date_start=date(2026, 1, 1),
+            date_end=date(2026, 12, 31),
+            monthly_ratios={1: 2.5},
+        )
+        default_ratio_only = self.import_script.AssignmentPreview(
+            sheet="apz_special:Sheet 1",
+            project_name="APZ_2N",
+            project_id=False,
+            employee_name=self.employee.name,
+            employee_id=self.employee.id,
+            employee_user_id=False,
+            employee_user_login="",
+            employee_work_email="",
+            employee_match_status="odoo",
+            employee_source_ref=f"hr.employee:{self.employee.id}",
+            total_hours=0.0,
+            total_ccp=0.0,
+            wage_ccp=0.0,
+            wage_hm=0.0,
+            contribution_multiplier=1.362,
+            allocation_ratio=50.0,
+            date_start=date(2026, 1, 1),
+            date_end=date(2026, 12, 31),
+            monthly_ratios={1: 50.0},
+        )
+
+        self.import_script.apply_employee_multipliers(self.env, [custom_row, default_ratio_only], [])
+        self.assertAlmostEqual(self.employee.tenenet_payroll_contribution_multiplier, 1.3045, places=4)
+
     def test_import_updates_employee_monthly_summary_from_employee_sheet(self):
         with TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)

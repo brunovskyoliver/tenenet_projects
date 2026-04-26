@@ -248,6 +248,7 @@ class TenenetProjectTimesheet(models.Model):
 
         Line = self.env["tenenet.project.timesheet.line"]
         for rec in self:
+            line_ctx = dict(self.env.context, skip_parent_timesheet_line_side_effects=True)
             existing_lines = {line.hour_type: line for line in rec.line_ids}
             for field_name, raw_value in hour_vals.items():
                 hour_type = HOUR_FIELD_META[field_name]["type"]
@@ -255,12 +256,12 @@ class TenenetProjectTimesheet(models.Model):
                 line = existing_lines.get(hour_type)
                 if abs(value) < 1e-9:
                     if line:
-                        line.unlink()
+                        line.with_context(**line_ctx).unlink()
                     continue
                 if line:
-                    line.hours = value
+                    line.with_context(**line_ctx).write({"hours": value})
                 else:
-                    Line.create({
+                    Line.with_context(**line_ctx).create({
                         "timesheet_id": rec.id,
                         "hour_type": hour_type,
                         "hours": value,
@@ -278,6 +279,20 @@ class TenenetProjectTimesheet(models.Model):
             if record.project_id and record.period
         }
 
+    def _matrix_refresh_keys(self):
+        return {
+            (record.assignment_id.id, record.period)
+            for record in self
+            if record.assignment_id and record.period
+        }
+
+    def _refresh_assignment_matrices(self, extra_keys=None):
+        keys = set(extra_keys or set())
+        keys.update(self._matrix_refresh_keys())
+        if not keys:
+            return self.env["tenenet.project.timesheet.matrix"]
+        return self.env["tenenet.project.timesheet.matrix"].sudo()._refresh_for_assignment_periods(keys)
+
     @api.model_create_multi
     def create(self, vals_list):
         split_vals = [self._split_hour_vals(vals) for vals in vals_list]
@@ -292,10 +307,12 @@ class TenenetProjectTimesheet(models.Model):
         self.env["tenenet.project"]._sync_finance_monthly_comparison_pairs(
             records._finance_monthly_comparison_pairs()
         )
+        records._refresh_assignment_matrices()
         return records
 
     def write(self, vals):
         old_pairs = self._finance_monthly_comparison_pairs()
+        old_matrix_keys = self._matrix_refresh_keys()
         clean_vals, hour_vals = self._split_hour_vals(vals)
         result = super().write(clean_vals)
         if hour_vals:
@@ -310,6 +327,7 @@ class TenenetProjectTimesheet(models.Model):
         self.env["tenenet.project"]._sync_finance_monthly_comparison_pairs(
             old_pairs | self._finance_monthly_comparison_pairs()
         )
+        self._refresh_assignment_matrices(extra_keys=old_matrix_keys)
         return result
 
     def unlink(self):
@@ -321,6 +339,7 @@ class TenenetProjectTimesheet(models.Model):
         ]
         sync_keys = [(rec.employee_id.id, rec.period) for rec in self if rec.employee_id and rec.period]
         finance_pairs = self._finance_monthly_comparison_pairs()
+        matrix_keys = self._matrix_refresh_keys()
         result = super().unlink()
         Cost = self.env["tenenet.employee.tenenet.cost"]
         for employee_id, period in sync_keys:
@@ -341,6 +360,7 @@ class TenenetProjectTimesheet(models.Model):
                 ]).unlink()
         self.env["tenenet.utilization"].sudo()._recompute_for_employee_periods(sync_keys)
         self.env["tenenet.project"]._sync_finance_monthly_comparison_pairs(finance_pairs)
+        self.env["tenenet.project.timesheet.matrix"].sudo()._refresh_for_assignment_periods(matrix_keys)
         return result
 
     def _check_wage_cap(self):
@@ -600,6 +620,8 @@ class TenenetProjectTimesheetLine(models.Model):
                         "Absencie (dovolenka/PN/lekár/sviatky) je možné pridávať iba cez HR Dovolenky."
                     )
         records = super().create(vals_list)
+        if self.env.context.get("skip_parent_timesheet_line_side_effects"):
+            return records
         _logger.info(
             "Timesheet lines created: ids=%s timesheet_ids=%s hour_types=%s",
             records.ids,
@@ -612,12 +634,15 @@ class TenenetProjectTimesheetLine(models.Model):
         self.env["tenenet.project"]._sync_finance_monthly_comparison_pairs(
             timesheets._finance_monthly_comparison_pairs()
         )
+        timesheets._refresh_assignment_matrices()
         return records
 
     def write(self, vals):
         self._check_leave_lines_not_manually_mutated(vals)
         old_timesheets = self.mapped("timesheet_id")
         result = super().write(vals)
+        if self.env.context.get("skip_parent_timesheet_line_side_effects"):
+            return result
         impacted_timesheets = old_timesheets | self.mapped("timesheet_id")
         _logger.info(
             "Timesheet lines updated: ids=%s impacted_timesheet_ids=%s vals=%s",
@@ -630,11 +655,15 @@ class TenenetProjectTimesheetLine(models.Model):
         self.env["tenenet.project"]._sync_finance_monthly_comparison_pairs(
             (old_timesheets | impacted_timesheets)._finance_monthly_comparison_pairs()
         )
+        impacted_timesheets._refresh_assignment_matrices(extra_keys=old_timesheets._matrix_refresh_keys())
         return result
 
     def unlink(self):
         self._check_leave_lines_not_manually_mutated({"hours": 0.0})
         timesheets = self.mapped("timesheet_id")
+        if self.env.context.get("skip_parent_timesheet_line_side_effects"):
+            return super().unlink()
+        matrix_keys = timesheets._matrix_refresh_keys()
         result = super().unlink()
         _logger.info(
             "Timesheet lines deleted from timesheet_ids=%s",
@@ -645,4 +674,5 @@ class TenenetProjectTimesheetLine(models.Model):
         self.env["tenenet.project"]._sync_finance_monthly_comparison_pairs(
             timesheets._finance_monthly_comparison_pairs()
         )
+        timesheets._refresh_assignment_matrices(extra_keys=matrix_keys)
         return result

@@ -804,6 +804,44 @@ class TestTenenetPlan13PLReport(TransactionCase):
             if line.get("parent_id") == self._find_line(lines, "Náklady bez projektov")["id"]
         ])
 
+    def test_admin_operating_costs_use_actuals_and_fallback_pool(self):
+        year = fields.Date.context_today(self).year + 1
+        operating_type = self.env["tenenet.expense.type.config"].create({
+            "name": "Nájom",
+            "tenenet_usage": "operating",
+            "admin_pl_row_key": "operating:rent",
+            "admin_pl_row_label": "Nájom",
+        })
+        pool = self.env["tenenet.operating.cost.pool"].create({
+            "year": year,
+            "basis_year": year - 1,
+            "annual_amount": 0.0,
+        })
+        self.env["tenenet.operating.cost.allocation"].create({
+            "pool_id": pool.id,
+            "program_id": self.admin_program.id,
+            "period": f"{year}-04-01",
+            "allocation_basis_fte": 1.0,
+            "allocation_pct": 1.0,
+            "amount": 60.0,
+        })
+        self.env["tenenet.internal.expense"].create({
+            "employee_id": self.employee_a.id,
+            "period": f"{year}-03-01",
+            "category": "expense",
+            "expense_type_config_id": operating_type.id,
+            "expense_amount": 40.0,
+        })
+
+        lines = self._get_detail_lines(year, self.admin_program, unfold_all=True)
+        operating_columns = self._column_map(self._find_line(lines, "Prevádzkové náklady"))
+        rent_columns = self._column_map(self._find_line(lines, "Nájom"))
+
+        self.assertAlmostEqual(operating_columns["month_03"], -40.0, places=2)
+        self.assertAlmostEqual(operating_columns["month_04"], -60.0, places=2)
+        self.assertAlmostEqual(rent_columns["month_03"], -40.0, places=2)
+        self.assertAlmostEqual(rent_columns["month_04"], 0.0, places=2)
+
     def test_admin_primary_project_assignee_wages_are_management_labor_detail(self):
         year = fields.Date.context_today(self).year + 1
         admin_job = self.env["hr.job"].create({

@@ -1,4 +1,35 @@
 .account_report.tenenet_cashflow_report {
+    .o_account_reports_table {
+        .line_name {
+            width: 5.5rem;
+            max-width: 5.5rem;
+
+            > .wrapper > .content {
+                min-width: 0;
+                max-width: 100%;
+            }
+        }
+
+        .line_cell[data-expression_label="project_label"] {
+            width: 8.5rem;
+            max-width: 8.5rem;
+
+            > .wrapper > .content {
+                min-width: 0;
+                max-width: 100%;
+            }
+        }
+
+        .line_name .o_ellipsis,
+        .line_cell[data-expression_label="project_label"] .o_ellipsis {
+            display: inline-block;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    }
+
     #filter_date {
         .o_datetime_input {
             min-width: 5rem;

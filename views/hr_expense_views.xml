@@ -18,33 +18,42 @@
             <field name="arch" type="xml">
                 <xpath expr="//label[@for='product_id']" position="before">
                     <field name="tenenet_available_project_ids" invisible="1"/>
+                    <field name="tenenet_available_expense_type_config_ids" invisible="1"/>
                     <field name="tenenet_allowed_product_ids" invisible="1"/>
                     <field name="tenenet_allowed_type_id" invisible="1"/>
                     <field name="tenenet_type_supported_on_project" invisible="1"/>
                     <field name="tenenet_can_add_allowed_type" invisible="1"/>
                 </xpath>
                 <xpath expr="//label[@for='product_id']" position="before">
+                    <label for="tenenet_cost_flow"/>
+                    <div>
+                        <field name="tenenet_cost_flow"
+                               readonly="not is_editable"
+                               class="w-100"/>
+                    </div>
                     <label for="tenenet_project_id"/>
                     <div>
                         <field name="tenenet_project_id"
                                domain="[('id', 'in', tenenet_available_project_ids)]"
+                               invisible="tenenet_cost_flow == 'operating'"
                                readonly="not is_editable"
                                class="w-100"/>
                     </div>
                     <label for="tenenet_expense_type_config_id"/>
                     <div>
                         <field name="tenenet_expense_type_config_id"
+                               domain="[('id', 'in', tenenet_available_expense_type_config_ids)]"
                                readonly="not is_editable"
-                               required="tenenet_project_id"
+                               required="tenenet_cost_flow == 'operating' or tenenet_project_id"
                                class="w-100"/>
                     </div>
                     <field name="tenenet_add_allowed_type"
-                           invisible="not tenenet_project_id or not tenenet_expense_type_config_id or tenenet_type_supported_on_project or not tenenet_can_add_allowed_type or not is_editable"/>
+                           invisible="tenenet_cost_flow == 'operating' or not tenenet_project_id or not tenenet_expense_type_config_id or tenenet_type_supported_on_project or not tenenet_can_add_allowed_type or not is_editable"/>
                     <field name="tenenet_allowed_type_limit"
-                           invisible="not tenenet_add_allowed_type or not tenenet_project_id or not tenenet_expense_type_config_id or tenenet_type_supported_on_project or not tenenet_can_add_allowed_type or not is_editable"/>
-                    <field name="tenenet_project_amount" readonly="1" invisible="not tenenet_project_id"/>
-                    <field name="tenenet_internal_amount" readonly="1" invisible="not tenenet_project_id"/>
-                    <field name="tenenet_split_note" readonly="1" invisible="not tenenet_project_id"/>
+                           invisible="tenenet_cost_flow == 'operating' or not tenenet_add_allowed_type or not tenenet_project_id or not tenenet_expense_type_config_id or tenenet_type_supported_on_project or not tenenet_can_add_allowed_type or not is_editable"/>
+                    <field name="tenenet_project_amount" readonly="1" invisible="tenenet_cost_flow == 'operating' or not tenenet_project_id"/>
+                    <field name="tenenet_internal_amount" readonly="1" invisible="not tenenet_expense_type_config_id"/>
+                    <field name="tenenet_split_note" readonly="1" invisible="not tenenet_expense_type_config_id"/>
                 </xpath>
             </field>
         </record>

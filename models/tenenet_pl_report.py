@@ -457,15 +457,28 @@ class TenenetPLReportHandler(models.AbstractModel):
                 level=2,
                 parent_line_id=line_dict_id,
             ))
-        lines.extend(self._build_value_lines(
+        if values.get("operating_detail_rows"):
+            lines.extend(self._build_unfoldable_section_lines(
                 report,
                 options,
                 "Prevádzkové náklady",
-                values["operating"],
                 "tenenet_pl_operating",
+                "_report_expand_unfoldable_line_tenenet_pl_operating",
                 level=2,
                 parent_line_id=line_dict_id,
+                unfoldable=True,
+                monthly_values=values["operating"],
             ))
+        else:
+            lines.extend(self._build_value_lines(
+                    report,
+                    options,
+                    "Prevádzkové náklady",
+                    values["operating"],
+                    "tenenet_pl_operating",
+                    level=2,
+                    parent_line_id=line_dict_id,
+                ))
         lines.extend(self._build_value_lines(
                 report,
                 options,
@@ -535,6 +548,24 @@ class TenenetPLReportHandler(models.AbstractModel):
                 parent_line_id=line_dict_id,
                 model=None if row.get("is_manual") else "hr.employee",
                 record_id=None if row.get("is_manual") else row["employee"].id,
+            ))
+        return self._build_expand_result(lines, progress)
+
+    def _report_expand_unfoldable_line_tenenet_pl_operating(
+        self, line_dict_id, groupby, options, progress, offset, unfold_all_batch_data=None
+    ):
+        report = self.env["account.report"].browse(options["report_id"])
+        values = self._get_selected_program_report_values(options)
+        lines = []
+        for index, row in enumerate(values.get("operating_detail_rows") or [], start=1):
+            lines.extend(self._build_value_lines(
+                report,
+                options,
+                row["name"],
+                self._row_monthly_values(row),
+                markup=f"tenenet_pl_operating_detail_{index}",
+                level=3,
+                parent_line_id=line_dict_id,
             ))
         return self._build_expand_result(lines, progress)
 

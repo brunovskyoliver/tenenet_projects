@@ -189,9 +189,17 @@ class TenenetPLReportingSupport(models.AbstractModel):
         return f"{code} {name}".strip() if code else name
 
     def _get_program_label(self, project):
-        if getattr(project, "reporting_program_id", False):
-            return project.reporting_program_id.display_name or project.reporting_program_id.name or ""
-        return ", ".join(project.program_ids.mapped("name"))
+        admin_program = project._get_admin_tenenet_program() if hasattr(project, "_get_admin_tenenet_program") else False
+        visible_program = project._get_primary_visible_program() if hasattr(project, "_get_primary_visible_program") else False
+        if visible_program:
+            return visible_program.display_name or visible_program.name or ""
+        reporting_program = getattr(project, "reporting_program_id", False)
+        if reporting_program and reporting_program != admin_program:
+            return reporting_program.display_name or reporting_program.name or ""
+        fallback = project.program_ids.filtered(lambda rec: rec != admin_program)[:1] or project.program_ids[:1]
+        if fallback:
+            return fallback.display_name or fallback.name or ""
+        return ""
 
     def _get_admin_tenenet_program(self):
         return self.env["tenenet.program"].with_context(active_test=False).search(
@@ -1205,6 +1213,53 @@ class TenenetPLReportingSupport(models.AbstractModel):
             values[allocation.month] -= allocation.amount or 0.0
         return values
 
+    def _get_admin_operating_expense_rows(self, selected_year):
+        rows = {}
+        expenses = self._get_year_internal_expenses(selected_year).filtered(
+            lambda exp: exp.category == "expense" and not self._get_internal_expense_project(exp)
+        )
+        for expense in expenses:
+            config = expense.expense_type_config_id
+            row_key = (
+                config.admin_pl_row_key
+                or (f"operating:{config.id}" if config else "operating:other")
+            )
+            row_name = (
+                config.admin_pl_row_label
+                or (config.display_name if config else "Ostatné prevádzkové")
+            )
+            bucket = rows.setdefault(
+                row_key,
+                {
+                    "row_key": row_key,
+                    "name": row_name,
+                    "values": defaultdict(float),
+                },
+            )
+            bucket["values"][expense.period.month] -= self._get_internal_expense_amount(expense)
+        result = [row for row in rows.values() if any(row["values"].values())]
+        result.sort(key=lambda row: (row["name"] or "").lower())
+        return result
+
+    def _get_effective_admin_operating_values(self, program, selected_year, detail_rows):
+        pool_values = self._get_operating_cost_by_month(program, selected_year)
+        actual_values = self._sum_month_dicts(*(row["values"] for row in detail_rows))
+        real_values = defaultdict(float)
+        predicted_values = defaultdict(float)
+        predicted_months = {}
+        for month in range(1, 13):
+            if abs(actual_values.get(month, 0.0)) > 0.00001:
+                real_values[month] = actual_values[month]
+                predicted_months[month] = False
+            else:
+                predicted_values[month] = pool_values.get(month, 0.0)
+                predicted_months[month] = abs(pool_values.get(month, 0.0)) > 0.00001
+        return self._make_value_bundle(
+            real_values=real_values,
+            predicted_values=predicted_values,
+            predicted_months=predicted_months,
+        )
+
     def _legacy_trzby_override(self, override_rows):
         return override_rows.get("sales_legacy_unclassified") or override_rows.get("trzby")
 
@@ -1394,9 +1449,14 @@ class TenenetPLReportingSupport(models.AbstractModel):
                 "value_bundle": self._value_bundle(manual_values),
                 "is_manual": True,
             })
-        operating = self._predict_row_bundle(
-            self._get_operating_cost_by_month(program, selected_year),
+        operating_detail_rows = self._predict_report_rows(
+            self._get_admin_operating_expense_rows(selected_year),
             selected_year,
+        )
+        operating = self._get_effective_admin_operating_values(
+            program,
+            selected_year,
+            operating_detail_rows,
         )
         pre_admin_result = self._sum_month_value_bundles(income_total, labor_cost, labor_non_project, labor_mgmt)
         final_result = self._sum_month_value_bundles(pre_admin_result, operating)
@@ -1412,6 +1472,7 @@ class TenenetPLReportingSupport(models.AbstractModel):
             "labor_non_project_rows": labor_non_project_rows,
             "labor_mgmt_rows": labor_mgmt_rows,
             "admin_cost_detail_rows": [],
+            "operating_detail_rows": operating_detail_rows,
             "projects_total": projects_total,
             "admin_international_projects_total": admin_international_projects_total,
             "budget_labor_income_total": self._value_bundle(),
@@ -1570,5 +1631,6 @@ class TenenetPLReportingSupport(models.AbstractModel):
             "pre_admin_result": pre_admin_result,
             "admin_tenenet_cost": admin_tenenet_cost,
             "operating": operating,
+            "operating_detail_rows": [],
             "final_result": final_result,
         }

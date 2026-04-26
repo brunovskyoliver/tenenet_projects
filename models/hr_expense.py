@@ -5,6 +5,16 @@ from odoo.exceptions import ValidationError
 class HrExpense(models.Model):
     _inherit = "hr.expense"
 
+    tenenet_cost_flow = fields.Selection(
+        [
+            ("project", "Projektový náklad"),
+            ("operating", "Prevádzkový náklad"),
+        ],
+        string="TENENET tok nákladu",
+        default="project",
+        required=True,
+        tracking=True,
+    )
     tenenet_project_id = fields.Many2one(
         "tenenet.project",
         string="TENENET projekt",
@@ -19,6 +29,10 @@ class HrExpense(models.Model):
         string="TENENET typ výdavku",
         domain=[("active", "=", True)],
         readonly=False,
+    )
+    tenenet_available_expense_type_config_ids = fields.Many2many(
+        "tenenet.expense.type.config",
+        compute="_compute_tenenet_available_expense_type_config_ids",
     )
     tenenet_allowed_product_ids = fields.Many2many(
         "product.product",
@@ -73,11 +87,26 @@ class HrExpense(models.Model):
         copy=False,
         help="Celkový limit tohto typu výdavku na projekte. 0 = bez limitu.",
     )
+    tenenet_import_source_key = fields.Char(
+        string="TENENET import source key",
+        copy=False,
+        index=True,
+    )
 
     @api.depends("employee_id", "date")
     def _compute_tenenet_available_project_ids(self):
         for rec in self:
             rec.tenenet_available_project_ids = rec._get_tenenet_available_projects()
+
+    @api.depends("tenenet_cost_flow")
+    def _compute_tenenet_available_expense_type_config_ids(self):
+        Config = self.env["tenenet.expense.type.config"].with_context(active_test=False)
+        configs = Config.search([("active", "=", True)])
+        for rec in self:
+            allowed_usage = ["project", "both"] if rec.tenenet_cost_flow != "operating" else ["operating", "both"]
+            rec.tenenet_available_expense_type_config_ids = configs.filtered(
+                lambda cfg: cfg.tenenet_usage in allowed_usage
+            )
 
     @api.depends("tenenet_expense_type_config_id", "tenenet_expense_type_config_id.expense_category_line_ids.product_id")
     def _compute_tenenet_allowed_product_ids(self):
@@ -103,8 +132,10 @@ class HrExpense(models.Model):
     def _compute_tenenet_allowed_type_shortcut(self):
         can_add_allowed_type = self.env["tenenet.project.allowed.expense.type"].browse().has_access("create")
         for rec in self:
-            rec.tenenet_can_add_allowed_type = bool(can_add_allowed_type)
-            rec.tenenet_type_supported_on_project = bool(rec._get_tenenet_matching_allowed_type())
+            rec.tenenet_can_add_allowed_type = bool(can_add_allowed_type) and rec.tenenet_cost_flow == "project"
+            rec.tenenet_type_supported_on_project = (
+                rec.tenenet_cost_flow == "project" and bool(rec._get_tenenet_matching_allowed_type())
+            )
 
     @api.onchange("employee_id", "date")
     def _onchange_tenenet_employee_or_date(self):
@@ -112,6 +143,14 @@ class HrExpense(models.Model):
             available_projects = rec._get_tenenet_available_projects()
             if rec.tenenet_project_id and rec.tenenet_project_id not in available_projects:
                 rec.tenenet_project_id = False
+
+    @api.onchange("tenenet_cost_flow")
+    def _onchange_tenenet_cost_flow(self):
+        for rec in self:
+            if rec.tenenet_cost_flow == "operating":
+                rec.tenenet_project_id = False
+            rec.tenenet_add_allowed_type = False
+            rec.tenenet_allowed_type_limit = 0.0
 
     @api.onchange("tenenet_expense_type_config_id")
     def _onchange_tenenet_expense_type_config_id(self):
@@ -123,18 +162,31 @@ class HrExpense(models.Model):
     @api.onchange("tenenet_project_id")
     def _onchange_tenenet_project_id(self):
         for rec in self:
+            if rec.tenenet_project_id:
+                rec.tenenet_cost_flow = "project"
             rec.tenenet_add_allowed_type = False
             rec.tenenet_allowed_type_limit = 0.0
 
-    @api.constrains("tenenet_project_id", "tenenet_expense_type_config_id")
+    @api.constrains("tenenet_project_id", "tenenet_expense_type_config_id", "tenenet_cost_flow")
     def _check_tenenet_type_required(self):
         for rec in self:
+            if rec.tenenet_cost_flow == "operating" and not rec.tenenet_expense_type_config_id:
+                raise ValidationError(_("Pre TENENET prevádzkový náklad musíte vybrať typ výdavku."))
             if rec.tenenet_project_id and not rec.tenenet_expense_type_config_id:
                 raise ValidationError(_("Pre TENENET projektový výdavok musíte vybrať typ výdavku."))
+            config = rec.tenenet_expense_type_config_id
+            if not config:
+                continue
+            if rec.tenenet_cost_flow == "operating" and config.tenenet_usage not in {"operating", "both"}:
+                raise ValidationError(_("Vybraný typ výdavku nie je povolený pre prevádzkové náklady."))
+            if rec.tenenet_cost_flow == "project" and config.tenenet_usage not in {"project", "both"}:
+                raise ValidationError(_("Vybraný typ výdavku nie je povolený pre projektové náklady."))
 
     @api.constrains("tenenet_project_id", "employee_id", "date")
     def _check_tenenet_project_access(self):
         for rec in self.filtered("tenenet_project_id"):
+            if rec.tenenet_import_source_key:
+                continue
             if rec.tenenet_project_id not in rec._get_tenenet_available_projects():
                 raise ValidationError(
                     _("Na tomto výdavku je možné vybrať len projekty priradené zamestnancovi alebo projekty, kde je garant/PM.")
@@ -183,6 +235,12 @@ class HrExpense(models.Model):
 
     def _prepare_tenenet_category_vals(self, vals, record=None):
         prepared_vals = dict(vals)
+        cost_flow = prepared_vals.get(
+            "tenenet_cost_flow",
+            record.tenenet_cost_flow if record else "project",
+        )
+        if cost_flow == "operating":
+            prepared_vals["tenenet_project_id"] = False
         config_id = prepared_vals.get(
             "tenenet_expense_type_config_id",
             record.tenenet_expense_type_config_id.id if record else False,
@@ -248,7 +306,7 @@ class HrExpense(models.Model):
         self.ensure_one()
         project = self.tenenet_project_id
         config = self.tenenet_expense_type_config_id
-        if not project or not config:
+        if self.tenenet_cost_flow != "project" or not project or not config:
             return self.env["tenenet.project.allowed.expense.type"]
 
         allowed_type = project.allowed_expense_type_ids.filtered(
@@ -268,7 +326,16 @@ class HrExpense(models.Model):
             "internal_amount": 0.0,
             "note": False,
         }
-        if not self.tenenet_project_id or not self.tenenet_expense_type_config_id:
+        if not self.tenenet_expense_type_config_id:
+            return zero
+        if self.tenenet_cost_flow == "operating":
+            return {
+                "allowed_type": self.env["tenenet.project.allowed.expense.type"],
+                "project_amount": 0.0,
+                "internal_amount": self.total_amount or 0.0,
+                "note": _("Prevádzkový náklad ide celý do interných nákladov."),
+            }
+        if not self.tenenet_project_id:
             return zero
 
         amount = self.total_amount or 0.0
@@ -321,7 +388,7 @@ class HrExpense(models.Model):
         AllowedType = self.env["tenenet.project.allowed.expense.type"]
         AllowedType.browse().check_access("create")
         for rec in self:
-            if not rec.tenenet_project_id or not rec.tenenet_expense_type_config_id:
+            if rec.tenenet_cost_flow != "project" or not rec.tenenet_project_id or not rec.tenenet_expense_type_config_id:
                 continue
             if rec._get_tenenet_matching_allowed_type():
                 continue
@@ -343,7 +410,7 @@ class HrExpense(models.Model):
             project_expense = ProjectExpense.search([("hr_expense_id", "=", rec.id)], limit=1)
             internal_expense = InternalExpense.search([("hr_expense_id", "=", rec.id)], limit=1)
 
-            if not rec.tenenet_project_id or not rec.tenenet_expense_type_config_id:
+            if not rec.tenenet_expense_type_config_id:
                 project_expense.unlink()
                 internal_expense.unlink()
                 continue
@@ -354,7 +421,7 @@ class HrExpense(models.Model):
             expense_date = rec.date or fields.Date.context_today(rec)
             period = expense_date.replace(day=1)
 
-            if split["project_amount"] > 0.0 and allowed_type:
+            if rec.tenenet_cost_flow == "project" and split["project_amount"] > 0.0 and allowed_type:
                 project_vals = {
                     "project_id": rec.tenenet_project_id.id,
                     "allowed_type_id": allowed_type.id,
@@ -379,7 +446,7 @@ class HrExpense(models.Model):
                     "period": period,
                     "category": "expense",
                     "hr_expense_id": rec.id,
-                    "source_project_id": rec.tenenet_project_id.id,
+                    "source_project_id": rec.tenenet_project_id.id if rec.tenenet_cost_flow == "project" else False,
                     "expense_type_config_id": rec.tenenet_expense_type_config_id.id,
                     "expense_amount": split["internal_amount"],
                     "note": split["note"],

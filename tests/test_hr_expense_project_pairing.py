@@ -16,6 +16,20 @@ class TestHrExpenseProjectPairing(TransactionCase):
             "name": "Cestovné",
             "hr_expense_product_id": self.expense_product.id,
         })
+        self.operating_product = self.env["product.product"].create({
+            "name": "Prevádzka HR",
+            "type": "service",
+            "can_be_expensed": True,
+        })
+        self.operating_type = self.env["tenenet.expense.type.config"].create({
+            "name": "Nájom",
+            "tenenet_usage": "operating",
+            "hr_expense_product_id": self.operating_product.id,
+            "cashflow_row_key": "workbook:expense:prevadzkove-n-najom",
+            "cashflow_row_label": "Prevadzkove N - najom",
+            "admin_pl_row_key": "operating:rent",
+            "admin_pl_row_label": "Nájom",
+        })
         self.allowed_project = self.env["tenenet.project"].create({
             "name": "Projekt Expense",
         })
@@ -143,3 +157,21 @@ class TestHrExpenseProjectPairing(TransactionCase):
         self.assertEqual(allowed_types.max_amount, 100.0)
         self.assertEqual(expense.tenenet_project_amount, 40.0)
         self.assertEqual(expense.tenenet_internal_amount, 0.0)
+
+    def test_operating_expense_without_project_syncs_to_internal_expense(self):
+        expense = self.env["hr.expense"].create({
+            "name": "Operating rent",
+            "employee_id": self.employee.id,
+            "total_amount_currency": 80.0,
+            "tenenet_cost_flow": "operating",
+            "tenenet_expense_type_config_id": self.operating_type.id,
+        })
+
+        self.assertEqual(expense.product_id, self.operating_product)
+        self.assertFalse(expense.tenenet_project_id)
+        self.assertEqual(expense.tenenet_project_amount, 0.0)
+        self.assertEqual(expense.tenenet_internal_amount, 80.0)
+        self.assertFalse(expense.tenenet_project_expense_ids)
+        self.assertEqual(len(expense.tenenet_internal_expense_ids), 1)
+        self.assertFalse(expense.tenenet_internal_expense_ids.source_project_id)
+        self.assertEqual(expense.tenenet_internal_expense_ids.expense_amount, 80.0)
